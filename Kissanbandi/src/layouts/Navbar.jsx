@@ -2,16 +2,26 @@ import React, { useState, useEffect } from 'react';
 import { Menu, X, ShoppingCart, Search, User, ChevronDown } from 'lucide-react';
 import { useCart } from '../pages/checkout/CartContext';
 import { Link, useNavigate } from 'react-router-dom';
+import { allProducts } from '../data/products';
 
 const Navbar = () => {
   const { state } = useCart();
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
-  const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const [isScrolled, setIsScrolled] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isScrolled, setIsScrolled] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
 
   const cartCount = state.items.reduce((total, item) => total + item.quantity, 0);
+
+  // Filter suggestions based on search query
+  const suggestions = searchQuery.trim() 
+    ? allProducts
+        .filter(product => 
+          product.name.toLowerCase().includes(searchQuery.toLowerCase())
+        )
+        .slice(0, 5)
+    : [];
 
   useEffect(() => {
     const handleScroll = () => {
@@ -26,6 +36,34 @@ const Navbar = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (!event.target.closest('.search-container')) {
+        setShowSuggestions(false);
+      }
+    };
+
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, []);
+
+  const handleSearch = (e) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      navigate(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
+      setSearchQuery('');
+      setShowSuggestions(false);
+      setIsOpen(false);
+    }
+  };
+
+  const handleSuggestionClick = (product) => {
+    navigate(`/search?q=${encodeURIComponent(product.name)}`);
+    setSearchQuery('');
+    setShowSuggestions(false);
+    setIsOpen(false);
+  };
+
   const categories = [
     {
       name: 'Fruits',
@@ -37,16 +75,48 @@ const Navbar = () => {
     }
   ];
 
-  const handleSearch = (e) => {
-    e.preventDefault();
-    if (searchQuery.trim()) {
-      navigate(`/search?q=${encodeURIComponent(searchQuery)}`);
-    }
-  };
+  const SearchInput = ({ isMobile = false }) => (
+    <div className="relative w-full search-container" onClick={(e) => e.stopPropagation()}>
+      <form onSubmit={handleSearch}>
+        <input
+          type="text"
+          placeholder="Search for fresh produce..."
+          value={searchQuery}
+          onChange={(e) => {
+            setSearchQuery(e.target.value);
+            setShowSuggestions(true);
+          }}
+          onFocus={() => setShowSuggestions(true)}
+          className="w-full px-4 py-2 rounded-full border border-gray-300 focus:outline-none focus:border-green-500"
+        />
+        <button 
+          type="submit" 
+          className="absolute right-4 top-2.5 text-gray-400 hover:text-green-500"
+        >
+          <Search className="w-5 h-5" />
+        </button>
+      </form>
+      
+      {showSuggestions && searchQuery.trim() && suggestions.length > 0 && (
+        <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-lg shadow-lg z-50">
+          {suggestions.map((product) => (
+            <button
+              key={product.id}
+              onClick={() => handleSuggestionClick(product)}
+              className="w-full px-4 py-2 text-left hover:bg-green-50 text-gray-700 hover:text-green-700 flex items-center space-x-2"
+            >
+              <Search className="w-4 h-4" />
+              <span>{product.name}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 
   return (
     <div className="fixed top-0 left-0 right-0 z-50">
-      {/* Top bar with contact info */}
+      {/* Top bar */}
       <div className={`hidden md:block bg-green-50 transition-all duration-300 ${
         isScrolled ? 'h-0 overflow-hidden' : 'py-2'
       }`}>
@@ -97,23 +167,12 @@ const Navbar = () => {
 
             {/* Search bar - Desktop */}
             <div className="hidden md:flex items-center flex-1 max-w-xl mx-8">
-              <form onSubmit={handleSearch} className="relative w-full">
-                <input
-                  type="text"
-                  placeholder="Search for fresh produce..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full px-4 py-2 rounded-full border border-gray-300 focus:outline-none focus:border-green-500"
-                />
-                <button type="submit" className="absolute right-4 top-2.5 text-gray-400 hover:text-green-500">
-                  <Search className="w-5 h-5" />
-                </button>
-              </form>
+              <SearchInput />
             </div>
 
             {/* Right side icons */}
             <div className="flex items-center space-x-6">
-              <Link to="/signup" className="hidden md:flex items-center text-gray-700 hover:text-green-600">
+              <Link to="/account" className="hidden md:flex items-center text-gray-700 hover:text-green-600">
                 <User className="w-6 h-6" />
               </Link>
               <button 
@@ -139,18 +198,7 @@ const Navbar = () => {
 
         {/* Mobile Search */}
         <div className="md:hidden px-4 pb-4">
-          <form onSubmit={handleSearch} className="relative">
-            <input
-              type="text"
-              placeholder="Search for fresh produce..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full px-4 py-2 rounded-full border border-gray-300 focus:outline-none focus:border-green-500"
-            />
-            <button type="submit" className="absolute right-4 top-2.5 text-gray-400 hover:text-green-500">
-              <Search className="w-5 h-5" />
-            </button>
-          </form>
+          <SearchInput isMobile={true} />
         </div>
 
         {/* Mobile menu */}

@@ -8,6 +8,7 @@ import { Home } from './pages/home/Home';
 import { AuthProvider } from './pages/checkout/AuthProvider';
 import Login from './pages/Login';
 import SignupDelivery from './pages/SignupDelivery';
+import SearchResults from './pages/SearchResults';
 
 export const App = () => {
   return (
@@ -20,6 +21,7 @@ export const App = () => {
             <Route path="/checkout" element={<CheckoutPage />} />
             <Route path="/login" element={<Login />} />
               <Route path="/signup" element={<SignupDelivery />} />
+              <Route path="/search" element={<SearchResults />} />
           </Routes>
         </Layout>
       </Router>
