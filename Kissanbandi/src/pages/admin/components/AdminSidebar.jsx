@@ -9,6 +9,7 @@ import {
   LogOut
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
+import Logo from '../../../components/Logo';
 
 const AdminSidebar = () => {
   const location = useLocation();
@@ -35,9 +36,12 @@ const AdminSidebar = () => {
 
   return (
     <aside className="w-64 min-h-full bg-white border-r border-gray-200 fixed left-0 flex flex-col">
-      <div className="p-4 border-b border-gray-200">
-        <Link to="/admin" className="text-xl font-bold text-green-700">
-          Admin Panel
+      <div className="p-6 border-b border-gray-200">
+        <Link to="/admin" className="block">
+          <Logo size="normal" variant="vertical" />
+          <div className="mt-3 text-sm font-medium text-gray-500 text-center">
+            Administration Panel
+          </div>
         </Link>
       </div>
       

@@ -4,6 +4,7 @@ import { useCart } from '../pages/checkout/CartContext';
 import { useAuth } from '../pages/checkout/AuthProvider';
 import { Link, useNavigate } from 'react-router-dom';
 import { allProducts } from '../data/products';
+import Logo from '../components/Logo';
 
 const Navbar = () => {
   const { state } = useCart();
@@ -139,13 +140,13 @@ const Navbar = () => {
       <nav className={`bg-white shadow-lg transition-all duration-300 ${
         isScrolled ? 'shadow-md' : ''
       }`}>
-        <div className="container mx-auto px-4">
+        <div className="container mx-auto px-6">
           <div className={`flex justify-between items-center transition-all duration-300 ${
             isScrolled ? 'h-16' : 'h-20'
           }`}>
             {/* Logo */}
-            <Link to="/" className="text-2xl font-bold text-green-700 hover:text-green-800">
-              KissanBandi
+            <Link to="/" className="hover:opacity-90 transition-opacity duration-200 ml-8">
+              <Logo size="normal" variant="horizontal" />
             </Link>
 
             {/* Desktop Navigation */}

@@ -170,7 +170,7 @@ const ProductCatalog = () => {
               onChange={(e) => setSelectedCategory(e.target.value)}
             >
               {categoryOptions.map(category => (
-                <option key={category.value} value={category.value}>
+                <option key={`cat-${category.value}`} value={category.value}>
                   {category.label}
                 </option>
               ))}
@@ -199,7 +199,7 @@ const ProductCatalog = () => {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {filteredProducts.map((product) => (
           <div 
-            key={product.id} 
+            key={product._id || product.id} 
             className="bg-white rounded-xl shadow-sm overflow-hidden hover:shadow-md transition-shadow duration-300 group"
           >
             <div className="relative">
@@ -209,12 +209,12 @@ const ProductCatalog = () => {
                 className="w-full h-48 object-cover transform group-hover:scale-105 transition-transform duration-300"
               />
               <button 
-                onClick={() => toggleWishlist(product.id)}
+                onClick={() => toggleWishlist(product._id || product.id)}
                 className="absolute top-4 right-4 bg-white rounded-full p-2 shadow-md hover:bg-gray-50 transition-colors duration-200"
               >
                 <Heart 
                   className={`w-5 h-5 ${
-                    wishlist.has(product.id) 
+                    wishlist.has(product._id || product.id) 
                       ? 'text-red-500 fill-current' 
                       : 'text-gray-600'
                   }`} 
@@ -233,10 +233,10 @@ const ProductCatalog = () => {
               <div className="flex items-center mt-2">
                 <div className="flex items-center">
                   <Star className="w-5 h-5 text-yellow-400 fill-current" />
-                  <span className="ml-1 text-gray-600">{product.rating}</span>
+                  <span className="ml-1 text-gray-600">{product.rating || 0}</span>
                 </div>
                 <span className="mx-2 text-gray-400">•</span>
-                <span className="text-gray-600">{product.reviews} reviews</span>
+                <span className="text-gray-600">{product.reviews || 0} reviews</span>
               </div>
 
               <div className="flex justify-between items-center mt-4">
@@ -248,7 +248,7 @@ const ProductCatalog = () => {
                 </div>
                 <button 
                   onClick={() => handleAddToCart(product)}
-                  className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition duration-300"
+                  className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-colors duration-200"
                 >
                   Add to Cart
                 </button>
