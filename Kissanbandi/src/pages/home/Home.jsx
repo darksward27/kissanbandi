@@ -3,7 +3,7 @@ import HomeHero from './HomeHero'
 import ProductCatalog from './ProductCatalog'
 import HomeFeatures from './HomeFeatures'
 
-export const Home = () => {
+const Home = () => {
   return (
     <div>
         <HomeHero />
@@ -12,3 +12,5 @@ export const Home = () => {
     </div>
   )
 }
+
+export default Home;

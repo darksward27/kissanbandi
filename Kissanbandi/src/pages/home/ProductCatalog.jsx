@@ -3,29 +3,36 @@ import { Filter, Search, ChevronDown, Star, Heart } from 'lucide-react';
 import { useCart } from '../checkout/CartContext';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
-
-import orange from "../../assets/images/BG/fruits/oranges.jpg";
-import Pomegranate from "../../assets/images/BG/fruits/Pomegranate.jpg";
-import Mangoes from "../../assets/images/BG/fruits/Mangoes.jpg";
-import Potatoes from "../../assets/images/BG/fruits/Potatoes.jpg";
-import Tomatoes from "../../assets/images/BG/fruits/Tomatoes.jpg";
-import Ginger from "../../assets/images/BG/fruits/Ginger.jpg";
-import GreenChillies from "../../assets/images/BG/fruits/GreenChillies.jpg";
-import Bananas from "../../assets/images/BG/fruits/Bananas.jpg";
-import Onions from "../../assets/images/BG/fruits/Onions.jpg";
-import Cauliflower from "../../assets/images/BG/fruits/Cauliflower.jpg";
-import Pineapple from "../../assets/images/BG/fruits/Pineapple.jpg";
-import CurryLeaves from "../../assets/images/BG/fruits/CurryLeaves.jpg";
+import { categories } from '../../data/products';
+import { productsApi } from '../../services/api';
 
 const ProductCatalog = () => {
-    useEffect(() => {
-        // Smooth scroll polyfill
-        window.scrollTo({ top: 0});
-    
-        return () => {
-          document.documentElement.style.scrollBehavior = 'auto';
-        };
-      }, []);
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    window.scrollTo({ top: 0 });
+    loadProducts();
+    return () => {
+      document.documentElement.style.scrollBehavior = 'auto';
+    };
+  }, []);
+
+  const loadProducts = async () => {
+    try {
+      setLoading(true);
+      const data = await productsApi.getAllProducts();
+      setProducts(Array.isArray(data) ? data : []);
+    } catch (err) {
+      setError(err.message);
+      toast.error('Failed to load products');
+      setProducts([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const { dispatch } = useCart();
   const navigate = useNavigate();
   const [selectedCategory, setSelectedCategory] = useState('all');
@@ -33,267 +40,50 @@ const ProductCatalog = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [wishlist, setWishlist] = useState(new Set());
 
-  // Sample product data with Indian categories and pricing
-  const allProducts = [
-    {
-        id: 1,
-        name: "Fresh Oranges",
-        category: "fruits",
-        price: 199,
-        unit: "kg",
-        rating: 4.5,
-        reviews: 128,
-        image: orange,
-        description: "Sweet and juicy oranges, rich in Vitamin C"
-      },
-      {
-        id: 2,
-        name: "Organic Pomegranate",
-        category: "fruits",
-        price: 249,
-        unit: "kg",
-        rating: 4.8,
-        reviews: 89,
-        image: Pomegranate,
-        description: "Fresh pomegranates with ruby red arils, perfect for juicing"
-      },
-      {
-        id: 3,
-        name: "Alphonso Mangoes",
-        category: "fruits",
-        price: 399,
-        unit: "kg",
-        rating: 4.9,
-        reviews: 256,
-        image: Mangoes,
-        description: "Premium Alphonso mangoes from Ratnagiri, known for their rich flavor"
-      },
-      {
-        id: 4,
-        name: "Fresh Potatoes",
-        category: "vegetables",
-        price: 49,
-        unit: "kg",
-        rating: 4.3,
-        reviews: 156,
-        image: Potatoes,
-        description: "Farm fresh potatoes, perfect for curries and snacks"
-      },
-      {
-        id: 5,
-        name: "Organic Tomatoes",
-        category: "vegetables",
-        price: 79,
-        unit: "kg",
-        rating: 4.6,
-        reviews: 92,
-        image: Tomatoes,
-        description: "Vine-ripened organic tomatoes, locally grown"
-      },
-      {
-        id: 6,
-        name: "Fresh Ginger",
-        category: "herbs",
-        price: 159,
-        unit: "kg",
-        rating: 4.7,
-        reviews: 45,
-        image: Ginger,
-        description: "Fresh aromatic ginger, essential for Indian cooking"
-      },
-      {
-        id: 7,
-        name: "Green Chillies",
-        category: "herbs",
-        price: 99,
-        unit: "kg",
-        rating: 4.4,
-        reviews: 78,
-        image: GreenChillies,
-        description: "Fresh green chillies, adds spice to any dish"
-      },
-      {
-        id: 8,
-        name: "Sweet Bananas",
-        category: "fruits",
-        price: 69,
-        unit: "dozen",
-        rating: 4.3,
-        reviews: 112,
-        image: Bananas,
-        description: "Perfectly ripened sweet bananas, rich in potassium"
-      },
-      {
-        id: 9,
-        name: "Fresh Onions",
-        category: "vegetables",
-        price: 39,
-        unit: "kg",
-        rating: 4.4,
-        reviews: 189,
-        image: Onions,
-        description: "Premium quality onions, essential for daily cooking"
-      },
-      {
-        id: 10,
-        name: "Organic Cauliflower",
-        category: "vegetables",
-        price: 59,
-        unit: "piece",
-        rating: 4.5,
-        reviews: 67,
-        image: Cauliflower,
-        description: "Fresh and crisp cauliflower, perfect for sabzi"
-      },
-      {
-        id: 11,
-        name: "Sweet Pineapple",
-        category: "fruits",
-        price: 89,
-        unit: "piece",
-        rating: 4.6,
-        reviews: 94,
-        image:  Pineapple,
-        description: "Juicy and sweet pineapples, naturally ripened"
-      },
-      {
-        id: 12,
-        name: "Fresh Curry Leaves",
-        category: "herbs",
-        price: 29,
-        unit: "bunch",
-        rating: 4.8,
-        reviews: 156,
-        image: CurryLeaves,
-        description: "Aromatic curry leaves, adds authentic flavor to South Indian dishes"
-      },
-    //   {
-    //     id: 13,
-    //     name: "Red Bell Peppers",
-    //     category: "vegetables",
-    //     price: 199,
-    //     unit: "kg",
-    //     rating: 4.7,
-    //     reviews: 45,
-    //     image: "/api/placeholder/300/300",
-    //     description: "Sweet and crunchy red bell peppers, rich in vitamins"
-    //   },
-    //   {
-    //     id: 14,
-    //     name: "Fresh Mint Leaves",
-    //     category: "herbs",
-    //     price: 39,
-    //     unit: "bunch",
-    //     rating: 4.6,
-    //     reviews: 88,
-    //     image: "/api/placeholder/300/300",
-    //     description: "Fresh mint leaves, perfect for chutneys and beverages"
-    //   },
-    //   {
-    //     id: 15,
-    //     name: "Green Grapes",
-    //     category: "fruits",
-    //     price: 149,
-    //     unit: "kg",
-    //     rating: 4.5,
-    //     reviews: 167,
-    //     image: "/api/placeholder/300/300",
-    //     description: "Sweet and seedless green grapes, perfect for snacking"
-    //   },
-    //   {
-    //     id: 16,
-    //     name: "Fresh Coriander",
-    //     category: "herbs",
-    //     price: 29,
-    //     unit: "bunch",
-    //     rating: 4.7,
-    //     reviews: 234,
-    //     image: "/api/placeholder/300/300",
-    //     description: "Fresh coriander leaves, essential for garnishing"
-    //   },
-    //   {
-    //     id: 17,
-    //     name: "Baby Carrots",
-    //     category: "vegetables",
-    //     price: 89,
-    //     unit: "kg",
-    //     rating: 4.4,
-    //     reviews: 78,
-    //     image: "/api/placeholder/300/300",
-    //     description: "Sweet and tender baby carrots, perfect for salads"
-    //   },
-    //   {
-    //     id: 18,
-    //     name: "Sweet Limes (Mosambi)",
-    //     category: "fruits",
-    //     price: 129,
-    //     unit: "kg",
-    //     rating: 4.3,
-    //     reviews: 91,
-    //     image: "/api/placeholder/300/300",
-    //     description: "Fresh mosambi, excellent source of Vitamin C"
-    //   },
-    //   {
-    //     id: 19,
-    //     name: "Green Peas",
-    //     category: "vegetables",
-    //     price: 119,
-    //     unit: "kg",
-    //     rating: 4.6,
-    //     reviews: 145,
-    //     image: "/api/placeholder/300/300",
-    //     description: "Fresh green peas, perfect for pulao and curries"
-    //   },
-    //   {
-    //     id: 20,
-    //     name: "Fresh Turmeric",
-    //     category: "herbs",
-    //     price: 189,
-    //     unit: "kg",
-    //     rating: 4.8,
-    //     reviews: 67,
-    //     image: "/api/placeholder/300/300",
-    //     description: "Fresh turmeric root, known for its medicinal properties"
-    //   }
-    // ... your existing products ...
-  ];
-
-  // Filter products
+  // Filter and sort products
   const filteredProducts = useMemo(() => {
-    let filtered = allProducts;
+    if (!Array.isArray(products)) return [];
+    
+    let filtered = [...products];
 
     if (selectedCategory !== 'all') {
-      filtered = filtered.filter(product => product.category === selectedCategory);
+      filtered = filtered.filter(product => 
+        product?.category?.toLowerCase() === selectedCategory.toLowerCase()
+      );
     }
 
     if (searchQuery) {
       filtered = filtered.filter(product => 
-        product.name.toLowerCase().includes(searchQuery.toLowerCase())
+        product?.name?.toLowerCase().includes(searchQuery.toLowerCase())
       );
     }
 
     return filtered.sort((a, b) => {
+      if (!a || !b) return 0;
+      
       switch (sortBy) {
         case 'price-low':
-          return a.price - b.price;
+          return (a.price || 0) - (b.price || 0);
         case 'price-high':
-          return b.price - a.price;
+          return (b.price || 0) - (a.price || 0);
         case 'rating':
-          return b.rating - a.rating;
+          return (b.rating || 0) - (a.rating || 0);
         default:
           return 0;
       }
     });
-  }, [selectedCategory, searchQuery, sortBy]);
+  }, [selectedCategory, searchQuery, sortBy, products]);
 
-  const categories = [
+  const categoryOptions = [
     { value: 'all', label: 'All Categories' },
-    { value: 'fruits', label: 'Fruits' },
-    { value: 'vegetables', label: 'Vegetables' },
-    { value: 'herbs', label: 'Herbs & Seasonings' }
+    ...categories.map(cat => ({
+      value: cat.name.toLowerCase(),
+      label: cat.name
+    }))
   ];
 
   const handleAddToCart = (product) => {
+    if (!product) return;
     dispatch({ 
       type: 'ADD_TO_CART', 
       payload: product 
@@ -302,6 +92,7 @@ const ProductCatalog = () => {
   };
 
   const toggleWishlist = (productId) => {
+    if (!productId) return;
     setWishlist(prev => {
       const newWishlist = new Set(prev);
       if (newWishlist.has(productId)) {
@@ -314,6 +105,32 @@ const ProductCatalog = () => {
       return newWishlist;
     });
   };
+
+  if (loading) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="flex justify-center items-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-500"></div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="text-center text-red-500">
+          <p>{error}</p>
+          <button 
+            onClick={loadProducts}
+            className="mt-4 bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -352,7 +169,7 @@ const ProductCatalog = () => {
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
             >
-              {categories.map(category => (
+              {categoryOptions.map(category => (
                 <option key={category.value} value={category.value}>
                   {category.label}
                 </option>

@@ -1,286 +1,255 @@
+// Product Categories with subcategories
+export const categories = [
+  {
+    name: "Fruits",
+    subcategories: ["Seasonal Fruits", "Exotic Fruits", "Organic Fruits", "Citrus Fruits"]
+  },
+  {
+    name: "Vegetables",
+    subcategories: ["Fresh Vegetables", "Organic Vegetables", "Root Vegetables", "Leafy Greens"]
+  },
+  {
+    name: "Herbs",
+    subcategories: ["Fresh Herbs", "Dried Herbs", "Medicinal Herbs", "Organic Herbs"]
+  }
+];
+
+// Dummy Products Data
 export const allProducts = [
-    {
-      id: 1,
-      name: "Fresh Oranges",
-      category: "fruits",
-      subcategory: "Seasonal Fruits",
-      price: 199,
-      unit: "kg",
-      rating: 4.5,
-      reviews: 128,
-      image: "/api/placeholder/300/300",
-      description: "Sweet and juicy oranges, rich in Vitamin C"
-    },
-    {
-      id: 2,
-      name: "Organic Pomegranate",
-      category: "fruits",
-      subcategory: "Organic Fruits",
-      price: 249,
-      unit: "kg",
-      rating: 4.8,
-      reviews: 89,
-      image: "/api/placeholder/300/300",
-      description: "Fresh pomegranates with ruby red arils, perfect for juicing"
-    },
-    {
-      id: 3,
-      name: "Alphonso Mangoes",
-      category: "fruits",
-      subcategory: "Seasonal Fruits",
-      price: 399,
-      unit: "kg",
-      rating: 4.9,
-      reviews: 256,
-      image: "/api/placeholder/300/300",
-      description: "Premium Alphonso mangoes from Ratnagiri, known for their rich flavor"
-    },
-    {
-      id: 4,
-      name: "Fresh Potatoes",
-      category: "vegetables",
-      subcategory: "Root Vegetables",
-      price: 49,
-      unit: "kg",
-      rating: 4.3,
-      reviews: 156,
-      image: "/api/placeholder/300/300",
-      description: "Farm fresh potatoes, perfect for curries and snacks"
-    },
-    {
-      id: 5,
-      name: "Organic Tomatoes",
-      category: "vegetables",
-      subcategory: "Organic Vegetables",
-      price: 79,
-      unit: "kg",
-      rating: 4.6,
-      reviews: 92,
-      image: "/api/placeholder/300/300",
-      description: "Vine-ripened organic tomatoes, locally grown"
-    },
-    {
-      id: 6,
-      name: "Fresh Ginger",
-      category: "herbs",
-      subcategory: "Fresh Herbs",
-      price: 159,
-      unit: "kg",
-      rating: 4.7,
-      reviews: 45,
-      image: "/api/placeholder/300/300",
-      description: "Fresh aromatic ginger, essential for Indian cooking"
-    },
-    {
-      id: 7,
-      name: "Green Chillies",
-      category: "herbs",
-      subcategory: "Fresh Herbs",
-      price: 99,
-      unit: "kg",
-      rating: 4.4,
-      reviews: 78,
-      image: "/api/placeholder/300/300",
-      description: "Fresh green chillies, adds spice to any dish"
-    },
-    {
-      id: 8,
-      name: "Sweet Bananas",
-      category: "fruits",
-      subcategory: "Seasonal Fruits",
-      price: 69,
-      unit: "dozen",
-      rating: 4.3,
-      reviews: 112,
-      image: "/api/placeholder/300/300",
-      description: "Perfectly ripened sweet bananas, rich in potassium"
-    },
-    {
-      id: 9,
-      name: "Red Onions",
-      category: "vegetables",
-      subcategory: "Fresh Vegetables",
-      price: 39,
-      unit: "kg",
-      rating: 4.4,
-      reviews: 189,
-      image: "/api/placeholder/300/300",
-      description: "Premium quality onions, essential for daily cooking"
-    },
-    {
-      id: 10,
-      name: "Organic Cauliflower",
-      category: "vegetables",
-      subcategory: "Organic Vegetables",
-      price: 59,
-      unit: "piece",
-      rating: 4.5,
-      reviews: 67,
-      image: "/api/placeholder/300/300",
-      description: "Fresh and crisp cauliflower, perfect for sabzi"
-    },
-    {
-      id: 11,
-      name: "Pineapple",
-      category: "fruits",
-      subcategory: "Exotic Fruits",
-      price: 89,
-      unit: "piece",
-      rating: 4.6,
-      reviews: 94,
-      image: "/api/placeholder/300/300",
-      description: "Juicy and sweet pineapples, naturally ripened"
-    },
-    {
-      id: 12,
-      name: "Curry Leaves",
-      category: "herbs",
-      subcategory: "Fresh Herbs",
-      price: 29,
-      unit: "bunch",
-      rating: 4.8,
-      reviews: 156,
-      image: "/api/placeholder/300/300",
-      description: "Aromatic curry leaves, adds authentic flavor to South Indian dishes"
-    },
-    {
-      id: 13,
-      name: "Bell Peppers Mix",
-      category: "vegetables",
-      subcategory: "Fresh Vegetables",
-      price: 199,
-      unit: "kg",
-      rating: 4.7,
-      reviews: 45,
-      image: "/api/placeholder/300/300",
-      description: "Mix of red, yellow and green bell peppers, rich in vitamins"
-    },
-    {
-      id: 14,
-      name: "Fresh Mint",
-      category: "herbs",
-      subcategory: "Fresh Herbs",
-      price: 39,
-      unit: "bunch",
-      rating: 4.6,
-      reviews: 88,
-      image: "/api/placeholder/300/300",
-      description: "Fresh mint leaves, perfect for chutneys and beverages"
-    },
-    {
-      id: 15,
-      name: "Green Grapes",
-      category: "fruits",
-      subcategory: "Seasonal Fruits",
-      price: 149,
-      unit: "kg",
-      rating: 4.5,
-      reviews: 167,
-      image: "/api/placeholder/300/300",
-      description: "Sweet and seedless green grapes, perfect for snacking"
-    },
-    {
-      id: 16,
-      name: "Fresh Coriander",
-      category: "herbs",
-      subcategory: "Fresh Herbs",
-      price: 29,
-      unit: "bunch",
-      rating: 4.7,
-      reviews: 234,
-      image: "/api/placeholder/300/300",
-      description: "Fresh coriander leaves, essential for garnishing"
-    },
-    {
-      id: 17,
-      name: "Baby Carrots",
-      category: "vegetables",
-      subcategory: "Fresh Vegetables",
-      price: 89,
-      unit: "kg",
-      rating: 4.4,
-      reviews: 78,
-      image: "/api/placeholder/300/300",
-      description: "Sweet and tender baby carrots, perfect for salads"
-    },
-    {
-      id: 18,
-      name: "Sweet Lime",
-      category: "fruits",
-      subcategory: "Seasonal Fruits",
-      price: 129,
-      unit: "kg",
-      rating: 4.3,
-      reviews: 91,
-      image: "/api/placeholder/300/300",
-      description: "Fresh mosambi, excellent source of Vitamin C"
-    },
-    {
-      id: 19,
-      name: "Green Peas",
-      category: "vegetables",
-      subcategory: "Fresh Vegetables",
-      price: 119,
-      unit: "kg",
-      rating: 4.6,
-      reviews: 145,
-      image: "/api/placeholder/300/300",
-      description: "Fresh green peas, perfect for pulao and curries"
-    },
-    {
-      id: 20,
-      name: "Fresh Turmeric",
-      category: "herbs",
-      subcategory: "Fresh Herbs",
-      price: 189,
-      unit: "kg",
-      rating: 4.8,
-      reviews: 67,
-      image: "/api/placeholder/300/300",
-      description: "Fresh turmeric root, known for its medicinal properties"
-    }
-  ];
-  
-  export const categories = [
-    {
-      name: "Fruits",
-      subcategories: ["Seasonal Fruits", "Exotic Fruits", "Organic Fruits"]
-    },
-    {
-      name: "Vegetables",
-      subcategories: ["Fresh Vegetables", "Organic Vegetables", "Root Vegetables"]
-    },
-    {
-      name: "Herbs",
-      subcategories: ["Fresh Herbs", "Dried Herbs", "Medicinal Herbs"]
-    }
-  ];
-  
-  // Helper function to get products by category
-  export const getProductsByCategory = (category, subcategory = null) => {
-    return allProducts.filter(product => 
-      product.category === category.toLowerCase() &&
-      (!subcategory || product.subcategory === subcategory)
-    );
-  };
-  
-  // Helper function to get product by id
-  export const getProductById = (id) => {
-    return allProducts.find(product => product.id === id);
-  };
-  
-  // Helper function to get featured products
-  export const getFeaturedProducts = () => {
-    return allProducts.filter(product => product.rating >= 4.5);
-  };
-  
-  // Helper function to search products
-  export const searchProducts = (query) => {
-    const searchTerm = query.toLowerCase();
-    return allProducts.filter(product => 
-      product.name.toLowerCase().includes(searchTerm) ||
-      product.description.toLowerCase().includes(searchTerm) ||
-      product.category.toLowerCase().includes(searchTerm) ||
-      product.subcategory.toLowerCase().includes(searchTerm)
-    );
-  };
+  {
+    id: 1,
+    name: "Fresh Alphonso Mangoes",
+    category: "fruits",
+    subcategory: "Seasonal Fruits",
+    price: 399,
+    unit: "kg",
+    stock: 150,
+    rating: 4.8,
+    reviews: 245,
+    image: "https://images.unsplash.com/photo-1553279768-865429fa0078",
+    description: "Premium Alphonso mangoes from Ratnagiri. Sweet, aromatic, and perfect ripeness.",
+    status: "active"
+  },
+  {
+    id: 2,
+    name: "Organic Tomatoes",
+    category: "vegetables",
+    subcategory: "Organic Vegetables",
+    price: 60,
+    unit: "kg",
+    stock: 200,
+    rating: 4.5,
+    reviews: 180,
+    image: "https://images.unsplash.com/photo-1546470427-227c7162b825",
+    description: "Farm-fresh organic tomatoes. Perfect for salads and cooking.",
+    status: "active"
+  },
+  {
+    id: 3,
+    name: "Fresh Mint Leaves",
+    category: "herbs",
+    subcategory: "Fresh Herbs",
+    price: 30,
+    unit: "bunch",
+    stock: 100,
+    rating: 4.6,
+    reviews: 120,
+    image: "https://images.unsplash.com/photo-1628614181317-4a0c7b478171",
+    description: "Fresh and aromatic mint leaves. Perfect for garnishing and beverages.",
+    status: "active"
+  },
+  {
+    id: 4,
+    name: "Dragon Fruit",
+    category: "fruits",
+    subcategory: "Exotic Fruits",
+    price: 199,
+    unit: "piece",
+    stock: 75,
+    rating: 4.7,
+    reviews: 95,
+    image: "https://images.unsplash.com/photo-1527325678964-54921661f888",
+    description: "Exotic dragon fruit with vibrant pink flesh. Rich in antioxidants.",
+    status: "active"
+  },
+  {
+    id: 5,
+    name: "Baby Spinach",
+    category: "vegetables",
+    subcategory: "Leafy Greens",
+    price: 45,
+    unit: "bunch",
+    stock: 120,
+    rating: 4.4,
+    reviews: 156,
+    image: "https://images.unsplash.com/photo-1576045057995-568f588f82fb",
+    description: "Tender baby spinach leaves. Perfect for salads and smoothies.",
+    status: "active"
+  },
+  {
+    id: 6,
+    name: "Organic Turmeric",
+    category: "herbs",
+    subcategory: "Medicinal Herbs",
+    price: 180,
+    unit: "kg",
+    stock: 80,
+    rating: 4.9,
+    reviews: 200,
+    image: "https://images.unsplash.com/photo-1615485500704-8e990f9900f7",
+    description: "Fresh organic turmeric root. Known for its medicinal properties.",
+    status: "active"
+  },
+  {
+    id: 7,
+    name: "Sweet Strawberries",
+    category: "fruits",
+    subcategory: "Seasonal Fruits",
+    price: 299,
+    unit: "box",
+    stock: 100,
+    rating: 4.6,
+    reviews: 178,
+    image: "https://images.unsplash.com/photo-1587393855524-087f83d95bc9",
+    description: "Sweet and juicy strawberries. Perfect for desserts and snacking.",
+    status: "active"
+  },
+  {
+    id: 8,
+    name: "Red Bell Peppers",
+    category: "vegetables",
+    subcategory: "Fresh Vegetables",
+    price: 120,
+    unit: "kg",
+    stock: 90,
+    rating: 4.3,
+    reviews: 145,
+    image: "https://images.unsplash.com/photo-1592924357228-91a4daadcfea",
+    description: "Crisp and colorful red bell peppers. Rich in vitamins.",
+    status: "active"
+  },
+  {
+    id: 9,
+    name: "Fresh Basil",
+    category: "herbs",
+    subcategory: "Fresh Herbs",
+    price: 40,
+    unit: "bunch",
+    stock: 85,
+    rating: 4.7,
+    reviews: 134,
+    image: "https://images.unsplash.com/photo-1618164435735-413d3b066c9a",
+    description: "Aromatic fresh basil leaves. Essential for Italian cuisine.",
+    status: "active"
+  },
+  {
+    id: 10,
+    name: "Organic Sweet Lime",
+    category: "fruits",
+    subcategory: "Citrus Fruits",
+    price: 89,
+    unit: "kg",
+    stock: 130,
+    rating: 4.5,
+    reviews: 167,
+    image: "https://images.unsplash.com/photo-1621506289937-a8e4df240d0b",
+    description: "Juicy organic sweet limes. Rich in Vitamin C.",
+    status: "active"
+  },
+  {
+    id: 11,
+    name: "Baby Carrots",
+    category: "vegetables",
+    subcategory: "Root Vegetables",
+    price: 70,
+    unit: "kg",
+    stock: 110,
+    rating: 4.4,
+    reviews: 143,
+    image: "https://images.unsplash.com/photo-1598170845058-32b9d6a5da37",
+    description: "Sweet and tender baby carrots. Perfect for snacking.",
+    status: "active"
+  },
+  {
+    id: 12,
+    name: "Dried Rosemary",
+    category: "herbs",
+    subcategory: "Dried Herbs",
+    price: 99,
+    unit: "50g",
+    stock: 70,
+    rating: 4.8,
+    reviews: 89,
+    image: "https://images.unsplash.com/photo-1615485290382-441e4d049cb5",
+    description: "Aromatic dried rosemary. Perfect for seasoning.",
+    status: "active"
+  },
+  {
+    id: 13,
+    name: "Organic Avocados",
+    category: "fruits",
+    subcategory: "Organic Fruits",
+    price: 159,
+    unit: "piece",
+    stock: 95,
+    rating: 4.7,
+    reviews: 156,
+    image: "https://images.unsplash.com/photo-1523049673857-eb18f1d7b578",
+    description: "Creamy organic avocados. Rich in healthy fats.",
+    status: "active"
+  },
+  {
+    id: 14,
+    name: "Purple Cabbage",
+    category: "vegetables",
+    subcategory: "Fresh Vegetables",
+    price: 55,
+    unit: "piece",
+    stock: 85,
+    rating: 4.3,
+    reviews: 112,
+    image: "https://images.unsplash.com/photo-1506807803488-8eafc15316c7",
+    description: "Fresh purple cabbage. Great for salads and slaws.",
+    status: "active"
+  },
+  {
+    id: 15,
+    name: "Organic Sage",
+    category: "herbs",
+    subcategory: "Organic Herbs",
+    price: 45,
+    unit: "bunch",
+    stock: 60,
+    rating: 4.6,
+    reviews: 78,
+    image: "https://images.unsplash.com/photo-1600831606133-c5c9b5a23d2c",
+    description: "Fresh organic sage leaves. Perfect for seasoning.",
+    status: "active"
+  }
+];
+
+// Helper Functions
+export const getProductsByCategory = (category, subcategory = null) => {
+  return allProducts.filter(product => 
+    product.category === category.toLowerCase() &&
+    (!subcategory || product.subcategory === subcategory)
+  );
+};
+
+export const getProductById = (id) => {
+  return allProducts.find(product => product.id === id);
+};
+
+export const getFeaturedProducts = () => {
+  return allProducts.filter(product => product.rating >= 4.5);
+};
+
+export const searchProducts = (query) => {
+  const searchTerm = query.toLowerCase();
+  return allProducts.filter(product => 
+    product.name.toLowerCase().includes(searchTerm) ||
+    product.description.toLowerCase().includes(searchTerm) ||
+    product.category.toLowerCase().includes(searchTerm) ||
+    product.subcategory.toLowerCase().includes(searchTerm)
+  );
+};

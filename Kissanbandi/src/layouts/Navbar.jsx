@@ -1,16 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { Menu, X, ShoppingCart, Search, User, ChevronDown } from 'lucide-react';
+import { Menu, X, ShoppingCart, Search, User, ChevronDown, LogOut } from 'lucide-react';
 import { useCart } from '../pages/checkout/CartContext';
+import { useAuth } from '../pages/checkout/AuthProvider';
 import { Link, useNavigate } from 'react-router-dom';
 import { allProducts } from '../data/products';
 
 const Navbar = () => {
   const { state } = useCart();
+  const { user, isAuthenticated, logout } = useAuth();
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [isScrolled, setIsScrolled] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
 
   const cartCount = state.items.reduce((total, item) => total + item.quantity, 0);
 
@@ -114,6 +117,11 @@ const Navbar = () => {
     </div>
   );
 
+  const handleLogout = () => {
+    logout();
+    setShowProfileMenu(false);
+  };
+
   return (
     <div className="fixed top-0 left-0 right-0 z-50">
       {/* Top bar */}
@@ -172,20 +180,79 @@ const Navbar = () => {
 
             {/* Right side icons */}
             <div className="flex items-center space-x-6">
-              <Link to="/account" className="hidden md:flex items-center text-gray-700 hover:text-green-600">
-                <User className="w-6 h-6" />
-              </Link>
-              <button 
-                className="flex items-center text-gray-700 hover:text-green-600"
-                onClick={() => navigate('/checkout')}
-              >
+              {isAuthenticated ? (
+                <div className="relative">
+                  <button
+                    onClick={() => setShowProfileMenu(!showProfileMenu)}
+                    className="flex items-center space-x-2 text-gray-700 hover:text-green-600"
+                  >
+                    <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                      <User className="w-5 h-5 text-green-600" />
+                    </div>
+                    <span className="hidden md:block">{user.name}</span>
+                  </button>
+
+                  {showProfileMenu && (
+                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1">
+                      <Link
+                        to="/profile"
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-green-50"
+                        onClick={() => setShowProfileMenu(false)}
+                      >
+                        Profile
+                      </Link>
+                      <Link
+                        to="/orders"
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-green-50"
+                        onClick={() => setShowProfileMenu(false)}
+                      >
+                        My Orders
+                      </Link>
+                      <Link
+                        to="/wishlist"
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-green-50"
+                        onClick={() => setShowProfileMenu(false)}
+                      >
+                        Wishlist
+                      </Link>
+                      <button
+                        onClick={handleLogout}
+                        className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                      >
+                        <div className="flex items-center space-x-2">
+                          <LogOut className="w-4 h-4" />
+                          <span>Logout</span>
+                        </div>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <>
+                  <Link
+                    to="/login"
+                    className="text-gray-700 hover:text-green-600 hidden md:block"
+                  >
+                    Login
+                  </Link>
+                  <Link
+                    to="/register"
+                    className="text-gray-700 hover:text-green-600"
+                  >
+                    Register
+                  </Link>
+                </>
+              )}
+
+              <Link to="/checkout" className="text-gray-700 hover:text-green-600 relative">
                 <ShoppingCart className="w-6 h-6" />
                 {cartCount > 0 && (
-                  <span className="ml-1 bg-green-500 text-white text-xs rounded-full px-2 py-0.5">
+                  <span className="absolute -top-2 -right-2 bg-green-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
                     {cartCount}
                   </span>
                 )}
-              </button>
+              </Link>
+
               <button
                 className="md:hidden text-gray-700"
                 onClick={() => setIsOpen(!isOpen)}
@@ -224,6 +291,64 @@ const Navbar = () => {
               </div>
             </div>
           ))}
+
+          {/* Mobile auth links */}
+          <div className="border-t border-gray-200 py-4 px-4">
+            {isAuthenticated ? (
+              <>
+                <Link
+                  to="/profile"
+                  className="block py-2 text-gray-600 hover:text-green-600"
+                  onClick={() => setIsOpen(false)}
+                >
+                  Profile
+                </Link>
+                <Link
+                  to="/orders"
+                  className="block py-2 text-gray-600 hover:text-green-600"
+                  onClick={() => setIsOpen(false)}
+                >
+                  My Orders
+                </Link>
+                <Link
+                  to="/wishlist"
+                  className="block py-2 text-gray-600 hover:text-green-600"
+                  onClick={() => setIsOpen(false)}
+                >
+                  Wishlist
+                </Link>
+                <button
+                  onClick={() => {
+                    handleLogout();
+                    setIsOpen(false);
+                  }}
+                  className="block w-full text-left py-2 text-red-600 hover:text-red-700"
+                >
+                  <div className="flex items-center space-x-2">
+                    <LogOut className="w-4 h-4" />
+                    <span>Logout</span>
+                  </div>
+                </button>
+              </>
+            ) : (
+              <>
+                <Link
+                  to="/login"
+                  className="block py-2 text-gray-600 hover:text-green-600"
+                  onClick={() => setIsOpen(false)}
+                >
+                  Login
+                </Link>
+                <Link
+                  to="/register"
+                  className="block py-2 text-gray-600 hover:text-green-600"
+                  onClick={() => setIsOpen(false)}
+                >
+                  Register
+                </Link>
+              </>
+            )}
+          </div>
         </div>
       </nav>
     </div>
