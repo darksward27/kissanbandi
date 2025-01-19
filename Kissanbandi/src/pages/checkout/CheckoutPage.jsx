@@ -4,15 +4,22 @@ import { useAuth } from '../checkout/AuthProvider';
 import { useNavigate } from 'react-router-dom';
 import { ChevronRight, Trash2, MapPin, ShoppingBag } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { ordersApi } from '../../services/api';
 
 const CheckoutPage = () => {
   const { state, dispatch } = useCart();
-  const { user, deliveryDetails } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const [paymentMethod, setPaymentMethod] = useState('razorpay');
   const [isProcessing, setIsProcessing] = useState(false);
 
   useEffect(() => {
+    // Load Razorpay script
+    const script = document.createElement('script');
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    script.async = true;
+    document.body.appendChild(script);
+
     // Scroll to top on mount
     window.scrollTo({ top: 0, behavior: 'smooth' });
 
@@ -24,6 +31,7 @@ const CheckoutPage = () => {
     // Cleanup function
     return () => {
       document.documentElement.style.scrollBehavior = 'auto';
+      document.body.removeChild(script);
     };
   }, [state.items.length]);
 
@@ -45,6 +53,21 @@ const CheckoutPage = () => {
   const shipping = subtotal > 500 ? 0 : 50;
   const total = subtotal + shipping;
 
+  // Add this function to format address
+  const formatAddress = (addressObj) => {
+    if (typeof addressObj === 'string') return addressObj;
+    if (!addressObj) return '';
+    
+    const parts = [];
+    if (addressObj.street) parts.push(addressObj.street);
+    if (addressObj.locality) parts.push(addressObj.locality);
+    if (addressObj.city) parts.push(addressObj.city);
+    if (addressObj.state) parts.push(addressObj.state);
+    if (addressObj.pincode) parts.push(addressObj.pincode);
+    
+    return parts.join(', ');
+  };
+
   const handleProceedToPayment = async () => {
     try {
       if (!user) {
@@ -53,57 +76,126 @@ const CheckoutPage = () => {
         return;
       }
 
-      if (!deliveryDetails) {
-        navigate('/signup');
-        toast.error('Please add delivery details');
+      if (!user.address) {
+        toast.error('Please update your address in profile to proceed');
+        navigate('/profile');
         return;
       }
 
       setIsProcessing(true);
 
       if (paymentMethod === 'razorpay') {
+        // Create Razorpay order
+        const orderResponse = await ordersApi.createRazorpayOrder({
+          amount: total
+        });
+
+        if (!orderResponse.orderId) {
+          throw new Error('Failed to create order');
+        }
+
+        // Initialize Razorpay payment
         const options = {
-          key: process.env.REACT_APP_RAZORPAY_KEY || "YOUR_RAZORPAY_KEY",
+          key: import.meta.env.VITE_RAZORPAY_KEY_ID,
           amount: total * 100,
           currency: "INR",
-          name: "FreshHarvest",
-          description: "Purchase of groceries",
-          handler: function(response) {
-            handlePaymentSuccess(response);
+          name: "KissanBandi",
+          description: "Purchase of fresh produce",
+          order_id: orderResponse.orderId,
+          handler: async function(response) {
+            try {
+              // Verify payment
+              const verificationResponse = await ordersApi.verifyPayment({
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
+                order_details: {
+                  items: state.items.map(item => ({
+                    product: item._id || item.id,
+                    quantity: item.quantity,
+                    price: item.price
+                  })),
+                  shippingAddress: {
+                    address: formatAddress(user.address),
+                    city: user.city || '',
+                    state: user.state || '',
+                    pincode: user.pincode || '',
+                    phone: user.phone || ''
+                  },
+                  shipping: subtotal > 500 ? 0 : 50
+                }
+              });
+
+              if (verificationResponse.success) {
+                toast.success('Payment successful!');
+                dispatch({ type: 'CLEAR_CART' });
+                navigate('/orders');
+              } else {
+                throw new Error('Payment verification failed');
+              }
+            } catch (error) {
+              console.error('Payment verification error:', error);
+              toast.error('Payment verification failed. Please contact support.');
+            }
           },
           prefill: {
             name: user.name,
             email: user.email,
-            contact: user.phone
+            contact: user.phone || ''
           },
           theme: {
             color: "#16a34a"
+          },
+          modal: {
+            ondismiss: function() {
+              setIsProcessing(false);
+            }
           }
         };
 
-        const rzp = new window.Razorpay(options);
-        rzp.open();
+        const razorpay = new window.Razorpay(options);
+        razorpay.open();
       } else {
         await handleCODOrder();
       }
     } catch (error) {
       console.error('Payment error:', error);
       toast.error('Payment failed. Please try again.');
-    } finally {
       setIsProcessing(false);
     }
   };
 
-  const handlePaymentSuccess = (response) => {
-    toast.success('Payment successful!');
-    dispatch({ type: 'CLEAR_CART' });
-    navigate('/orders');
-  };
-
   const handleCODOrder = async () => {
-    toast.success('Order placed successfully!');
-    dispatch({ type: 'CLEAR_CART' });
-    navigate('/orders');
+    try {
+      const response = await ordersApi.createOrder({
+        items: state.items.map(item => ({
+          product: item._id || item.id,
+          quantity: item.quantity,
+          price: item.price
+        })),
+        shippingAddress: {
+          address: formatAddress(user.address),
+          city: user.city || '',
+          state: user.state || '',
+          pincode: user.pincode || '',
+          phone: user.phone || ''
+        },
+        paymentMethod: 'cod'
+      });
+
+      if (response._id) {
+        toast.success('Order placed successfully!');
+        dispatch({ type: 'CLEAR_CART' });
+        navigate('/orders');
+      } else {
+        throw new Error('Failed to create order');
+      }
+    } catch (error) {
+      console.error('COD order error:', error);
+      toast.error('Failed to place order. Please try again.');
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   // Show empty cart state if no items
@@ -191,23 +283,6 @@ const CheckoutPage = () => {
               </div>
             ))}
           </div>
-
-          {/* Delivery Details */}
-          {user && deliveryDetails && (
-            <div className="bg-white rounded-xl shadow-sm p-6 mt-6">
-              <div className="flex items-start space-x-3">
-                <MapPin className="w-5 h-5 text-green-600 mt-1" />
-                <div>
-                  <h3 className="font-semibold">Delivery Address</h3>
-                  <p className="text-gray-600 mt-1">
-                    {deliveryDetails.address}<br />
-                    {deliveryDetails.landmark && `${deliveryDetails.landmark}, `}
-                    {deliveryDetails.city}, {deliveryDetails.state} - {deliveryDetails.pincode}
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
 
         {/* Order Summary */}

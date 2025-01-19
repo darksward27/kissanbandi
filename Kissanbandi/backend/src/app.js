@@ -37,6 +37,7 @@ app.use(cors({
   origin: [
     'http://localhost:5173',
     'http://127.0.0.1:5173',
+    'http://192.168.158.105:5173',
     /^http:\/\/192\.168\.\d{1,3}\.\d{1,3}:5173$/,  // Allow local network IPs
     process.env.CORS_ORIGIN
   ].filter(Boolean),

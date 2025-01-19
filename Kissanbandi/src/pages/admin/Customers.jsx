@@ -11,6 +11,7 @@ import {
   Tooltip,
   ResponsiveContainer
 } from 'recharts';
+import CustomerDetailsModal from '../../components/modals/CustomerDetailsModal';
 
 const Customers = () => {
   const [customers, setCustomers] = useState([]);
@@ -20,6 +21,7 @@ const Customers = () => {
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [customerAnalytics, setCustomerAnalytics] = useState(null);
   const [expandedCustomer, setExpandedCustomer] = useState(null);
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
 
   useEffect(() => {
     loadCustomers();
@@ -56,6 +58,20 @@ const Customers = () => {
       setExpandedCustomer(customerId);
       await loadCustomerAnalytics(customerId);
     }
+  };
+
+  const handleViewDetails = (customerId) => {
+    setSelectedCustomer(customerId);
+    setIsDetailsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setSelectedCustomer(null);
+    setIsDetailsModalOpen(false);
+  };
+
+  const handleCustomerUpdate = () => {
+    loadCustomers(); // Refresh the customers list after update
   };
 
   const filteredCustomers = customers.filter(customer => 
@@ -154,7 +170,7 @@ const Customers = () => {
                     </td>
                     <td className="px-6 py-4">
                       <button
-                        onClick={() => window.open(`/admin/customers/${customer._id}`, '_blank')}
+                        onClick={() => handleViewDetails(customer._id)}
                         className="text-blue-600 hover:text-blue-900 text-sm font-medium"
                       >
                         View Details
@@ -251,6 +267,15 @@ const Customers = () => {
           </table>
         </div>
       </div>
+
+      {/* Customer Details Modal */}
+      {isDetailsModalOpen && (
+        <CustomerDetailsModal
+          userId={selectedCustomer}
+          onClose={handleCloseModal}
+          onUpdate={handleCustomerUpdate}
+        />
+      )}
     </div>
   );
 };

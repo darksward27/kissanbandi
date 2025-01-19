@@ -20,21 +20,17 @@ exports.register = async (req, res) => {
     const user = new User(req.body);
     
     // Generate verification token
-    console.log('Generating verification token for:', email);
     const verificationToken = user.generateVerificationToken();
     
     try {
       await user.save();
-      console.log('User saved successfully:', user._id);
     } catch (saveError) {
-      console.error('Error saving user:', saveError);
       return res.status(400).json({ error: saveError.message });
     }
 
     // Send verification email
     const verificationURL = `${process.env.FRONTEND_URL}/verify-email/${verificationToken}`;
-    console.log('Verification URL:', verificationURL);
-    
+
     const emailTemplate = emailTemplates.verification(name, verificationURL);
     try {
       await sendEmail({
@@ -42,9 +38,7 @@ exports.register = async (req, res) => {
         subject: emailTemplate.subject,
         html: emailTemplate.html
       });
-      console.log('Verification email sent successfully');
     } catch (emailError) {
-      console.error('Error sending verification email:', emailError);
       // Don't return error here, still send back success response
     }
 
@@ -61,7 +55,6 @@ exports.register = async (req, res) => {
       message: 'Please check your email to verify your account'
     });
   } catch (error) {
-    console.error('Registration error:', error);
     res.status(400).json({ error: error.message });
   }
 };
@@ -123,58 +116,37 @@ exports.login = async (req, res) => {
 exports.adminLogin = async (req, res) => {
   try {
     const { email, password } = req.body;
-    console.log('\n=== Admin Login Attempt ===');
-    console.log('Login attempt for email:', email);
 
     // Find user
     const user = await User.findOne({ email });
-    console.log('User found in database:', !!user);
     
     if (!user) {
-      console.log('Authentication failed: User not found');
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    // Log user details (excluding sensitive data)
-    console.log('User details:', {
-      id: user._id,
-      role: user.role,
-      isEmailVerified: user.isEmailVerified,
-      loginAttempts: user.loginAttempts,
-      lockUntil: user.lockUntil
-    });
+
 
     // Check if user is admin
     if (user.role !== 'admin') {
-      console.log('Authentication failed: User is not an admin');
       return res.status(403).json({ error: 'Access denied. Admin only.' });
     }
 
     // Check if account is locked
     if (user.lockUntil && user.lockUntil > Date.now()) {
       const waitMinutes = Math.ceil((user.lockUntil - Date.now()) / (60 * 1000));
-      console.log('Authentication failed: Account is locked');
-      console.log('Lock expires in:', waitMinutes, 'minutes');
       return res.status(401).json({
         error: `Account is locked. Please try again in ${waitMinutes} minutes`
       });
     }
 
     // Check password
-    console.log('Attempting password comparison');
-    console.log('Stored password hash:', user.password);
     const isMatch = await user.comparePassword(password);
-    console.log('Password match result:', isMatch);
-
     if (!isMatch) {
-      console.log('Authentication failed: Invalid password');
       await user.handleFailedLogin();
-      console.log('Updated login attempts:', user.loginAttempts);
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
     // Reset login attempts on successful login
-    console.log('Authentication successful, resetting login attempts');
     await user.resetLoginAttempts();
 
     // Generate token with admin role
@@ -183,16 +155,12 @@ exports.adminLogin = async (req, res) => {
       process.env.JWT_SECRET,
       { expiresIn: '7d' }
     );
-    console.log('JWT token generated successfully');
-
-    console.log('=== Login Process Complete ===\n');
 
     res.json({
       token,
       user: user.toPublicProfile()
     });
   } catch (error) {
-    console.error('Admin login error:', error);
     res.status(500).json({ error: error.message });
   }
 };
@@ -211,21 +179,16 @@ exports.verifyEmail = async (req, res) => {
       .update(req.params.token)
       .digest('hex');
 
-    console.log('Verifying email with token:', hashedToken);
-
     const user = await User.findOne({
       emailVerificationToken: hashedToken,
       emailVerificationExpires: { $gt: Date.now() }
     });
 
     if (!user) {
-      console.log('No user found with token:', hashedToken);
       return res.status(400).json({
         error: 'Invalid or expired verification token'
       });
     }
-
-    console.log('User found:', user._id);
 
     // Update verification status and get the updated user document
     const updatedUser = await User.findOneAndUpdate(
@@ -246,8 +209,6 @@ exports.verifyEmail = async (req, res) => {
       });
     }
 
-    console.log('User verification status updated successfully');
-      
     // Generate a new JWT token using the updated user
     const token = jwt.sign(
       { userId: updatedUser._id },
@@ -262,7 +223,6 @@ exports.verifyEmail = async (req, res) => {
       user: updatedUser.toPublicProfile()
     });
   } catch (error) {
-    console.error('Email verification error:', error);
     res.status(500).json({ 
       error: 'An error occurred during email verification',
       details: error.message 
@@ -606,7 +566,6 @@ exports.createAdmin = async (req, res) => {
       user: adminUser.toPublicProfile()
     });
   } catch (error) {
-    console.error('Admin creation error:', error);
     res.status(400).json({ error: error.message });
   }
 };
@@ -618,5 +577,90 @@ exports.checkFirstAdmin = async (req, res) => {
     res.json({ exists: !!adminExists });
   } catch (error) {
     res.status(500).json({ error: error.message });
+  }
+};
+
+// Get customer by ID
+exports.getCustomerById = async (req, res) => {
+  try {
+    const user = await User.findById(req.params.userId)
+      .select('-password')
+      .lean();
+    
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Admin can access any user's details
+    if (req.user.role === 'admin') {
+      return res.json(user);
+    }
+
+    // Users can access their own details
+    if (req.user.userId === user._id.toString()) {
+      return res.json(user);
+    }
+
+    // Check if the requested user is related to any orders the requesting user can access
+    const order = await Order.findOne({
+      $or: [
+        // Requesting user is trying to view details of someone who placed an order
+        { user: req.params.userId, items: { $exists: true, $not: { $size: 0 } } },
+        // The requested user has placed an order that the requesting user needs to view
+        { user: req.user.userId, items: { $exists: true, $not: { $size: 0 } } }
+      ]
+    }).lean();
+
+    if (order) {
+      return res.json(user);
+    }
+
+    return res.status(403).json({ error: 'Not authorized to view this user\'s details' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+exports.updateCustomerProfile = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const updates = req.body;
+    
+    // Check if user exists
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Check authorization
+    if (req.user.role !== 'admin' && req.user._id.toString() !== userId) {
+      return res.status(403).json({ error: 'Not authorized to update this profile' });
+    }
+
+    // Validate address if provided
+    if (updates.address) {
+      if (updates.address.pincode && !/^\d{6}$/.test(updates.address.pincode)) {
+        return res.status(400).json({ error: 'Invalid PIN code format' });
+      }
+    }
+
+    // Update user fields
+    Object.keys(updates).forEach(key => {
+      if (key !== 'password' && key !== 'role') { // Prevent updating sensitive fields
+        if (key === 'address' && updates.address) {
+          Object.keys(updates.address).forEach(addressKey => {
+            user.address[addressKey] = updates.address[addressKey];
+          });
+        } else {
+          user[key] = updates[key];
+        }
+      }
+    });
+
+    await user.save();
+    res.json(user.toPublicProfile());
+  } catch (error) {
+    console.error('Error updating customer profile:', error);
+    res.status(500).json({ error: 'Failed to update profile' });
   }
 }; 

@@ -2,7 +2,7 @@ import React from 'react';
 import { Routes, Route } from 'react-router-dom';
 import Dashboard from '../pages/admin/Dashboard';
 import ProductsManagement from '../pages/admin/ProductsManagement';
-import Orders from '../pages/admin/Orders';
+import Orders from '../pages/admin/AdminOrders';
 import Customers from '../pages/admin/Customers';
 import Analytics from '../pages/admin/Analytics';
 

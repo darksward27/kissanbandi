@@ -14,34 +14,51 @@ export const AuthProvider = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const navigate = useNavigate();
 
-  // Initialize auth state from localStorage
+  // Initialize auth state from localStorage and sessionStorage
   useEffect(() => {
     const initAuth = () => {
       console.log('Initializing auth state...');
+      // Check localStorage first
       const token = localStorage.getItem('kissanbandi_token');
       const storedUser = localStorage.getItem('kissanbandi_user');
       const adminToken = localStorage.getItem('adminToken');
       const adminUser = localStorage.getItem('adminUser');
 
+      // If not in localStorage, check sessionStorage
+      const sessionToken = sessionStorage.getItem('kissanbandi_token');
+      const sessionUser = sessionStorage.getItem('kissanbandi_user');
+      const sessionAdminToken = sessionStorage.getItem('adminToken');
+      const sessionAdminUser = sessionStorage.getItem('adminUser');
+
       console.log('Stored tokens:', {
-        adminToken: !!adminToken,
-        userToken: !!token
+        adminToken: !!adminToken || !!sessionAdminToken,
+        userToken: !!token || !!sessionToken
       });
 
       if (adminToken && adminUser) {
-        console.log('Found admin credentials');
+        console.log('Found admin credentials in localStorage');
         const parsedUser = JSON.parse(adminUser);
-        console.log('Admin user:', parsedUser);
         setUser(parsedUser);
         setIsAuthenticated(true);
         api.defaults.headers.common['Authorization'] = `Bearer ${adminToken}`;
+      } else if (sessionAdminToken && sessionAdminUser) {
+        console.log('Found admin credentials in sessionStorage');
+        const parsedUser = JSON.parse(sessionAdminUser);
+        setUser(parsedUser);
+        setIsAuthenticated(true);
+        api.defaults.headers.common['Authorization'] = `Bearer ${sessionAdminToken}`;
       } else if (token && storedUser) {
-        console.log('Found user credentials');
+        console.log('Found user credentials in localStorage');
         const parsedUser = JSON.parse(storedUser);
-        console.log('Regular user:', parsedUser);
         setUser(parsedUser);
         setIsAuthenticated(true);
         api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      } else if (sessionToken && sessionUser) {
+        console.log('Found user credentials in sessionStorage');
+        const parsedUser = JSON.parse(sessionUser);
+        setUser(parsedUser);
+        setIsAuthenticated(true);
+        api.defaults.headers.common['Authorization'] = `Bearer ${sessionToken}`;
       } else {
         console.log('No stored credentials found');
       }
@@ -152,6 +169,28 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const updateUser = async (userData) => {
+    try {
+      setUser(userData);
+      
+      // Check which storage type was used
+      const isLocalStorage = localStorage.getItem('kissanbandi_token') || localStorage.getItem('adminToken');
+      const storage = isLocalStorage ? localStorage : sessionStorage;
+      
+      // Update in the appropriate storage
+      if (userData.role === 'admin') {
+        storage.setItem('adminUser', JSON.stringify(userData));
+      } else {
+        storage.setItem('kissanbandi_user', JSON.stringify(userData));
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('Error updating user:', error);
+      return false;
+    }
+  };
+
   const value = {
     user,
     loading,
@@ -159,7 +198,8 @@ export const AuthProvider = ({ children }) => {
     login,
     adminLogin,
     logout,
-    checkSession
+    checkSession,
+    updateUser
   };
 
   if (loading) {

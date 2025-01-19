@@ -27,33 +27,37 @@ const orderSchema = new mongoose.Schema({
     required: true
   },
   shippingAddress: {
-    street: String,
+    address: String,
     city: String,
     state: String,
-    pincode: String
+    pincode: String,
+    phone: String
   },
   status: {
     type: String,
     enum: ['pending', 'processing', 'shipped', 'delivered', 'cancelled'],
     default: 'pending'
   },
+  paymentMethod: {
+    type: String,
+    enum: ['cod', 'razorpay'],
+    required: true
+  },
   paymentStatus: {
     type: String,
     enum: ['pending', 'completed', 'failed', 'refunded'],
     default: 'pending'
   },
-  paymentMethod: {
-    type: String,
-    required: true,
-    enum: ['cod', 'online']
-  },
-  deliveryNotes: String,
-  trackingNumber: String
+  razorpayDetails: {
+    orderId: String,
+    paymentId: String,
+    signature: String
+  }
 }, {
   timestamps: true
 });
 
-// Add indexes for better query performance
+// Add index for better query performance
 orderSchema.index({ user: 1, createdAt: -1 });
 orderSchema.index({ status: 1 });
 orderSchema.index({ paymentStatus: 1 });

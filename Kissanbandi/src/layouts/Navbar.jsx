@@ -216,6 +216,15 @@ const Navbar = () => {
                       >
                         Wishlist
                       </Link>
+                      {user.role === 'admin' && (
+                        <Link
+                          to="/admin"
+                          className="block px-4 py-2 text-sm text-gray-700 hover:bg-green-50"
+                          onClick={() => setShowProfileMenu(false)}
+                        >
+                          Admin Dashboard
+                        </Link>
+                      )}
                       <button
                         onClick={handleLogout}
                         className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
@@ -318,6 +327,15 @@ const Navbar = () => {
                 >
                   Wishlist
                 </Link>
+                {user.role === 'admin' && (
+                  <Link
+                    to="/admin"
+                    className="block px-4 py-2 text-gray-600 hover:text-green-600"
+                    onClick={() => setIsOpen(false)}
+                  >
+                    Admin Dashboard
+                  </Link>
+                )}
                 <button
                   onClick={() => {
                     handleLogout();

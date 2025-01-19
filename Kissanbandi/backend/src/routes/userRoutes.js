@@ -39,6 +39,12 @@ router.get('/:userId/orders', [auth, admin], userController.getCustomerOrders);
 router.get('/:userId/analytics', [auth, admin], userController.getCustomerAnalytics);
 router.put('/:userId/role', [auth, admin], userController.updateUserRole);
 
+// Get customer by ID
+router.get('/:userId', auth, userController.getCustomerById);
+
+// Update customer profile
+router.put('/:userId/profile', auth, userController.updateCustomerProfile);
+
 // Admin creation routes
 router.get('/check-first-admin', userController.checkFirstAdmin);
 router.post('/create-first-admin', (req, res, next) => {

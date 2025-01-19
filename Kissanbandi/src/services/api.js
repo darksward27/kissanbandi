@@ -2,7 +2,7 @@ import axios from 'axios';
 
 // Create axios instance with default config
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000/api',
+  baseURL: 'http://192.168.158.105:5000/api',
   headers: {
     'Content-Type': 'application/json',
   },
@@ -137,12 +137,12 @@ export const productsApi = {
 
 // Orders API
 export const ordersApi = {
-  getAllOrders: async () => {
+  getAllOrders: async (params = {}) => {
     try {
-      console.log('Fetching all orders...');
+      console.log('Fetching orders with params:', params);
       const timestamp = new Date().getTime();
       const response = await api.get('/orders', {
-        params: { _t: timestamp },
+        params: { ...params, _t: timestamp },
         headers: {
           'Cache-Control': 'no-cache',
           'Pragma': 'no-cache'
@@ -154,14 +154,23 @@ export const ordersApi = {
         data: response.data
       });
 
-      // Ensure we return an array
-      const orders = Array.isArray(response.data) ? response.data :
-                    Array.isArray(response.data?.orders) ? response.data.orders :
-                    response.data?.data || [];
-      
-      return orders;
+      if (!response.data) {
+        throw new Error('No data received from orders endpoint');
+      }
+
+      // Return the paginated response structure
+      return {
+        orders: Array.isArray(response.data.orders) ? response.data.orders : [],
+        total: response.data.total || 0,
+        page: response.data.page || 1,
+        totalPages: response.data.totalPages || 1
+      };
     } catch (error) {
-      console.error('Error fetching orders:', error);
+      console.error('Error fetching orders:', {
+        message: error.message,
+        status: error.response?.status,
+        data: error.response?.data
+      });
       throw error;
     }
   },
@@ -194,49 +203,45 @@ export const ordersApi = {
     }
   },
   
-  getOrderStats: async (startDate, endDate) => {
+  getOrderStats: async (params = {}) => {
     try {
-      console.log('Fetching order stats:', { startDate, endDate });
+      console.log('Fetching order stats with params:', params);
       const timestamp = new Date().getTime();
       const response = await api.get('/orders/stats', {
-        params: {
-          startDate,
-          endDate,
-          _t: timestamp
-        },
+        params: { ...params, _t: timestamp },
         headers: {
           'Cache-Control': 'no-cache',
           'Pragma': 'no-cache'
-        },
-        // Add timeout to prevent long waits
-        timeout: 5000,
-        // Allow endpoint to fail without breaking the app
-        validateStatus: (status) => {
-          return status < 500; // Resolve only if the status code is less than 500
         }
       });
       
-      if (response.status === 404) {
-        console.warn('Order stats endpoint not implemented');
-        return null;
+      console.log('Order stats response:', response.data);
+
+      if (!response.data) {
+        throw new Error('No data received from stats endpoint');
       }
 
-      return response.data;
+      return {
+        totalOrders: response.data.totalOrders || 0,
+        totalRevenue: response.data.totalRevenue || 0,
+        averageOrderValue: response.data.averageOrderValue || 0,
+        statusBreakdown: response.data.statusBreakdown || {},
+        dailyStats: Array.isArray(response.data.dailyStats) ? response.data.dailyStats : []
+      };
     } catch (error) {
       console.error('Error fetching order stats:', {
         message: error.message,
         status: error.response?.status,
         data: error.response?.data
       });
-      // Return null to allow fallback to client-side calculation
-      return null;
+      throw error;
     }
   },
   
   updateOrderStatus: async (id, status) => {
     try {
       console.log('Updating order status:', { id, status });
-      const response = await api.put(`/orders/${id}/status`, { status });
+      const response = await api.patch(`/orders/${id}/status`, { status });
       return response.data;
     } catch (error) {
       console.error('Error updating order status:', error);
@@ -244,7 +249,7 @@ export const ordersApi = {
     }
   },
   
-  exportOrders: async (filters) => {
+  exportOrders: async (filters = {}) => {
     try {
       console.log('Exporting orders with filters:', filters);
       const timestamp = new Date().getTime();
@@ -256,11 +261,47 @@ export const ordersApi = {
         },
         responseType: 'blob'
       });
+
+      // Verify that we received a CSV blob
+      if (!response.data || !(response.data instanceof Blob)) {
+        throw new Error('Invalid response format from export endpoint');
+      }
+
+      // Check content type
+      const contentType = response.headers['content-type'];
+      if (!contentType || !contentType.includes('text/csv')) {
+        console.warn('Unexpected content type:', contentType);
+      }
+
       return response.data;
     } catch (error) {
-      console.error('Error exporting orders:', error);
+      console.error('Error exporting orders:', {
+        message: error.message,
+        status: error.response?.status,
+        data: error.response?.data
+      });
       throw error;
     }
+  },
+
+  getOrder: async (id) => {
+    const response = await api.get(`/orders/${id}`);
+    return response.data;
+  },
+
+  createOrder: async (orderData) => {
+    const response = await api.post('/orders', orderData);
+    return response.data;
+  },
+
+  createRazorpayOrder: async (data) => {
+    const response = await api.post('/orders/razorpay/create', data);
+    return response.data;
+  },
+
+  verifyPayment: async (data) => {
+    const response = await api.post('/orders/razorpay/verify', data);
+    return response.data;
   }
 };
 
@@ -271,8 +312,8 @@ export const usersApi = {
     return response.data;
   },
   
-  getCustomerById: async (id) => {
-    const response = await api.get(`/users/${id}`);
+  getCustomerById: async (userId) => {
+    const response = await api.get(`/users/${userId}`);
     return response.data;
   },
   
@@ -283,6 +324,11 @@ export const usersApi = {
   
   getCustomerAnalytics: async (id) => {
     const response = await api.get(`/users/${id}/analytics`);
+    return response.data;
+  },
+  
+  updateCustomer: async (userId, userData) => {
+    const response = await api.put(`/users/${userId}/profile`, userData);
     return response.data;
   }
 };
