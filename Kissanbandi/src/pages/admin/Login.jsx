@@ -4,7 +4,7 @@ import { useAuth } from '../../pages/checkout/AuthProvider';
 import { toast } from 'react-hot-toast';
 import { Lock } from 'lucide-react';
 
-const AdminLogin = () => {
+const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
@@ -21,12 +21,21 @@ const AdminLogin = () => {
     }
   }, [isAuthenticated, user, navigate, location]);
 
+  // Smooth scroll to top on component mount
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    return () => {
+      document.documentElement.style.scrollBehavior = 'auto';
+    };
+  }, []);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
       setLoading(true);
       await adminLogin(email, password, rememberMe);
-      
+
       toast.success('Login successful');
       const from = location.state?.from?.pathname || '/admin/dashboard';
       navigate(from, { replace: true });
@@ -121,4 +130,4 @@ const AdminLogin = () => {
   );
 };
 
-export default AdminLogin; 
+export default Login;
