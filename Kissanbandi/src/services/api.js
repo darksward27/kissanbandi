@@ -1,16 +1,28 @@
 import axios from 'axios';
+import { toast } from 'react-hot-toast';
 
 // Create axios instance with default config
 const api = axios.create({
-  baseURL: 'http://192.168.158.105:5000/api',
+  baseURL: 'http://localhost:5000/api',
   headers: {
     'Content-Type': 'application/json',
+    'Accept': 'application/json',
   },
+  withCredentials: true, // Important for CORS
+  timeout: 30000, // 30 second timeout
 });
 
 // Request interceptor for adding auth token
 api.interceptors.request.use(
   (config) => {
+    // Add timestamp to prevent caching
+    if (config.method === 'get') {
+      config.params = {
+        ...config.params,
+        _t: new Date().getTime()
+      };
+    }
+
     // Check for admin token first
     const adminToken = localStorage.getItem('adminToken') || sessionStorage.getItem('adminToken');
     if (adminToken) {
@@ -26,6 +38,7 @@ api.interceptors.request.use(
     return config;
   },
   (error) => {
+    console.error('Request interceptor error:', error);
     return Promise.reject(error);
   }
 );
@@ -34,13 +47,32 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
-      // Clear tokens on unauthorized
+    console.error('API Error:', error);
+
+    // Network or CORS error
+    if (!error.response) {
+      toast.error('Network error. Please check your connection.');
+      return Promise.reject(error);
+    }
+
+    // Handle 401 Unauthorized
+    if (error.response.status === 401) {
+      // Clear tokens and reload page
       localStorage.removeItem('adminToken');
       localStorage.removeItem('kissanbandi_token');
+      localStorage.removeItem('adminUser');
+      localStorage.removeItem('kissanbandi_user');
       sessionStorage.removeItem('adminToken');
       sessionStorage.removeItem('kissanbandi_token');
+      sessionStorage.removeItem('adminUser');
+      sessionStorage.removeItem('kissanbandi_user');
+      window.location.reload();
     }
+
+    // Handle other errors
+    const message = error.response?.data?.error || error.message || 'An error occurred';
+    toast.error(message);
+
     return Promise.reject(error);
   }
 );

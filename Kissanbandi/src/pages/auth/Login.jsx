@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../checkout/AuthProvider';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
-import { User, Lock, ArrowRight, Loader } from 'lucide-react';
+import { User, Lock, ArrowRight, Loader, EyeIcon, Eye,EyeClosed } from 'lucide-react';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -10,6 +10,7 @@ const Login = () => {
   const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
   const { login, isAuthenticated } = useAuth();
+  const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -34,7 +35,7 @@ const Login = () => {
       setLoading(false);
     }
   };
-
+  
   return (
     <div className="min-h-screen flex">
       {/* Left side - Hero Section */}
@@ -99,21 +100,29 @@ const Login = () => {
                   placeholder="Enter your email"
                 />
               </div>
-              <div>
+              <div className="relative">
                 <label htmlFor="password" className="block text-sm font-medium text-gray-700">
                   Password
                 </label>
                 <input
                   id="password"
                   name="password"
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="mt-1 appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm"
+                  className="mt-1 appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm pr-10"
                   placeholder="Enter your password"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute inset-y-0 right-2 mt-4 flex items-center px-2 text-gray-500 hover:text-gray-700"
+                >
+                  {showPassword ? <EyeIcon className="h-5 w-5" /> : <EyeClosed className="h-5 w-5" />}
+                </button>
               </div>
+
             </div>
 
             <div className="flex items-center justify-between">

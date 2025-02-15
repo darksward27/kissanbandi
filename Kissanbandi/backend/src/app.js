@@ -39,9 +39,14 @@ app.use(cors({
     'http://127.0.0.1:5173',
     'http://192.168.158.105:5173',
     /^http:\/\/192\.168\.\d{1,3}\.\d{1,3}:5173$/,  // Allow local network IPs
+    'https://kissanbandi.netlify.app',  // Add your Netlify domain
     process.env.CORS_ORIGIN
   ].filter(Boolean),
-  credentials: true
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Cache-Control', 'Pragma'],
+  exposedHeaders: ['Content-Range', 'X-Content-Range'],
+  maxAge: 600 // Increase preflight cache to 10 minutes
 }));
 
 app.use(express.json({ limit: '10mb' }));

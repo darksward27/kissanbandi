@@ -36,8 +36,8 @@ const Footer = () => {
 
       {/* Main Footer Content */}
       <div className="container mx-auto px-4 py-16">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12">
-          {/* Company Info */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-12 text-center md:text-left">
+      {/* Company Info */}
           <div>
             <h2 className="text-2xl font-bold text-green-700 mb-6">KissanBandi</h2>
             <p className="text-gray-600 mb-6">
@@ -100,21 +100,7 @@ const Footer = () => {
             </ul>
           </div>
 
-          {/* Download App */}
-          <div>
-            <h3 className="text-lg font-semibold mb-6">Download Our App</h3>
-            <p className="text-gray-600 mb-6">
-              Shop on the go with our mobile app. Available on iOS and Android.
-            </p>
-            <div className="space-y-4">
-              <button className="bg-black text-white w-full py-3 rounded-lg hover:bg-gray-800 transition duration-200">
-                Download on App Store
-              </button>
-              <button className="bg-black text-white w-full py-3 rounded-lg hover:bg-gray-800 transition duration-200">
-                Get it on Google Play
-              </button>
-            </div>
-          </div>
+          
         </div>
       </div>
 
