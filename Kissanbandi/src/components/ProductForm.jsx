@@ -175,16 +175,25 @@ const ProductForm = ({ initialData, onSubmit, categories }) => {
 
         <div>
           <label className="block text-sm font-medium text-gray-700">Unit</label>
-          <input
-            type="text"
+          <select
             name="unit"
             value={formData.unit}
             onChange={handleChange}
-            placeholder="e.g., kg, piece"
             className={`mt-1 block w-full rounded-lg border ${
               errors.unit ? 'border-red-500' : 'border-gray-300'
             } px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500`}
-          />
+          >
+            <option value="">Select Unit</option>
+            <option value="kg">Kilogram (kg)</option>
+            <option value="g">Gram (g)</option>
+            <option value="piece">Piece</option>
+            <option value="dozen">Dozen</option>
+            <option value="bundle">Bundle</option>
+            <option value="packet">Packet</option>
+            <option value="box">Box</option>
+            <option value="liter">Liter (L)</option>
+            <option value="ml">Milliliter (ml)</option>
+          </select>
           {errors.unit && <p className="mt-1 text-sm text-red-500">{errors.unit}</p>}
         </div>
 

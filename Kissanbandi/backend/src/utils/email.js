@@ -45,8 +45,8 @@ const createTransporter = () => {
     port: 587,
     secure: false, // upgrade later with STARTTLS
     auth: {
-      user: "joelapeter82@gmail.com",
-      pass: "dyxmpvwiyelfcuur",
+      user: process.env.EMAIL_USERNAME,
+      pass: process.env.EMAIL_PASSWORD
     },
   });
 };

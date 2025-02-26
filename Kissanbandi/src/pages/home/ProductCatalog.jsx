@@ -206,7 +206,7 @@ const ProductCatalog = () => {
               <img
                 src={product.image}
                 alt={product.name}
-                className="w-full h-48 object-cover transform group-hover:scale-105 transition-transform duration-300"
+                className="w-full h-48 object-contain transform group-hover:scale-105 transition-transform duration-300"
               />
               <button 
                 onClick={() => toggleWishlist(product._id || product.id)}
