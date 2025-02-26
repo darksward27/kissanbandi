@@ -32,6 +32,9 @@ const AdminSidebar = () => {
     
     // Redirect to admin login
     navigate('/admin/login');
+    setTimeout(() => {
+      window.location.reload();
+    }, 500); 
   };
 
   return (
