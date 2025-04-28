@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Menu, X, ShoppingCart, Search, User, ChevronDown, LogOut } from 'lucide-react';
-import { useCart } from '../pages/checkout/CartContext';
-import { useAuth } from '../pages/checkout/AuthProvider';
+import { useCart } from '../../../../pages/checkout/CartContext';
+import { useAuth } from '../../../../pages/checkout/AuthProvider';
 import { Link, useNavigate } from 'react-router-dom';
-import { allProducts } from '../data/products';
-import Logo from '../components/Logo';
+import { allProducts } from '../../../../data/products';
+import Logo from '../../../../components/Logo';
 
 const Navbar = () => {
   const { state } = useCart();
