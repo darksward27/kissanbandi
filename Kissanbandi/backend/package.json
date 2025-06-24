@@ -12,9 +12,10 @@
     "format": "prettier --write 'src/**/*.js'"
   },
   "keywords": [
+    "kissanbandi",
     "ecommerce",
     "agriculture",
-    "api"
+    "tech"
   ],
   "author": "",
   "license": "ISC",
