@@ -8,7 +8,9 @@ import Image5 from "../../assets/images2/cabbage.png";
 import Image6 from "../../assets/images2/corn.avif";
 import Image7 from "../../assets/images2/mushroom.jpeg";
 import Image8 from "../../assets/images2/kiwi.avif";
-
+import { useCart } from "../checkout/CartContext";
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../checkout/AuthProvider';
 const FreshVegetables = () => {
   const [notifications, setNotifications] = useState([]);
 
@@ -124,12 +126,21 @@ const FreshVegetables = () => {
     }, 3000);
   };
 
+  const navigate = useNavigate(); // ✅ define navigate here
+  const { dispatch } = useCart();
+  const { user } = useAuth();
+
   const handleAddToCart = (product) => {
+    if (!user) {
+      navigate('/login'); // ✅ works now
+      return;
+    }
+
+    dispatch({ type: "ADD_TO_CART", payload: product });
     showNotification(`Added ${product.name} to cart!`);
   };
-
   return (
-    <div className="w-full max-w-7xl mx-auto p-4">
+    <div className="w-full max-w-7xl mx-auto p-4 pt-20">
       <div className="mb-8 text-center">
         <h1 className="text-3xl font-bold text-[#4CAF50] hover:text-[#45a049] transition-colors duration-300">
           Fresh Produce

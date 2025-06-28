@@ -4,6 +4,7 @@ import Layout from '../layouts/Layout';
 import AdminLayout from '../pages/admin/AdminLayout';
 import AdminRoute from '../components/auth/AdminRoute';
 import PrivateRoute from '../components/auth/PrivateRoute';
+
 import Home from '../pages/home/Home';
 import Login from '../pages/auth/Login';
 import Register from '../pages/auth/Register';
@@ -18,10 +19,18 @@ import Profile from '../pages/profile/Profile';
 import Orders from '../pages/orders/Orders';
 import Wishlist from '../pages/wishlist/Wishlist';
 
+import SeasonalFruits from '../pages/fruits/seasonal';
+import ExoticFruits from '../pages/fruits/ExoticFruits';
+import FreshVegetables from '../pages/vegetables/FreshVegetables';
+import OrganicFruits from '../pages/fruits/OrganicFruits';
+import OrganicVegetables from '../pages/vegetables/OrganicVegetables';
+import RootVegetables from '../pages/vegetables/RootVegetables';
+import SeasonalVegetables from '../pages/vegetables/SeasonalVegetables';
+import FruitsVeg from '../pages/vegetables/FruitsVeg';
+
 const AppRoutes = () => {
   return (
     <Routes>
-      {/* Public routes */}
       <Route path="/" element={<Layout />}>
         <Route index element={<Home />} />
         <Route path="login" element={<Login />} />
@@ -32,7 +41,18 @@ const AppRoutes = () => {
         <Route path="admin/login" element={<AdminLogin />} />
         <Route path="search" element={<SearchResults />} />
 
-        {/* Protected routes */}
+        {/* 🥦 Fruits & Vegetables routes */}
+        <Route path="category/fruits/seasonal-fruits" element={<SeasonalFruits />} />
+        <Route path="category/fruits/exotic-fruits" element={<ExoticFruits />} />
+        <Route path="category/fruits/organic-fruits" element={<OrganicFruits />} />
+        
+        <Route path="category/vegetables/organic-vegetables" element={<OrganicVegetables />} />
+        <Route path="category/vegetables/fresh-vegetables" element={<FreshVegetables />} />        
+        <Route path="category/vegetables/seasonal-vegetables" element={<SeasonalFruits />} />
+        <Route path="category/vegetables/root-vegetables" element={<RootVegetables/>} />
+        <Route path="category/vegetables/fruits-veg" element={<FruitsVeg />} />
+
+        {/* Protected Routes */}
         <Route
           path="profile"
           element={
@@ -67,7 +87,7 @@ const AppRoutes = () => {
         />
       </Route>
 
-      {/* Admin routes - separate layout */}
+      {/* Admin routes */}
       <Route
         path="/admin/*"
         element={
@@ -82,4 +102,4 @@ const AppRoutes = () => {
   );
 };
 
-export default AppRoutes; 
+export default AppRoutes;

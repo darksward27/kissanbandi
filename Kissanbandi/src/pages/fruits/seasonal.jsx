@@ -4,13 +4,15 @@ import Image1 from "../../assets/images2/apple.avif"
 import Image2 from "../../assets/images2/mango.avif"
 import Image3 from "../../assets/images2/avacado.avif"
 import Image4 from "../../assets/images2/litchi.avif"
-
+import { useCart } from "../checkout/CartContext";
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../checkout/AuthProvider';
 const SeasonalFruits = () => {
   const [notifications, setNotifications] = useState([]);
   
   const seasonalProducts = [
     {
-      id: 1,
+      id: 'seasonal-fruits-1',
       name: "Apple",
       category: "Fruits",
       price: 180,
@@ -21,7 +23,7 @@ const SeasonalFruits = () => {
       description: "Fresh seasonal strawberries"
     },
     {
-      id: 2,
+      id: 'seasonal-fruits-2',
       name: "Mango",
       category: "Fruits",
       price: 50,
@@ -32,7 +34,7 @@ const SeasonalFruits = () => {
       description: "Sweet and juicy watermelon"
     },
     {
-      id: 3,
+      id: 'seasonal-fruits-3',
       name: "Avacado",
       category: "Fruits",
       price: 120,
@@ -43,7 +45,7 @@ const SeasonalFruits = () => {
       description: "Premium Alphonso mangoes"
     },
     {
-      id: 4,
+      id: 'seasonal-fruits-4',
       name: "Litchi",
       category: "Fruits",
       price: 150,
@@ -54,7 +56,7 @@ const SeasonalFruits = () => {
       description: "Sweet and fresh litchi"
     },
     {
-      id: 3,
+      id: 'seasonal-fruits-5',
       name: "Avacado",
       category: "Fruits",
       price: 120,
@@ -65,7 +67,7 @@ const SeasonalFruits = () => {
       description: "Premium Alphonso mangoes"
     },
     {
-      id: 3,
+      id: 'seasonal-fruits-6',
       name: "Avacado",
       category: "Fruits",
       price: 120,
@@ -76,7 +78,7 @@ const SeasonalFruits = () => {
       description: "Premium Alphonso mangoes"
     },
     {
-      id: 3,
+      id: 'seasonal-fruits-7',
       name: "Avacado",
       category: "Fruits",
       price: 120,
@@ -87,7 +89,7 @@ const SeasonalFruits = () => {
       description: "Premium Alphonso mangoes"
     },
     {
-      id: 3,
+      id: 'seasonal-fruits-8',
       name: "Avacado",
       category: "Fruits",
       price: 120,
@@ -110,7 +112,17 @@ const SeasonalFruits = () => {
     }, 3000);
   };
 
+  const navigate = useNavigate(); // ✅ define navigate here
+  const { dispatch } = useCart();
+  const { user } = useAuth();
+
   const handleAddToCart = (product) => {
+    if (!user) {
+      navigate('/login'); // ✅ works now
+      return;
+    }
+
+    dispatch({ type: "ADD_TO_CART", payload: product });
     showNotification(`Added ${product.name} to cart!`);
   };
 

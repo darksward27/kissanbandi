@@ -8,13 +8,16 @@ import Image5 from "../../assets/images2/cabbage.png"
 import Image6 from "../../assets/images2/peas.avif"
 import Image7 from "../../assets/images2/mushroom.jpeg"
 import Image8 from "../../assets/images2/corn.avif"
+import { useCart } from "../checkout/CartContext";
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../checkout/AuthProvider';
 
 const FreshVegetables = () => {
   const [notifications, setNotifications] = useState([]);
   
   const freshVegetables = [
     {
-      id: 1,
+      id: "Fresh-Veg-1",
       name: "Fresh Potato",
       category: "Fresh Vegetables",
       price: 40,
@@ -27,7 +30,7 @@ const FreshVegetables = () => {
       textColor: "text-yellow-700"
     },
     {
-      id: 2,
+      id: "Fresh-Veg-2",
       name: "Fresh Onion",
       category: "Fresh Vegetables",
       price: 35,
@@ -40,7 +43,7 @@ const FreshVegetables = () => {
       textColor: "text-purple-700"
     },
     {
-      id: 3,
+      id: "Fresh-Veg-3",
       name: "Fresh Capsicum",
       category: "Fresh Vegetables",
       price: 70,
@@ -53,7 +56,7 @@ const FreshVegetables = () => {
       textColor: "text-green-700"
     },
     {
-      id: 4,
+      id: "Fresh-Veg-4",
       name: "Fresh Beans",
       category: "Fresh Vegetables",
       price: 50,
@@ -66,7 +69,7 @@ const FreshVegetables = () => {
       textColor: "text-emerald-700"
     },
     {
-      id: 5,
+      id: "Fresh-Veg-5",
       name: "Fresh Cabbage",
       category: "Fresh Vegetables",
       price: 45,
@@ -79,7 +82,7 @@ const FreshVegetables = () => {
       textColor: "text-gray-700"
     },
     {
-      id: 6,
+      id: "Fresh-Veg-6",
       name: "Fresh Green Peas",
       category: "Fresh Vegetables",
       price: 80,
@@ -92,7 +95,7 @@ const FreshVegetables = () => {
       textColor: "text-lime-700"
     },
     {
-      id: 7,
+      id: "Fresh-Veg-7",
       name: "Fresh Mushroom",
       category: "Fresh Vegetables",
       price: 120,
@@ -105,7 +108,7 @@ const FreshVegetables = () => {
       textColor: "text-stone-700"
     },
     {
-      id: 8,
+      id: "Fresh-Veg-8",
       name: "Fresh Corn",
       category: "Fresh Vegetables",
       price: 40,
@@ -129,13 +132,23 @@ const FreshVegetables = () => {
       setNotifications(prev => prev.filter(n => n.id !== newNotification.id));
     }, 3000);
   };
+ 
+  const navigate = useNavigate(); // ✅ define navigate here
+  const { dispatch } = useCart();
+  const { user } = useAuth();
 
   const handleAddToCart = (product) => {
+    if (!user) {
+      navigate('/login'); // ✅ works now
+      return;
+    }
+
+    dispatch({ type: "ADD_TO_CART", payload: product });
     showNotification(`Added ${product.name} to cart!`);
   };
 
   return (
-    <div className="w-full max-w-7xl mx-auto p-4">
+    <div className="w-full max-w-7xl mx-auto p-4 pt-20">
       <div className="mb-8 text-center">
         <h1 className="text-3xl font-bold text-green-600 hover:text-green-700 transition-colors duration-300">
           Fresh Vegetables

@@ -10,7 +10,12 @@ exports.auth = async (req, res, next) => {
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = decoded;
+    const user = await User.findById(decoded.userId || decoded._id);
+    if (!user) {
+      return res.status(401).json({ error: 'User not found' });
+    }
+
+    req.user = { userId: user._id, role: user.role };
     next();
   } catch (error) {
     res.status(401).json({ error: 'Invalid token' });

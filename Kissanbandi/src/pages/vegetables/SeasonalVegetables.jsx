@@ -8,13 +8,16 @@ import Image5 from "../../assets/images2/cabbage.png"
 import Image6 from "../../assets/images2/mushroom.jpeg"
 import Image7 from "../../assets/images2/potato.avif"
 import Image8 from "../../assets/images2/onion.avif"
+import { useCart } from "../checkout/CartContext";
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../checkout/AuthProvider';
 
 const SeasonalVegetables = () => {
   const [notifications, setNotifications] = useState([]);
   
   const seasonalVegetables = [
     {
-      id: 1,
+      id: 'seasonal-1',
       name: "Fresh Capsicum",
       category: "Seasonal Vegetables",
       price: 70,
@@ -27,7 +30,7 @@ const SeasonalVegetables = () => {
       textColor: "text-green-700"
     },
     {
-      id: 2,
+      id: 'seasonal-2',
       name: "Fresh Green Peas",
       category: "Seasonal Vegetables",
       price: 80,
@@ -40,7 +43,7 @@ const SeasonalVegetables = () => {
       textColor: "text-lime-700"
     },
     {
-      id: 3,
+      id: 'seasonal-3',
       name: "Fresh Corn",
       category: "Seasonal Vegetables",
       price: 40,
@@ -53,7 +56,7 @@ const SeasonalVegetables = () => {
       textColor: "text-amber-700"
     },
     {
-      id: 4,
+      id: 'seasonal-4',
       name: "Fresh Beans",
       category: "Seasonal Vegetables",
       price: 50,
@@ -66,7 +69,7 @@ const SeasonalVegetables = () => {
       textColor: "text-emerald-700"
     },
     {
-      id: 5,
+      id: 'seasonal-5',
       name: "Fresh Cabbage",
       category: "Seasonal Vegetables",
       price: 45,
@@ -79,7 +82,7 @@ const SeasonalVegetables = () => {
       textColor: "text-gray-700"
     },
     {
-      id: 6,
+      id: 'seasonal-6',
       name: "Fresh Mushroom",
       category: "Seasonal Vegetables",
       price: 120,
@@ -92,7 +95,7 @@ const SeasonalVegetables = () => {
       textColor: "text-stone-700"
     },
     {
-      id: 7,
+      id: 'seasonal-7',
       name: "Fresh Potato",
       category: "Seasonal Vegetables",
       price: 40,
@@ -105,7 +108,7 @@ const SeasonalVegetables = () => {
       textColor: "text-yellow-700"
     },
     {
-      id: 8,
+      id: 'seasonal-8',
       name: "Fresh Onion",
       category: "Seasonal Vegetables",
       price: 35,
@@ -130,12 +133,22 @@ const SeasonalVegetables = () => {
     }, 3000);
   };
 
+  const navigate = useNavigate(); // ✅ define navigate here
+  const { dispatch } = useCart();
+  const { user } = useAuth();
+
   const handleAddToCart = (product) => {
+    if (!user) {
+      navigate('/login'); // ✅ works now
+      return;
+    }
+
+    dispatch({ type: "ADD_TO_CART", payload: product });
     showNotification(`Added ${product.name} to cart!`);
   };
 
   return (
-    <div className="w-full max-w-7xl mx-auto p-4">
+    <div className="w-full max-w-7xl mx-auto p-4 pt-24">
       <div className="mb-8 text-center">
         <h1 className="text-3xl font-bold text-green-600 hover:text-green-700 transition-colors duration-300">
           Seasonal Vegetables

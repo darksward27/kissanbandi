@@ -8,13 +8,15 @@ import Image5 from "../../assets/images2/papaya.avif"
 import Image6 from "../../assets/images2/pomegranate.avif"
 import Image7 from "../../assets/images2/grapes.avif"
 import Image8 from "../../assets/images2/kiwi.avif"
-
+import { useCart } from "../checkout/CartContext";
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../checkout/AuthProvider';
 const OrganicFruits = () => {
   const [notifications, setNotifications] = useState([]);
   
   const organicFruits = [
     {
-      id: 1,
+      id:'fruits-1',
       name: "Organic Apple",
       category: "Organic Fruits",
       price: 220,
@@ -25,7 +27,7 @@ const OrganicFruits = () => {
       description: "Pesticide-free, naturally grown apples"
     },
     {
-      id: 2,
+      id: 'fruits-2',
       name: "Organic Banana",
       category: "Organic Fruits",
       price: 80,
@@ -36,7 +38,7 @@ const OrganicFruits = () => {
       description: "Chemical-free, naturally ripened bananas"
     },
     {
-      id: 3,
+      id: 'fruits-3',
       name: "Organic Dragon",
       category: "Organic Fruits",
       price: 180,
@@ -47,7 +49,7 @@ const OrganicFruits = () => {
       description: "Fresh, pesticide-free strawberries"
     },
     {
-      id: 4,
+      id: 'fruits-4',
       name: "Organic Blueberry",
       category: "Organic Fruits",
       price: 160,
@@ -58,7 +60,7 @@ const OrganicFruits = () => {
       description: "Sweet and juicy organic oranges"
     },
     {
-      id: 5,
+      id:'fruits-5',
       name: "Organic Papaya",
       category: "Organic Fruits",
       price: 320,
@@ -69,7 +71,7 @@ const OrganicFruits = () => {
       description: "Antioxidant-rich organic blueberries"
     },
     {
-      id: 6,
+      id: 'fruits-6',
       name: "Organic Pomegranate",
       category: "Organic Fruits",
       price: 240,
@@ -80,7 +82,7 @@ const OrganicFruits = () => {
       description: "Chemical-free, naturally grown pomegranates"
     },
     {
-      id: 7,
+      id: 'fruits-7',
       name: "Organic Grapes",
       category: "Organic Fruits",
       price: 190,
@@ -91,7 +93,7 @@ const OrganicFruits = () => {
       description: "Pesticide-free, sweet organic grapes"
     },
     {
-      id: 8,
+      id: 'fruits-8',
       name: "Organic Kiwi",
       category: "Organic Fruits",
       price: 280,
@@ -114,7 +116,17 @@ const OrganicFruits = () => {
     }, 3000);
   };
 
+  const navigate = useNavigate(); // ✅ define navigate here
+  const { dispatch } = useCart();
+  const { user } = useAuth();
+
   const handleAddToCart = (product) => {
+    if (!user) {
+      navigate('/login'); // ✅ works now
+      return;
+    }
+
+    dispatch({ type: "ADD_TO_CART", payload: product });
     showNotification(`Added ${product.name} to cart!`);
   };
 

@@ -8,13 +8,16 @@ import Image5 from "../../assets/images2/broccoli.jpg"
 import Image6 from "../../assets/images2/cucumber.avif"
 import Image7 from "../../assets/images2/chilli.avif"
 import Image8 from "../../assets/images2/lettuce.avif"
+import { useCart } from "../checkout/CartContext";
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../checkout/AuthProvider';
 
 const OrganicVegetables = () => {
   const [notifications, setNotifications] = useState([]);
   
   const organicVegetables = [
     {
-      id: 1,
+      id: "organic-veg-1",
       name: "Organic Carrot",
       category: "Organic Vegetables",
       price: 80,
@@ -27,7 +30,7 @@ const OrganicVegetables = () => {
       textColor: "text-orange-700"
     },
     {
-      id: 2,
+      id: "organic-veg-2",
       name: "Organic Tomato",
       category: "Organic Vegetables",
       price: 70,
@@ -40,7 +43,7 @@ const OrganicVegetables = () => {
       textColor: "text-red-700"
     },
     {
-      id: 3,
+      id: "organic-veg-3",
       name: "Organic Spinach",
       category: "Organic Vegetables",
       price: 60,
@@ -53,7 +56,7 @@ const OrganicVegetables = () => {
       textColor: "text-green-700"
     },
     {
-      id: 4,
+      id: "organic-veg-4",
       name: "Organic Lettuce",
       category: "Organic Vegetables",
       price: 90,
@@ -66,7 +69,7 @@ const OrganicVegetables = () => {
       textColor: "text-emerald-700"
     },
     {
-      id: 5,
+      id: "organic-veg-5",
       name: "Organic Broccoli",
       category: "Organic Vegetables",
       price: 120,
@@ -79,7 +82,7 @@ const OrganicVegetables = () => {
       textColor: "text-green-700"
     },
     {
-      id: 6,
+      id: "organic-veg-6",
       name: "Organic Cucumber",
       category: "Organic Vegetables",
       price: 65,
@@ -92,7 +95,7 @@ const OrganicVegetables = () => {
       textColor: "text-lime-700"
     },
     {
-      id: 7,
+      id: "organic-veg-7",
       name: "Organic Chillies",
       category: "Organic Vegetables",
       price: 110,
@@ -105,7 +108,7 @@ const OrganicVegetables = () => {
       textColor: "text-red-700"
     },
     {
-      id: 8,
+      id: "organic-veg-8",
       name: "Organic Zucchini",
       category: "Organic Vegetables",
       price: 85,
@@ -130,12 +133,22 @@ const OrganicVegetables = () => {
     }, 3000);
   };
 
+  const navigate = useNavigate(); // ✅ define navigate here
+  const { dispatch } = useCart();
+  const { user } = useAuth();
+
   const handleAddToCart = (product) => {
+    if (!user) {
+      navigate('/login'); // ✅ works now
+      return;
+    }
+
+    dispatch({ type: "ADD_TO_CART", payload: product });
     showNotification(`Added ${product.name} to cart!`);
   };
-
+     
   return (
-    <div className="w-full max-w-7xl mx-auto p-4">
+    <div className="w-full max-w-7xl mx-auto p-4 pt-20">
       <div className="mb-8 text-center">
         <h1 className="text-3xl font-bold text-green-600 hover:text-green-700 transition-colors duration-300">
           Organic Vegetables
