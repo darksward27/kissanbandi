@@ -268,7 +268,7 @@ const Orders = () => {
                                                         <Package className="w-6 h-6 text-green-600" />
                                                     </div>
                                                     <h3 className="text-xl font-bold text-gray-800 group-hover:text-green-700 transition-colors">
-                                                        Order #{order._id}
+                                                        payment {order.paymentStatus}
                                                     </h3>
                                                 </div>
                                                 
@@ -359,7 +359,7 @@ const Orders = () => {
                 </div>
             </div>
 
-            <style jsx>{`
+            <style>{`
                 @keyframes fade-in-up {
                     from {
                         opacity: 0;

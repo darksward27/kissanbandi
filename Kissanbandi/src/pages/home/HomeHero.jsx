@@ -21,7 +21,7 @@ const HomeHero = () => {
             buttonText: "SHOP NOW",
             image: image1,
             imageAlt: "Fresh produce showcase",
-            action: () => navigate('/fruitsveg')
+            action: () => navigate('/category/vegetables/fruits-veg')
         },
         {
             badge: "🌿 Premium Organic",
@@ -30,7 +30,7 @@ const HomeHero = () => {
             buttonText: "BROWSE HERBS",
             image: image2, // Using fruits image temporarily - replace with herbs image
             imageAlt: "Fresh organic herbs and greens",
-            action: () => navigate('/herbs')
+            action: () => navigate('/category/vegetables/organic-vegetables')
         },
         {
             badge: "🥗 Farm to Table",

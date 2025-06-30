@@ -43,6 +43,8 @@ api.interceptors.request.use(
   }
 );
 
+
+
 // Response interceptor for handling errors
 api.interceptors.response.use(
   (response) => response,
@@ -403,6 +405,21 @@ export const usersApi = {
   
   updateCustomer: async (userId, userData) => {
     const response = await api.put(`/users/${userId}/profile`, userData);
+    return response.data;
+  },
+
+  getWishlist: async () => {
+    const response = await api.get('/users/wishlist');
+    return response.data;
+  },
+
+  addToWishlist: async (productId) => {
+    const response = await api.post(`/users/wishlist/${productId}`);
+    return response.data;
+  },
+
+  removeFromWishlist: async (productId) => {
+    const response = await api.delete(`/users/wishlist/${productId}`);
     return response.data;
   }
 };

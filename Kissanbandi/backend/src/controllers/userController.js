@@ -375,6 +375,23 @@ exports.changePassword = async (req, res) => {
   }
 };
 
+exports.getWishlist = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.userId)
+      .populate('wishlist', 'name price image') // Adjust fields as per your Product model
+      .lean();
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    res.json(user.wishlist || []);
+  } catch (error) {
+    console.error('Error fetching wishlist:', error);
+    res.status(500).json({ error: 'Failed to fetch wishlist' });
+  }
+};
+
 // Manage wishlist
 exports.addToWishlist = async (req, res) => {
   try {

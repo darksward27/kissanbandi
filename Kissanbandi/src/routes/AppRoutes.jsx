@@ -26,6 +26,7 @@ import OrganicFruits from '../pages/fruits/OrganicFruits';
 import OrganicVegetables from '../pages/vegetables/OrganicVegetables';
 import RootVegetables from '../pages/vegetables/RootVegetables';
 import SeasonalVegetables from '../pages/vegetables/SeasonalVegetables';
+import AllProductsPage from '../pages/home/allProducts';
 import FruitsVeg from '../pages/vegetables/FruitsVeg';
 
 const AppRoutes = () => {
@@ -51,7 +52,7 @@ const AppRoutes = () => {
         <Route path="category/vegetables/seasonal-vegetables" element={<SeasonalFruits />} />
         <Route path="category/vegetables/root-vegetables" element={<RootVegetables/>} />
         <Route path="category/vegetables/fruits-veg" element={<FruitsVeg />} />
-
+        <Route path="products" element={<AllProductsPage />} />
         {/* Protected Routes */}
         <Route
           path="profile"

@@ -29,7 +29,7 @@ const CheckoutPage = () => {
 
     // Show toast if cart is empty
     if (state.items.length === 0) {
-      toast.error('Your cart is empty');
+      toast.error('Your cart is empty', { id: 'cart-empty' });
     }
 
     // Cleanup function
@@ -41,14 +41,29 @@ const CheckoutPage = () => {
     };
   }, [state.items.length]);
 
-  const updateQuantity = (id, quantity) => {
+  const updateQuantity = (item, quantity) => {
     if (quantity < 1) return;
-    dispatch({ type: 'UPDATE_QUANTITY', payload: { id, quantity } });
+      dispatch({
+    type: 'UPDATE_QUANTITY',
+    payload: {
+      id: item.id || item._id,
+      size: item.size,
+      color: item.color,
+      quantity
+    }
+  });
   };
 
-  const removeItem = (id) => {
-    dispatch({ type: 'REMOVE_FROM_CART', payload: id });
-    toast.success('Item removed from cart');
+  const removeItem = (item) => {
+  dispatch({
+    type: 'REMOVE_FROM_CART',
+    payload: {
+      id: item.id || item._id,
+      size: item.size,
+      color: item.color
+    }
+  });
+  toast.success('Item removed from cart',{ id: 'cart-empty' });
   };
 
   const calculateSubtotal = () => {
@@ -78,11 +93,12 @@ const CheckoutPage = () => {
     try {
       if (!user) {
         navigate('/login');
-        toast.error('Please login to continue');
+        toast.error('Please login to continue',{ id: 'cart-empty' });
         return;
       }
 
       if (!user.address) {
+        toast.dismiss('cart-empty');
         toast.error('Please update your address in profile to proceed');
         navigate('/profile');
         return;
@@ -95,6 +111,7 @@ const CheckoutPage = () => {
         const razorpayKey = import.meta.env.VITE_RAZORPAY_KEY_ID;
         console.log("Razorpay Key:", import.meta.env.VITE_RAZORPAY_KEY_ID);
         if (!razorpayKey || !razorpayKey.startsWith('rzp_')) {
+          toast.dismiss('cart-empty');
           toast.error('Invalid Razorpay configuration. Please contact support.');
           setIsProcessing(false);
           return;
@@ -116,6 +133,7 @@ const CheckoutPage = () => {
 
           // Check if Razorpay is loaded
           if (!window.Razorpay) {
+            toast.dismiss('cart-empty');
             toast.error('Payment system not loaded. Please refresh and try again.');
             setIsProcessing(false);
             return;
@@ -156,6 +174,7 @@ const CheckoutPage = () => {
                 }, user.token);
 
                 if (verificationResponse.success) {
+                  toast.dismiss('cart-empty');
                   toast.success('Payment successful!');
                   dispatch({ type: 'CLEAR_CART' });
                   navigate('/orders');
@@ -164,6 +183,7 @@ const CheckoutPage = () => {
                 }
               } catch (error) {
                 console.error('Payment verification error:', error);
+                toast.dismiss('cart-empty');
                 toast.error('Payment verification failed. Please contact support.');
               } finally {
                 setIsProcessing(false);
@@ -188,6 +208,7 @@ const CheckoutPage = () => {
           const razorpay = new window.Razorpay(options);
           razorpay.on('payment.failed', function (response) {
             console.error('Payment failed:', response.error);
+            toast.dismiss('cart-empty');
             toast.error(`Payment failed: ${response.error.description}`);
             setIsProcessing(false);
           });
@@ -195,7 +216,7 @@ const CheckoutPage = () => {
           razorpay.open();
         } catch (orderError) {
           console.error('Order creation error:', orderError);
-          toast.error('Failed to initiate payment. Please try again.');
+          toast.error('Failed to initiate payment. Please try again.',{ id: 'cart-empty' });
           setIsProcessing(false);
         }
       } else {
@@ -230,7 +251,7 @@ const CheckoutPage = () => {
       }, user.token);
 
       if (response._id) {
-        toast.success('Order placed successfully!');
+        toast.success('Order placed successfully!',{ id: 'cart-empty' });
         dispatch({ type: 'CLEAR_CART' });
         navigate('/orders');
       } else {
@@ -330,7 +351,7 @@ const CheckoutPage = () => {
                       <div className="flex items-center space-x-6">
                         <div className="flex items-center bg-white rounded-xl border-2 border-green-100 shadow-sm hover:shadow-md transition-all duration-200">
                           <button
-                            onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                            onClick={() => updateQuantity(item, item.quantity - 1)}
                             className="px-4 py-2 text-green-600 hover:bg-green-50 rounded-l-xl transition-colors duration-200 font-bold text-lg"
                           >
                             −
@@ -339,7 +360,7 @@ const CheckoutPage = () => {
                             {item.quantity}
                           </span>
                           <button
-                            onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                            onClick={() => updateQuantity(item, item.quantity + 1)}
                             className="px-4 py-2 text-green-600 hover:bg-green-50 rounded-r-xl transition-colors duration-200 font-bold text-lg"
                           >
                             +
@@ -347,7 +368,7 @@ const CheckoutPage = () => {
                         </div>
                         
                         <button
-                          onClick={() => removeItem(item.id)}
+                          onClick={() => removeItem(item)}
                           className="p-3 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all duration-200 transform hover:scale-110"
                         >
                           <Trash2 className="w-5 h-5" />
@@ -461,7 +482,7 @@ const CheckoutPage = () => {
         </div>
       </div>
 
-      <style jsx>{`
+      <style>{`
         @keyframes fade-in-up {
           from {
             opacity: 0;

@@ -4,16 +4,20 @@ import { useCart } from '../checkout/CartContext';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { categories } from '../../data/products';
-import { productsApi } from '../../services/api';
+import { usersApi, productsApi } from '../../services/api';
 
-const ProductCatalog = () => {
+const ProductCatalog = ({ showAll = false }) => {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [wishlist, setWishlist] = useState(new Set());
 
   useEffect(() => {
+    document.documentElement.style.scrollBehavior = 'smooth';
     window.scrollTo({ top: 0 });
     loadProducts();
+    loadWishlist();
+
     return () => {
       document.documentElement.style.scrollBehavior = 'auto';
     };
@@ -22,24 +26,38 @@ const ProductCatalog = () => {
   const loadProducts = async () => {
     try {
       setLoading(true);
+      setError(null);
       const data = await productsApi.getAllProducts();
-       console.log('Fetched from API:', data);
+      console.log('Fetched from API:', data);
       setProducts(Array.isArray(data) ? data : []);
     } catch (err) {
       setError(err.message);
-      toast.error('Failed to load products');
       setProducts([]);
+      setTimeout(() => {
+        toast.error('Failed to load products');
+      }, 0);
     } finally {
       setLoading(false);
     }
   };
+
+  const loadWishlist = async () => {
+    try {
+      const wishlistItems = await usersApi.getWishlist();
+      const ids = wishlistItems.map(item => item._id || item.id);
+      setWishlist(new Set(ids));
+    } catch (err) {
+      console.error('Failed to fetch wishlist:', err);
+    }
+  };
+
 
   const { dispatch } = useCart();
   const navigate = useNavigate();
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [sortBy, setSortBy] = useState('featured');
   const [searchQuery, setSearchQuery] = useState('');
-  const [wishlist, setWishlist] = useState(new Set());
+
 
   // Filter and sort products
   const filteredProducts = useMemo(() => {
@@ -73,6 +91,7 @@ const ProductCatalog = () => {
           return 0;
       }
     });
+    return filtered.slice(0, 12);
   }, [selectedCategory, searchQuery, sortBy, products]);
 
   const categoryOptions = [
@@ -89,24 +108,31 @@ const ProductCatalog = () => {
       type: 'ADD_TO_CART', 
       payload: product 
     });
-    toast.success(`Added ${product.name} to cart!`);
+    setTimeout(() => toast.success(`Added ${product.name} to cart!`), 0);
   };
 
-  const toggleWishlist = (productId) => {
-    if (!productId) return;
-    setWishlist(prev => {
-      const newWishlist = new Set(prev);
-      if (newWishlist.has(productId)) {
-        newWishlist.delete(productId);
-        toast.success('Removed from wishlist');
-      } else {
-        newWishlist.add(productId);
-        toast.success('Added to wishlist');
+    const toggleWishlist = async (productId) => {
+      if (!productId) return;
+
+      try {
+        const newWishlist = new Set(wishlist);
+
+        if (newWishlist.has(productId)) {
+          await usersApi.removeFromWishlist(productId);
+          newWishlist.delete(productId);
+          toast.success('Removed from wishlist');
+        } else {
+          await usersApi.addToWishlist(productId);
+          newWishlist.add(productId);
+          toast.success('Added to wishlist');
+        }
+
+        setWishlist(newWishlist);
+      } catch (error) {
+        console.error('Wishlist error:', error);
+        toast.error('Failed to update wishlist');
       }
-      return newWishlist;
-    });
-  };
-
+    };
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50">
@@ -135,7 +161,7 @@ const ProductCatalog = () => {
               <p className="text-lg font-semibold">{error}</p>
             </div>
             <button 
-              onClick={loadProducts}
+              onClick={handleRetry}
               className="bg-gradient-to-r from-green-500 to-emerald-600 text-white px-6 py-3 rounded-xl hover:from-green-600 hover:to-emerald-700 transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl"
             >
               Try Again
@@ -246,6 +272,7 @@ const ProductCatalog = () => {
                   />
                 </button>
                 
+                
                 {/* Fresh Badge */}
                 <div className="absolute top-4 left-4 bg-gradient-to-r from-green-500 to-emerald-500 text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg animate-pulse">
                   🌿 Fresh
@@ -284,6 +311,16 @@ const ProductCatalog = () => {
             </div>
           ))}
         </div>
+            {!showAll && (
+              <div className="text-center mt-10">
+                <button
+                  onClick={() => navigate('/products')}
+                  className="bg-gradient-to-r from-green-500 to-emerald-600 text-white px-6 py-3 rounded-xl hover:from-green-600 hover:to-emerald-700 transition-all duration-300 shadow-lg"
+                >
+                  See All Products
+                </button>
+              </div>
+            )}
 
         {/* Enhanced Empty State */}
         {filteredProducts.length === 0 && (
@@ -301,7 +338,7 @@ const ProductCatalog = () => {
         )}
       </div>
 
-      <style jsx="true">{`
+      <style>{`
         @keyframes fade-in {
           from { opacity: 0; transform: translateY(20px); }
           to { opacity: 1; transform: translateY(0); }

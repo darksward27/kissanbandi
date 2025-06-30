@@ -6,15 +6,21 @@ const cartReducer = (state, action) => {
   switch (action.type) {
     case 'ADD_TO_CART':
        console.log("Adding to cart:", action.payload);
-      const existingItem = state.items.find(item => item.id === action.payload.id);
+  const existingItem = state.items.find(item =>
+  (item.id || item._id) === action.payload.id &&
+  item.size === action.payload.size &&
+  item.color === action.payload.color
+);
       if (existingItem) {
         return {
           ...state,
-          items: state.items.map(item =>
-            item.id === action.payload.id
-              ? { ...item, quantity: item.quantity + 1 }
-              : item
-          ),
+      items: state.items.map(item =>
+        (item.id || item._id) === action.payload.id &&
+        item.size === action.payload.size &&
+        item.color === action.payload.color
+          ? { ...item, quantity: item.quantity + 1 }
+          : item
+      ),
         };
       }
       return {
@@ -28,17 +34,34 @@ const cartReducer = (state, action) => {
         items: action.payload,
       };
 
-    case 'REMOVE_FROM_CART':
-      return {
-        ...state,
-        items: state.items.filter(item => item.id !== action.payload),
-      };
+      case 'REMOVE_FROM_CART':
+        if (
+          !action.payload ||
+          typeof action.payload !== 'object' ||
+          !('id' in action.payload)
+        ) {
+          console.error("Invalid REMOVE_FROM_CART payload:", action.payload);
+          return state;
+        }
+
+        return {
+          ...state,
+          items: state.items.filter(item =>
+            !(
+              (item.id||item._id) === action.payload.id &&
+              item.size === action.payload.size &&
+              item.color === action.payload.color
+            )
+          ),
+        };
 
     case 'UPDATE_QUANTITY':
       return {
         ...state,
         items: state.items.map(item =>
-          item.id === action.payload.id
+          (item.id || item._id)=== action.payload.id &&
+          item.size === action.payload.size &&
+          item.color === action.payload.color
             ? { ...item, quantity: action.payload.quantity }
             : item
         ),
