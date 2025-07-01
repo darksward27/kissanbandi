@@ -10,17 +10,17 @@ exports.getProducts = async (req, res) => {
       minPrice,
       maxPrice,
       sortBy,
+      status,
       page = 1,
       limit = 12
     } = req.query;
 
     // Build query
-    const query = { status: 'active' };
+    const query = {};
+    if (status && status !== 'all') query.status = status; // Allow 'active' or 'inactive' from frontend
     if (category) query.category = category;
     if (subcategory) query.subcategory = subcategory;
-    if (search) {
-      query.$text = { $search: search };
-    }
+    if (search) query.$text = { $search: search };
     if (minPrice || maxPrice) {
       query.price = {};
       if (minPrice) query.price.$gte = Number(minPrice);
@@ -43,13 +43,11 @@ exports.getProducts = async (req, res) => {
         sortOptions.createdAt = -1;
     }
 
-    // Execute query with pagination
-    const products = await Product.find(query)
+  const products = await Product.find(query)
       .sort(sortOptions)
       .skip((page - 1) * limit)
       .limit(limit);
 
-    // Get total count for pagination
     const total = await Product.countDocuments(query);
 
     res.json({
@@ -58,10 +56,12 @@ exports.getProducts = async (req, res) => {
       page: Number(page),
       totalPages: Math.ceil(total / limit)
     });
+
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 };
+
 
 // Get single product by ID
 exports.getProduct = async (req, res) => {
@@ -107,15 +107,49 @@ exports.updateProduct = async (req, res) => {
 // Delete product (soft delete)
 exports.deleteProduct = async (req, res) => {
   try {
-    const product = await Product.findByIdAndUpdate(
+    const deletedProduct = await Product.findByIdAndDelete(req.params.id);
+
+    if (!deletedProduct) {
+      return res.status(404).json({ error: 'Product not found' });
+    }
+
+    res.json({ message: 'Product deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+exports.InactiveProduct = async (req, res) => {
+  try {
+    const updatedProduct = await Product.findByIdAndUpdate(
       req.params.id,
       { status: 'inactive' },
       { new: true }
     );
-    if (!product) {
+
+    if (!updatedProduct) {
       return res.status(404).json({ error: 'Product not found' });
     }
-    res.json({ message: 'Product deleted successfully' });
+
+    res.json({ message: 'Product marked as inactive successfully', product: updatedProduct });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+exports.ActiveProduct = async (req, res) => {
+  try {
+    const updatedProduct = await Product.findByIdAndUpdate(
+      req.params.id,
+      { status: 'active' },
+      { new: true }
+    );
+
+    if (!updatedProduct) {
+      return res.status(404).json({ error: 'Product not found' });
+    }
+
+    res.json({ message: 'Product marked as active successfully', product: updatedProduct });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

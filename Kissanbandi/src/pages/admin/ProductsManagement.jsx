@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Search, Plus, Pencil, Trash2, X, Filter, Grid, List, Eye, Package, TrendingUp, AlertCircle, CheckCircle } from 'lucide-react';
+import { Search, Plus, Pencil, Trash2, X, Filter, Grid, List, Eye, Package, TrendingUp, AlertCircle, CheckCircle, Slash,Circle } from 'lucide-react';
 import { categories } from '../../data/products';
 import ProductForm from '../../components/ProductForm';
 import { toast } from 'react-hot-toast';
@@ -17,6 +17,7 @@ const ProductsManagement = () => {
   const [sortBy, setSortBy] = useState('name');
   const [selectedProducts, setSelectedProducts] = useState([]);
   const [showFilters, setShowFilters] = useState(false);
+  const [statusFilter, setStatusFilter] = useState('all');
 
   useEffect(() => {
     loadProducts();
@@ -27,7 +28,7 @@ const ProductsManagement = () => {
       setLoading(true);
       console.log('Fetching products...');
       const productsData = await productsApi.getAllProducts();
-      
+      console.log("Received statuses:", productsData.map(p => p.status));
       console.log('Products received:', {
         data: productsData,
         isArray: Array.isArray(productsData),
@@ -89,6 +90,12 @@ const ProductsManagement = () => {
         product?.category?.toLowerCase() === filterCategory.toLowerCase()
       );
     }
+
+if (statusFilter !== 'all') {
+  filtered = filtered.filter(product =>
+    (product.status || 'active').toLowerCase() === statusFilter.toLowerCase()
+  );
+}
     
     // Sort products
     filtered.sort((a, b) => {
@@ -107,7 +114,7 @@ const ProductsManagement = () => {
     });
     
     return filtered;
-  }, [searchQuery, products, filterCategory, sortBy]);
+  }, [searchQuery, products, filterCategory, statusFilter, sortBy]);
 
   const handleAddProduct = async (productData) => {
     try {
@@ -164,6 +171,25 @@ const ProductsManagement = () => {
       }
     }
   };
+
+const handleToggleProductStatus = async (productId, newStatus) => {
+  if (!productId) return toast.error('Invalid product ID');
+
+  const action = newStatus === 'active' ? 'activate' : 'deactivate';
+
+  if (window.confirm(`Are you sure you want to ${action} this product?`)) {
+    try {
+      await productsApi.updateProduct(productId, { status: newStatus });
+      toast.success(`Product marked as ${newStatus}`);
+      await loadProducts();
+    } catch (err) {
+      console.error(`Error changing product status:`, err);
+      toast.error(err.response?.data?.error || `Failed to ${action} product`);
+    }
+  }
+};
+
+
 
   const getStockStatus = (stock) => {
     if (stock === 0) return { status: 'out', color: 'text-red-600 bg-red-100', icon: AlertCircle };
@@ -313,6 +339,16 @@ const ProductsManagement = () => {
                   <option key={category} value={category}>{category}</option>
                 ))}
               </select>
+              {/* Status Filter */}
+<select
+  value={statusFilter}
+  onChange={(e) => setStatusFilter(e.target.value)}
+  className="px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 bg-white"
+>
+  <option value="all">All Status</option>
+  <option value="active">Active</option>
+  <option value="inactive">Inactive</option>
+</select>
 
               {/* Sort */}
               <select
@@ -380,6 +416,9 @@ const ProductsManagement = () => {
                       Stock Status
                     </th>
                     <th className="px-6 py-4 text-left text-xs font-bold text-green-700 uppercase tracking-wider">
+  Status
+</th>
+                    <th className="px-12 py-4 text-left text-xs font-bold text-green-700 uppercase tracking-wider">
                       Actions
                     </th>
                   </tr>
@@ -434,6 +473,11 @@ const ProductsManagement = () => {
                             </span>
                           </div>
                         </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+  <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${product.status === 'inactive' ? 'bg-yellow-100 text-yellow-700' : 'bg-green-100 text-green-700'}`}>
+    {product.status}
+  </span>
+</td>
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                           <div className="flex items-center gap-2">
                             <button
@@ -448,6 +492,24 @@ const ProductsManagement = () => {
                             >
                               <Trash2 className="w-4 h-4" />
                             </button>
+{product.status === 'active' ? (
+  <button
+    onClick={() => handleToggleProductStatus(product._id, 'inactive')}
+    className="p-2 text-yellow-600 hover:text-yellow-900 hover:bg-yellow-100 rounded-lg transition-all duration-200"
+    title="Mark as Inactive"
+  >
+    <CheckCircle className="w-4 h-4 text-green-100 fill-green-600" />
+  </button>
+) : (
+  <button
+    onClick={() => handleToggleProductStatus(product._id, 'active')}
+    className="p-2 text-green-600 hover:text-green-900 hover:bg-green-100 rounded-lg transition-all duration-200"
+    title="Mark as Active"
+  >
+    <Circle className="w-4 h-4 text-red-400 fill-red-600" />
+  </button>
+)}
+
                           </div>
                         </td>
                       </tr>
@@ -508,9 +570,23 @@ const ProductsManagement = () => {
                           <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
-                      <button className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all duration-200">
-                        <Eye className="w-4 h-4" />
-                      </button>
+{product.status === 'active' ? (
+  <button
+    onClick={() => handleToggleProductStatus(product._id, 'inactive')}
+    className="p-2 text-yellow-600 hover:text-yellow-900 hover:bg-yellow-100 rounded-lg transition-all duration-200"
+    title="Mark as Inactive"
+  >
+    <CheckCircle className="w-4 h-4 text-green-100 fill-green-600" />
+  </button>
+) : (
+  <button
+    onClick={() => handleToggleProductStatus(product._id, 'active')}
+    className="p-2 text-green-600 hover:text-green-900 hover:bg-green-100 rounded-lg transition-all duration-200"
+    title="Mark as Active"
+  >
+    <Circle className="w-4 h-4 text-red-400 fill-red-600" />
+  </button>
+)}
                     </div>
                   </div>
                 </div>

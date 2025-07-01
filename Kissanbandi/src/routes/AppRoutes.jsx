@@ -49,7 +49,7 @@ const AppRoutes = () => {
         
         <Route path="category/vegetables/organic-vegetables" element={<OrganicVegetables />} />
         <Route path="category/vegetables/fresh-vegetables" element={<FreshVegetables />} />        
-        <Route path="category/vegetables/seasonal-vegetables" element={<SeasonalFruits />} />
+        <Route path="category/vegetables/seasonal-vegetables" element={<SeasonalVegetables />} />
         <Route path="category/vegetables/root-vegetables" element={<RootVegetables/>} />
         <Route path="category/vegetables/fruits-veg" element={<FruitsVeg />} />
         <Route path="products" element={<AllProductsPage />} />

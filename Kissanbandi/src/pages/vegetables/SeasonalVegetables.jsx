@@ -1,246 +1,303 @@
-import React, { useState } from 'react';
-import { Heart, Star } from 'lucide-react';
-import Image1 from "../../assets/images2/capsicum.avif"
-import Image2 from "../../assets/images2/peas.avif"
-import Image3 from "../../assets/images2/corn.avif"
-import Image4 from "../../assets/images2/beetroot.jpg"
-import Image5 from "../../assets/images2/cabbage.png"
-import Image6 from "../../assets/images2/mushroom.jpeg"
-import Image7 from "../../assets/images2/potato.avif"
-import Image8 from "../../assets/images2/onion.avif"
-import { useCart } from "../checkout/CartContext";
+import React, { useState, useMemo, useEffect } from 'react';
+import {
+  Filter, Search, ChevronDown, Heart, ShoppingCart, Sparkles
+} from 'lucide-react';
+import { useCart } from '../checkout/CartContext';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../checkout/AuthProvider';
+import { toast } from 'react-hot-toast';
+import { categories } from '../../data/products';
+import { usersApi, productsApi } from '../../services/api';
 
-const SeasonalVegetables = () => {
-  const [notifications, setNotifications] = useState([]);
-  
-  const seasonalVegetables = [
-    {
-      id: 'seasonal-1',
-      name: "Fresh Capsicum",
-      category: "Seasonal Vegetables",
-      price: 70,
-      rating: 4.7,
-      reviews: 142,
-      image: Image1,
-      unit: "kg",
-      description: "Crisp bell peppers",
-      bgColor: "bg-green-50",
-      textColor: "text-green-700"
-    },
-    {
-      id: 'seasonal-2',
-      name: "Fresh Green Peas",
-      category: "Seasonal Vegetables",
-      price: 80,
-      rating: 4.5,
-      reviews: 128,
-      image: Image2,
-      unit: "kg",
-      description: "Sweet green peas",
-      bgColor: "bg-lime-50",
-      textColor: "text-lime-700"
-    },
-    {
-      id: 'seasonal-3',
-      name: "Fresh Corn",
-      category: "Seasonal Vegetables",
-      price: 40,
-      rating: 4.5,
-      reviews: 132,
-      image: Image3,
-      unit: "piece",
-      description: "Sweet corn cobs",
-      bgColor: "bg-amber-50",
-      textColor: "text-amber-700"
-    },
-    {
-      id: 'seasonal-4',
-      name: "Fresh Beans",
-      category: "Seasonal Vegetables",
-      price: 50,
-      rating: 4.4,
-      reviews: 134,
-      image: Image4,
-      unit: "kg",
-      description: "Fresh green beans",
-      bgColor: "bg-emerald-50",
-      textColor: "text-emerald-700"
-    },
-    {
-      id: 'seasonal-5',
-      name: "Fresh Cabbage",
-      category: "Seasonal Vegetables",
-      price: 45,
-      rating: 4.6,
-      reviews: 156,
-      image: Image5,
-      unit: "piece",
-      description: "Fresh cabbage heads",
-      bgColor: "bg-gray-50",
-      textColor: "text-gray-700"
-    },
-    {
-      id: 'seasonal-6',
-      name: "Fresh Mushroom",
-      category: "Seasonal Vegetables",
-      price: 120,
-      rating: 4.8,
-      reviews: 145,
-      image: Image6,
-      unit: "kg",
-      description: "Button mushrooms",
-      bgColor: "bg-stone-50",
-      textColor: "text-stone-700"
-    },
-    {
-      id: 'seasonal-7',
-      name: "Fresh Potato",
-      category: "Seasonal Vegetables",
-      price: 40,
-      rating: 4.6,
-      reviews: 178,
-      image: Image7,
-      unit: "kg",
-      description: "Farm-fresh potatoes",
-      bgColor: "bg-yellow-50",
-      textColor: "text-yellow-700"
-    },
-    {
-      id: 'seasonal-8',
-      name: "Fresh Onion",
-      category: "Seasonal Vegetables",
-      price: 35,
-      rating: 4.5,
-      reviews: 165,
-      image: Image8,
-      unit: "kg",
-      description: "Premium quality onions",
-      bgColor: "bg-purple-50",
-      textColor: "text-purple-700"
+const SeasonalVegetables = ({ showAll = false }) => {
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [wishlist, setWishlist] = useState(new Set());
+
+  const { dispatch } = useCart();
+  const navigate = useNavigate();
+  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [sortBy, setSortBy] = useState('featured');
+  const [searchQuery, setSearchQuery] = useState('');
+
+  useEffect(() => {
+    document.documentElement.style.scrollBehavior = 'smooth';
+    window.scrollTo({ top: 0 });
+    loadProducts();
+    loadWishlist();
+
+    return () => {
+      document.documentElement.style.scrollBehavior = 'auto';
+    };
+  }, []);
+
+  const loadProducts = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await productsApi.getAllProducts();
+      let allProducts = Array.isArray(data) ? data : [];
+
+      // Filter for seasonal vegetables if showAll is false
+      if (!showAll) {
+        allProducts = allProducts.filter(
+          p =>
+            p?.subcategory?.toLowerCase() === 'seasonal Vegetables' && p?.category?.toLowerCase()==='Vegetables'&&
+            p.status === 'active'
+        );
+      }
+
+      setProducts(allProducts);
+    } catch (err) {
+      setError(err.message);
+      setProducts([]);
+      setTimeout(() => toast.error('Failed to load products'), 0);
+    } finally {
+      setLoading(false);
     }
+  };
+
+  const loadWishlist = async () => {
+    try {
+      const wishlistItems = await usersApi.getWishlist();
+      const ids = wishlistItems.map(item => item._id || item.id);
+      setWishlist(new Set(ids));
+    } catch (err) {
+      console.error('Failed to fetch wishlist:', err);
+    }
+  };
+
+  const filteredProducts = useMemo(() => {
+    if (!Array.isArray(products)) return [];
+
+    let filtered = [...products];
+
+    if (showAll) {
+      if (selectedCategory !== 'all') {
+        filtered = filtered.filter(product =>
+          product?.category?.toLowerCase() === selectedCategory.toLowerCase()
+        );
+      }
+
+      if (searchQuery) {
+        filtered = filtered.filter(product =>
+          product?.name?.toLowerCase().includes(searchQuery.toLowerCase())
+        );
+      }
+    }
+
+    return filtered.sort((a, b) => {
+      if (!a || !b) return 0;
+
+      switch (sortBy) {
+        case 'price-low':
+          return (a.price || 0) - (b.price || 0);
+        case 'price-high':
+          return (b.price || 0) - (a.price || 0);
+        case 'rating':
+          return (b.rating || 0) - (a.rating || 0);
+        default:
+          return 0;
+      }
+    });
+  }, [selectedCategory, searchQuery, sortBy, products, showAll]);
+
+  const categoryOptions = [
+    { value: 'all', label: 'All Categories' },
+    ...categories.map(cat => ({
+      value: cat.name.toLowerCase(),
+      label: cat.name
+    }))
   ];
 
-  const showNotification = (message) => {
-    const newNotification = {
-      id: Date.now(),
-      message
-    };
-    setNotifications(prev => [...prev, newNotification]);
-    setTimeout(() => {
-      setNotifications(prev => prev.filter(n => n.id !== newNotification.id));
-    }, 3000);
-  };
-
-  const navigate = useNavigate(); // ✅ define navigate here
-  const { dispatch } = useCart();
-  const { user } = useAuth();
-
   const handleAddToCart = (product) => {
-    if (!user) {
-      navigate('/login'); // ✅ works now
-      return;
-    }
-
-    dispatch({ type: "ADD_TO_CART", payload: product });
-    showNotification(`Added ${product.name} to cart!`);
+    if (!product) return;
+    dispatch({ type: 'ADD_TO_CART', payload: product });
+    toast.success(`Added ${product.name} to cart!`);
   };
+
+  const toggleWishlist = async (productId) => {
+    if (!productId) return;
+
+    try {
+      const newWishlist = new Set(wishlist);
+
+      if (newWishlist.has(productId)) {
+        await usersApi.removeFromWishlist(productId);
+        newWishlist.delete(productId);
+        toast.success('Removed from wishlist');
+      } else {
+        await usersApi.addToWishlist(productId);
+        newWishlist.add(productId);
+        toast.success('Added to wishlist');
+      }
+
+      setWishlist(newWishlist);
+    } catch (error) {
+      console.error('Wishlist error:', error);
+      toast.error('Failed to update wishlist');
+    }
+  };
+
+  const handleRetry = () => {
+    loadProducts();
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-white">
+        <div className="animate-spin rounded-full h-16 w-16 border-4 border-green-200 border-t-green-600" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-red-50 text-center p-8">
+        <div>
+          <p className="text-red-600 font-semibold text-lg mb-4">{error}</p>
+          <button
+            onClick={handleRetry}
+            className="bg-red-600 text-white px-6 py-2 rounded-md hover:bg-red-700 transition"
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="w-full max-w-7xl mx-auto p-4 pt-24">
-      <div className="mb-8 text-center">
-        <h1 className="text-3xl font-bold text-green-600 hover:text-green-700 transition-colors duration-300">
-          Seasonal Vegetables
-        </h1>
-        <p className="text-green-600 mt-2 text-lg hover:text-green-700 transition-colors duration-300">
-          Fresh seasonal vegetables at 20% off
-        </p>
-      </div>
+    <div className="min-h-screen bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50">
+      <div className="container mx-auto px-4 py-8">
 
-      {/* Notifications */}
-      <div className="fixed top-4 right-4 z-50">
-        {notifications.map(notification => (
-          <div
-            key={notification.id}
-            className="bg-green-600 text-white px-4 py-2 rounded-lg mb-2 shadow-lg animate-fade-in"
-          >
-            {notification.message}
+        {/* Header */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-12">
+          <div>
+            <h1 className="text-4xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">
+              {showAll ? 'Our Products' : 'Seasonal Vegetables'}
+            </h1>
+            <p className="text-gray-600 mt-2 text-lg">
+              🌱 Fresh from the farm to your table
+            </p>
           </div>
-        ))}
-      </div>
+          <div className="flex items-center mt-4 md:mt-0">
+            <Sparkles className="text-green-500 mr-2" />
+            <span className="text-gray-700">
+              Showing {filteredProducts.length} fresh products
+            </span>
+          </div>
+        </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        {seasonalVegetables.map((product) => (
-          <div
-            key={product.id}
-            className="bg-white rounded-xl shadow-sm overflow-hidden hover:shadow-md transition-shadow duration-300"
-          >
-            <div className="relative">
+        {/* Filters */}
+        {showAll && (
+          <div className="bg-white rounded-xl p-4 shadow-md mb-8 flex flex-col md:flex-row gap-4">
+            <input
+              type="text"
+              placeholder="Search products..."
+              className="flex-1 px-4 py-2 border border-green-200 rounded-lg"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+
+            <select
+              className="px-4 py-2 border border-green-200 rounded-lg"
+              value={selectedCategory}
+              onChange={(e) => setSelectedCategory(e.target.value)}
+            >
+              {categoryOptions.map(category => (
+                <option key={category.value} value={category.value}>
+                  {category.label}
+                </option>
+              ))}
+            </select>
+
+            <select
+              className="px-4 py-2 border border-green-200 rounded-lg"
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+            >
+              <option value="featured">✨ Featured</option>
+              <option value="price-low">💰 Price: Low to High</option>
+              <option value="price-high">💎 Price: High to Low</option>
+              <option value="rating">⭐ Top Rated</option>
+            </select>
+          </div>
+        )}
+
+        {/* Products Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+          {filteredProducts.map(product => (
+            <div
+              key={product._id}
+              className="bg-white rounded-xl shadow-lg p-4 relative group flex flex-col"
+            >
               <img
                 src={product.image}
                 alt={product.name}
-                className="w-full h-48 object-cover"
-                onError={(e) => {
-                  e.target.style.display = 'none';
-                  e.target.nextSibling.style.display = 'flex';
-                }}
+                className="w-full h-48 object-cover rounded-md mb-4"
               />
-              <div 
-                className={`w-full h-48 items-center justify-center ${product.bgColor} hidden`}
-              >
-                <div className="text-center p-4">
-                  <span className={`font-medium ${product.textColor} text-lg`}>
-                    {product.name}
-                  </span>
-                  <p className={`${product.textColor} text-sm mt-2`}>
-                    {product.description}
-                  </p>
-                </div>
-              </div>
-              <button 
-                className="absolute top-2 right-2 p-2 rounded-full bg-white/80 hover:bg-white transition-colors"
-                aria-label="Add to wishlist"
-              >
-                <Heart className="w-5 h-5 text-gray-600 hover:text-green-600 transition-colors" />
-              </button>
-            </div>
-            
-            <div className="p-4">
-              <div className="text-sm text-green-600 font-medium mb-1 capitalize">
-                {product.category}
-              </div>
-              <h3 className="text-lg font-semibold text-gray-800 hover:text-green-600 transition-colors">
-                {product.name}
-              </h3>
-              
-              <div className="flex items-center mt-2">
-                <div className="flex items-center">
-                  <Star className="w-5 h-5 text-yellow-400 fill-current" />
-                  <span className="ml-1 text-gray-600">{product.rating}</span>
-                </div>
-                <span className="mx-2 text-gray-400">•</span>
-                <span className="text-gray-600">{product.reviews} reviews</span>
-              </div>
 
-              <div className="flex justify-between items-center mt-4">
-                <div className="text-lg font-bold text-gray-800 hover:text-green-600 transition-colors">
-                  ₹{product.price}
-                  <span className="text-sm text-gray-600 font-normal">/{product.unit}</span>
+              <button
+                onClick={() => toggleWishlist(product._id)}
+                className="absolute top-3 right-3 bg-white p-2 rounded-full shadow"
+              >
+                <Heart
+                  className={`w-5 h-5 ${
+                    wishlist.has(product._id) ? 'text-red-500 fill-current' : 'text-gray-400'
+                  }`}
+                />
+              </button>
+
+              <h3 className="text-lg font-semibold text-gray-800">{product.name}</h3>
+              <p className="text-gray-600 text-sm capitalize">{product.category}</p>
+
+              <div className="mt-auto pt-4 flex justify-between items-center">
+                <div className="text-xl font-bold text-green-700">
+                  ₹{product.price} <span className="text-sm text-gray-500">/{product.unit}</span>
                 </div>
                 <button
                   onClick={() => handleAddToCart(product)}
-                  className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-colors duration-300"
+                  className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600"
                 >
-                  Add to Cart
+                  <ShoppingCart className="inline w-4 h-4 mr-1" />
+                  Add
                 </button>
               </div>
             </div>
+          ))}
+        </div>
+
+        {/* See All Button */}
+        {!showAll && (
+          <div className="text-center mt-10">
+            <button
+              onClick={() => navigate('/products')}
+              className="bg-gradient-to-r from-green-500 to-emerald-600 text-white px-6 py-3 rounded-xl hover:from-green-600 hover:to-emerald-700 transition-all duration-300 shadow-lg"
+            >
+              See All Products
+            </button>
           </div>
-        ))}
+        )}
+
+        {/* Empty State */}
+        {filteredProducts.length === 0 && (
+          <div className="text-center py-16">
+            <div className="bg-white rounded-2xl shadow-xl p-12 max-w-md mx-auto border border-green-100">
+              <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                <Search className="w-12 h-12 text-green-500" />
+              </div>
+              <h3 className="text-xl font-bold text-gray-800 mb-2">No products found</h3>
+              <p className="text-gray-600">
+                Try adjusting your search or filter criteria to find fresh products.
+              </p>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
 };
 
 export default SeasonalVegetables;
+

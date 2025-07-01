@@ -157,6 +157,15 @@ export const productsApi = {
     const response = await api.delete(`/products/${id}`);
     return response.data;
   },
+    InactiveProduct: async (id) => {
+      const response = await api.patch(`/products/${id}/inactive`);
+      return response.data;
+    },
+
+    ActiveProduct: async (id) => {
+      const response = await api.patch(`/products/${id}/active`);
+      return response.data;
+    },
 
   // Get products by category
   getProductsByCategory: async (category, subcategory = null) => {
