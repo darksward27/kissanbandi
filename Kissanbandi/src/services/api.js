@@ -3,13 +3,15 @@ import { toast } from 'react-hot-toast';
 
 // Create axios instance with default config
 const api = axios.create({
-  baseURL: 'http://localhost:5000/api',
+  baseURL: import.meta.env.MODE === 'development'
+    ? 'http://localhost:5000/api'
+    : 'https://kissanbandi-1.onrender.com/api',
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
   },
-  withCredentials: true, // Important for CORS
-  timeout: 30000, // 30 second timeout
+  withCredentials: true,
+  timeout: 30000,
 });
 
 // Request interceptor for adding auth token
