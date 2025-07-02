@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../checkout/AuthProvider';
 import { useCart } from '../checkout/CartContext';
 import { toast } from 'react-hot-toast';
-import { Heart, ShoppingCart, Loader, Trash2, Sparkles } from 'lucide-react';
+import { Heart, ShoppingCart, Loader, Trash2, Sparkles, AlertCircle } from 'lucide-react';
 import api from '../../services/api';
 
 const Wishlist = () => {
@@ -48,6 +48,13 @@ const Wishlist = () => {
   };
 
   const handleAddToCart = (product) => {
+    // Check if product is accessible before adding to cart
+    const productStatus = getProductStatus(product);
+    if (productStatus.type !== 'available') {
+      toast.error(productStatus.message);
+      return;
+    }
+
     dispatch({
       type: 'ADD_TO_CART',
       payload: {
@@ -61,6 +68,22 @@ const Wishlist = () => {
     setTimeout(() => {
       toast.success(`${product.name} added to cart`);
     }, 0);
+  };
+
+  // Updated helper function to get stock status - matches ProductCatalog logic
+  const getProductStatus = (product) => {
+    if (product?.status === 'inactive') {
+      return { type: 'unavailable', message: 'Product is unavailable' };
+    }
+    if (product?.stock === 0) {
+      return { type: 'out-of-stock', message: 'Out of stock' };
+    }
+    return { type: 'available', message: 'Available' };
+  };
+
+  const isProductUnavailable = (product) => {
+    const status = getProductStatus(product);
+    return status.type !== 'available';
   };
 
   if (loading) {
@@ -133,76 +156,146 @@ const Wishlist = () => {
         ) : (
           /* Enhanced Product Grid */
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
-            {wishlist.map((product, index) => (
-              <div 
-                key={product._id} 
-                className="bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-2xl transition-all duration-500 group border border-green-100 hover:border-green-200 transform hover:-translate-y-2 animate-fade-in-up flex flex-col h-full"
-                style={{ animationDelay: `${index * 100}ms` }}
-              >
-                <div className="relative overflow-hidden">
-                  <div className="absolute inset-0 bg-gradient-to-t from-green-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                  <img
-                    src={product.image}
-                    alt={product.name}
-                    className="w-full h-48 object-contain transform group-hover:scale-110 transition-transform duration-500 p-4"
-                  />
-                  
-                  {/* Remove from Wishlist Button */}
-                  <button 
-                    onClick={() => handleRemoveFromWishlist(product._id)}
-                    className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm rounded-full p-2.5 shadow-lg hover:bg-red-50 hover:scale-110 transition-all duration-300 border border-red-100 group/remove"
-                  >
-                    <Trash2 className="w-5 h-5 text-red-500 group-hover/remove:text-red-600 transition-colors duration-300" />
-                  </button>
-                  
-                  {/* Wishlist Badge */}
-                  <div className="absolute top-4 left-4 bg-gradient-to-r from-red-500 to-pink-500 text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg animate-pulse">
-                    💖 Saved
-                  </div>
-
-                  {/* Fresh Badge */}
-                  <div className="absolute bottom-4 left-4 bg-gradient-to-r from-green-500 to-emerald-500 text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg">
-                    🌿 Fresh
-                  </div>
-                </div>
-                
-                <div className="p-6 flex flex-col flex-grow">
-                  <div className="text-sm text-green-600 font-bold mb-3 capitalize bg-green-50 px-3 py-1 rounded-full inline-block">
-                    {product.category || 'Fresh Product'}
-                  </div>
-                  <h3 className="text-xl font-bold text-gray-800 mb-3 group-hover:text-green-700 transition-colors duration-300 flex-grow">
-                    {product.name}
-                  </h3>
-                  
-                  {product.description && (
-                    <p className="text-gray-600 text-sm mb-4 line-clamp-2">
-                      {product.description}
-                    </p>
-                  )}
-
-                  <div className="flex justify-between items-end mt-auto">
-                    <div className="flex flex-col">
-                      <div className="text-2xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">
-                        ₹{product.price}
+            {wishlist.map((product, index) => {
+              const productStatus = getProductStatus(product);
+              const isUnavailable = productStatus.type !== 'available';
+              
+              return (
+                <div 
+                  key={product._id} 
+                  className={`bg-white rounded-2xl shadow-lg overflow-hidden transition-all duration-500 group border border-green-100 flex flex-col h-full animate-fade-in-up ${
+                    !isUnavailable 
+                      ? 'hover:shadow-2xl hover:border-green-200 transform hover:-translate-y-2' 
+                      : 'opacity-75'
+                  }`}
+                  style={{ animationDelay: `${index * 100}ms` }}
+                >
+                  <div className="relative overflow-hidden">
+                    <div className={`absolute inset-0 bg-gradient-to-t from-green-500/10 to-transparent opacity-0 transition-opacity duration-300 ${
+                      !isUnavailable ? 'group-hover:opacity-100' : ''
+                    }`}></div>
+                    
+                    {/* Stock overlay for unavailable products */}
+                    {isUnavailable && (
+                      <div className="absolute inset-0 bg-black/40 backdrop-blur-[1px] z-10 flex items-center justify-center">
+                        <div className={`px-4 py-2 rounded-full text-white font-bold text-sm flex items-center ${
+                          productStatus.type === 'unavailable' ? 'bg-gray-600' : 'bg-red-600'
+                        }`}>
+                          <AlertCircle className="w-4 h-4 mr-2" />
+                          {productStatus.type === 'unavailable' ? 'Unavailable' : 'Out of Stock'}
+                        </div>
                       </div>
-                      <span className="text-sm text-gray-600 font-normal">
-                        /{product.unit || 'piece'}
-                      </span>
-                    </div>
+                    )}
+                    
+                    <img
+                      src={product.image}
+                      alt={product.name}
+                      className={`w-full h-48 object-contain transition-transform duration-500 p-4 ${
+                        !isUnavailable 
+                          ? 'transform group-hover:scale-110' 
+                          : 'filter grayscale'
+                      }`}
+                    />
+                    
+                    {/* Remove from Wishlist Button - always accessible */}
                     <button 
-                      onClick={() => handleAddToCart(product)}
-                      className="bg-gradient-to-r from-green-500 to-emerald-600 text-white px-4 py-2 rounded-xl hover:from-green-600 hover:to-emerald-700 transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl flex items-center group/btn font-medium text-sm whitespace-nowrap"
+                      onClick={() => handleRemoveFromWishlist(product._id)}
+                      className="absolute top-4 right-4 bg-white/95 backdrop-blur-sm rounded-full p-2.5 shadow-lg hover:bg-red-50 hover:scale-110 transition-all duration-300 border border-red-100 group/remove z-20"
                     >
-                      <ShoppingCart className="w-4 h-4 mr-1 group-hover/btn:animate-bounce" />
-                      Add to Cart
+                      <Trash2 className="w-5 h-5 text-red-500 group-hover/remove:text-red-600 transition-colors duration-300" />
                     </button>
-                  </div>
-                </div>
+                    
+                    {/* Wishlist Badge */}
+                    <div className="absolute top-4 left-4 bg-gradient-to-r from-red-500 to-pink-500 text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg animate-pulse z-20">
+                      💖 Saved
+                    </div>
 
-                {/* Animated border effect */}
-                <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-red-400 via-pink-400 to-green-400 opacity-0 group-hover:opacity-20 transition-opacity duration-300 pointer-events-none"></div>
-              </div>
-            ))}
+                    {/* Stock Status Badge - show appropriate status */}
+                    {productStatus.type === 'unavailable' ? (
+                      <div className="absolute bottom-4 left-4 bg-gradient-to-r from-gray-500 to-gray-600 text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg z-20">
+                        🚫 Unavailable
+                      </div>
+                    ) : productStatus.type === 'out-of-stock' ? (
+                      <div className="absolute bottom-4 left-4 bg-gradient-to-r from-red-500 to-red-600 text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg z-20">
+                        ❌ Out of Stock
+                      </div>
+                    ) : (
+                      <div className="absolute bottom-4 left-4 bg-gradient-to-r from-green-500 to-emerald-500 text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg z-20">
+                        ✅ Available
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="p-6 flex flex-col flex-grow">
+                    <div className="text-sm text-green-600 font-bold mb-3 capitalize bg-green-50 px-3 py-1 rounded-full inline-block">
+                      {product.category || 'Fresh Product'}
+                    </div>
+                    <h3 className={`text-xl font-bold mb-3 transition-colors duration-300 flex-grow ${
+                      !isUnavailable 
+                        ? 'text-gray-800 group-hover:text-green-700' 
+                        : 'text-gray-500'
+                    }`}>
+                      {product.name}
+                    </h3>
+                    
+                    {product.description && (
+                      <p className={`text-sm mb-4 line-clamp-2 ${
+                        !isUnavailable ? 'text-gray-600' : 'text-gray-400'
+                      }`}>
+                        {product.description}
+                      </p>
+                    )}
+
+                    <div className="flex justify-between items-end mt-auto">
+                      <div className="flex flex-col">
+                        <div className={`text-2xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent ${
+                          isUnavailable ? 'opacity-50' : ''
+                        }`}>
+                          ₹{product.price}
+                        </div>
+                        <span className={`text-sm font-normal ${
+                          isUnavailable ? 'text-gray-400' : 'text-gray-600'
+                        }`}>
+                          /{product.unit || 'piece'}
+                        </span>
+                        {productStatus.type === 'available' && product.stock && (
+                          <span className="text-xs text-green-600 font-medium mt-1">
+                            {product.stock} in stock
+                          </span>
+                        )}
+                      </div>
+                      
+                      {productStatus.type === 'unavailable' ? (
+                        <div className="text-gray-500 font-semibold text-sm px-4 py-2 bg-gray-50 rounded-xl border border-gray-200">
+                          Product is unavailable
+                        </div>
+                      ) : productStatus.type === 'out-of-stock' ? (
+                        <div className="text-red-500 font-semibold text-sm px-4 py-2 bg-red-50 rounded-xl border border-red-200">
+                          Sorry, Out of Stock
+                        </div>
+                      ) : (
+                        <button 
+                          onClick={() => handleAddToCart(product)}
+                          className="px-4 py-2 rounded-xl transition-all duration-300 transform shadow-lg flex items-center group/btn font-medium text-sm whitespace-nowrap bg-gradient-to-r from-green-500 to-emerald-600 text-white hover:from-green-600 hover:to-emerald-700 hover:scale-105 hover:shadow-xl"
+                        >
+                          <ShoppingCart className="w-4 h-4 mr-1 group-hover/btn:animate-bounce" />
+                          Add to Cart
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Animated border effect - only for available products */}
+                  <div className={`absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-20 transition-opacity duration-300 pointer-events-none ${
+                    productStatus.type === 'unavailable' 
+                      ? 'bg-gradient-to-r from-gray-400 to-gray-500' 
+                      : productStatus.type === 'out-of-stock'
+                      ? 'bg-gradient-to-r from-red-400 to-red-500'
+                      : 'bg-gradient-to-r from-red-400 via-pink-400 to-green-400'
+                  }`}></div>
+                </div>
+              );
+            })}
           </div>
         )}
 

@@ -51,13 +51,27 @@ const ProductCatalog = ({ showAll = false }) => {
     }
   };
 
-
   const { dispatch } = useCart();
   const navigate = useNavigate();
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [sortBy, setSortBy] = useState('featured');
   const [searchQuery, setSearchQuery] = useState('');
 
+  // Check product availability
+  const getProductStatus = (product) => {
+    if (product?.status === 'inactive') {
+      return { type: 'unavailable', message: 'Product is unavailable' };
+    }
+    if (product?.stock === 0) {
+      return { type: 'out-of-stock', message: 'Out of stock' };
+    }
+    return { type: 'available', message: 'Available' };
+  };
+
+  const isProductUnavailable = (product) => {
+    const status = getProductStatus(product);
+    return status.type !== 'available';
+  };
 
   // Filter and sort products
   const filteredProducts = useMemo(() => {
@@ -104,6 +118,14 @@ const ProductCatalog = ({ showAll = false }) => {
 
   const handleAddToCart = (product) => {
     if (!product) return;
+    
+    // Check product availability
+    const productStatus = getProductStatus(product);
+    if (productStatus.type !== 'available') {
+      toast.error(`Sorry, ${productStatus.message.toLowerCase()}!`);
+      return;
+    }
+    
     dispatch({ 
       type: 'ADD_TO_CART', 
       payload: product 
@@ -111,28 +133,33 @@ const ProductCatalog = ({ showAll = false }) => {
     setTimeout(() => toast.success(`Added ${product.name} to cart!`), 0);
   };
 
-    const toggleWishlist = async (productId) => {
-      if (!productId) return;
+  const toggleWishlist = async (productId) => {
+    if (!productId) return;
 
-      try {
-        const newWishlist = new Set(wishlist);
+    try {
+      const newWishlist = new Set(wishlist);
 
-        if (newWishlist.has(productId)) {
-          await usersApi.removeFromWishlist(productId);
-          newWishlist.delete(productId);
-          toast.success('Removed from wishlist');
-        } else {
-          await usersApi.addToWishlist(productId);
-          newWishlist.add(productId);
-          toast.success('Added to wishlist');
-        }
-
-        setWishlist(newWishlist);
-      } catch (error) {
-        console.error('Wishlist error:', error);
-        toast.error('Failed to update wishlist');
+      if (newWishlist.has(productId)) {
+        await usersApi.removeFromWishlist(productId);
+        newWishlist.delete(productId);
+        toast.success('Removed from wishlist');
+      } else {
+        await usersApi.addToWishlist(productId);
+        newWishlist.add(productId);
+        toast.success('Added to wishlist');
       }
-    };
+
+      setWishlist(newWishlist);
+    } catch (error) {
+      console.error('Wishlist error:', error);
+      toast.error('Failed to update wishlist');
+    }
+  };
+
+  const handleRetry = () => {
+    loadProducts();
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50">
@@ -246,81 +273,124 @@ const ProductCatalog = ({ showAll = false }) => {
 
         {/* Enhanced Product Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
-          {filteredProducts.map((product, index) => (
-            <div 
-              key={product._id || product.id} 
-              className="bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-2xl transition-all duration-500 group border border-green-100 hover:border-green-200 transform hover:-translate-y-2 animate-fade-in-up flex flex-col h-full"
-              style={{ animationDelay: `${index * 100}ms` }}
-            >
-              <div className="relative overflow-hidden">
-                <div className="absolute inset-0 bg-gradient-to-t from-green-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                <img
-                  src={product.image}
-                  alt={product.name}
-                  className="w-full h-48 object-contain transform group-hover:scale-110 transition-transform duration-500 p-4"
-                />
-                <button 
-                  onClick={() => toggleWishlist(product._id || product.id)}
-                  className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm rounded-full p-2.5 shadow-lg hover:bg-white hover:scale-110 transition-all duration-300 border border-green-100"
-                >
-                  <Heart 
-                    className={`w-5 h-5 transition-all duration-300 ${
-                      wishlist.has(product._id || product.id) 
-                        ? 'text-red-500 fill-current animate-pulse' 
-                        : 'text-gray-600 hover:text-red-400'
-                    }`} 
+          {filteredProducts.map((product, index) => {
+            const productStatus = getProductStatus(product);
+            const isUnavailable = productStatus.type !== 'available';
+            
+            return (
+              <div 
+                key={product._id || product.id} 
+                className={`bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-2xl transition-all duration-500 group border border-green-100 hover:border-green-200 transform hover:-translate-y-2 animate-fade-in-up flex flex-col h-full ${
+                  isUnavailable ? 'opacity-75' : ''
+                }`}
+                style={{ animationDelay: `${index * 100}ms` }}
+              >
+                <div className="relative overflow-hidden">
+                  <div className="absolute inset-0 bg-gradient-to-t from-green-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                  <img
+                    src={product.image}
+                    alt={product.name}
+                    className={`w-full h-48 object-contain transform group-hover:scale-110 transition-transform duration-500 p-4 ${
+                      isUnavailable ? 'filter grayscale' : ''
+                    }`}
                   />
-                </button>
-                
-                
-                {/* Fresh Badge */}
-                <div className="absolute top-4 left-4 bg-gradient-to-r from-green-500 to-emerald-500 text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg animate-pulse">
-                  🌿 Fresh
-                </div>
-              </div>
-              
-                <div className="p-6 flex flex-col flex-grow">
-                <div className="text-sm text-green-600 font-bold mb-3 capitalize bg-green-50 px-3 py-1 rounded-full inline-block">
-                  {product.category}
-                </div>
-                <h3 className="text-xl font-bold text-gray-800 mb-4 group-hover:text-green-700 transition-colors duration-300 flex-grow">
-                  {product.name}
-                </h3>
-
-                <div className="flex justify-between items-end">
-                  <div className="flex flex-col">
-                    <div className="text-2xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">
-                      ₹{product.price}
-                    </div>
-                    <span className="text-sm text-gray-600 font-normal">
-                      /{product.unit}
-                    </span>
-                  </div>
                   <button 
-                    onClick={() => handleAddToCart(product)}
-                    className="bg-gradient-to-r from-green-500 to-emerald-600 text-white px-4 py-2 rounded-xl hover:from-green-600 hover:to-emerald-700 transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl flex items-center group/btn font-medium text-sm whitespace-nowrap"
+                    onClick={() => toggleWishlist(product._id || product.id)}
+                    className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm rounded-full p-2.5 shadow-lg hover:bg-white hover:scale-110 transition-all duration-300 border border-green-100"
                   >
-                    <ShoppingCart className="w-4 h-4 mr-1 group-hover/btn:animate-bounce" />
-                    Add to Cart
+                    <Heart 
+                      className={`w-5 h-5 transition-all duration-300 ${
+                        wishlist.has(product._id || product.id) 
+                          ? 'text-red-500 fill-current animate-pulse' 
+                          : 'text-gray-600 hover:text-red-400'
+                      }`} 
+                    />
                   </button>
+                  
+                  {/* Status Badge */}
+                  {productStatus.type === 'unavailable' ? (
+                    <div className="absolute top-4 left-4 bg-gradient-to-r from-gray-500 to-gray-600 text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg">
+                      🚫 Unavailable
+                    </div>
+                  ) : productStatus.type === 'out-of-stock' ? (
+                    <div className="absolute top-4 left-4 bg-gradient-to-r from-red-500 to-red-600 text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg">
+                      ❌ Out of Stock
+                    </div>
+                  ) : (
+                    <div className="absolute top-4 left-4 bg-gradient-to-r from-green-500 to-emerald-500 text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg animate-pulse">
+                      🌿 Fresh
+                    </div>
+                  )}
                 </div>
-              </div>
+                
+                <div className="p-6 flex flex-col flex-grow">
+                  <div className="text-sm text-green-600 font-bold mb-3 capitalize bg-green-50 px-3 py-1 rounded-full inline-block">
+                    {product.category}
+                  </div>
+                  <h3 className="text-xl font-bold text-gray-800 mb-4 group-hover:text-green-700 transition-colors duration-300 flex-grow">
+                    {product.name}
+                  </h3>
 
-              {/* Animated border effect */}
-              <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-green-400 to-emerald-400 opacity-0 group-hover:opacity-20 transition-opacity duration-300 pointer-events-none"></div>
-            </div>
-          ))}
-        </div>
-            {!showAll && (
-              <div className="text-center mt-10">
-                <button
-                  onClick={() => navigate('/products')}
-                  className="bg-gradient-to-r from-green-500 to-emerald-600 text-white px-6 py-3 rounded-xl hover:from-green-600 hover:to-emerald-700 transition-all duration-300 shadow-lg"
-                >
-                  See All Products
-                </button>
+                  <div className="flex justify-between items-end">
+                    <div className="flex flex-col">
+                      <div className={`text-2xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent ${
+                        isUnavailable ? 'opacity-50' : ''
+                      }`}>
+                        ₹{product.price}
+                      </div>
+                      <span className="text-sm text-gray-600 font-normal">
+                        /{product.unit}
+                      </span>
+                      {productStatus.type === 'available' && product.stock && (
+                        <span className="text-xs text-green-600 font-medium mt-1">
+                          {product.stock} in stock
+                        </span>
+                      )}
+                    </div>
+                    
+                    {productStatus.type === 'unavailable' ? (
+                      <div className="text-gray-500 font-semibold text-sm px-4 py-2 bg-gray-50 rounded-xl border border-gray-200">
+                        Product is unavailable
+                      </div>
+                    ) : productStatus.type === 'out-of-stock' ? (
+                      <div className="text-red-500 font-semibold text-sm px-4 py-2 bg-red-50 rounded-xl border border-red-200">
+                        Sorry, Out of Stock
+                      </div>
+                    ) : (
+                      <button 
+                        onClick={() => handleAddToCart(product)}
+                        className="bg-gradient-to-r from-green-500 to-emerald-600 text-white px-4 py-2 rounded-xl hover:from-green-600 hover:to-emerald-700 transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl flex items-center group/btn font-medium text-sm whitespace-nowrap"
+                      >
+                        <ShoppingCart className="w-4 h-4 mr-1 group-hover/btn:animate-bounce" />
+                        Add to Cart
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Animated border effect */}
+                <div className={`absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-20 transition-opacity duration-300 pointer-events-none ${
+                  productStatus.type === 'unavailable' 
+                    ? 'bg-gradient-to-r from-gray-400 to-gray-500' 
+                    : productStatus.type === 'out-of-stock'
+                    ? 'bg-gradient-to-r from-red-400 to-red-500'
+                    : 'bg-gradient-to-r from-green-400 to-emerald-400'
+                }`}></div>
               </div>
-            )}
+            );
+          })}
+        </div>
+        
+        {!showAll && (
+          <div className="text-center mt-10">
+            <button
+              onClick={() => navigate('/products')}
+              className="bg-gradient-to-r from-green-500 to-emerald-600 text-white px-6 py-3 rounded-xl hover:from-green-600 hover:to-emerald-700 transition-all duration-300 shadow-lg"
+            >
+              See All Products
+            </button>
+          </div>
+        )}
 
         {/* Enhanced Empty State */}
         {filteredProducts.length === 0 && (

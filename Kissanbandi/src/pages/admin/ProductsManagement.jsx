@@ -19,9 +19,23 @@ const ProductsManagement = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [statusFilter, setStatusFilter] = useState('all');
 
+useEffect(() => {
+  products.forEach((p) => {
+    if (p.stock === 0 && p.status !== 'inactive') {
+      handleToggleProductStatus(p._id, 'inactive', {
+        confirm: false,
+        toast: false,
+        reload: false,
+      });
+    }
+  });
+}, [products]);
+
+
   useEffect(() => {
     loadProducts();
   }, []);
+
 
   const loadProducts = async () => {
     try {
@@ -65,6 +79,7 @@ const ProductsManagement = () => {
       setLoading(false);
     }
   };
+
 
   // Filter and sort products
   const filteredProducts = useMemo(() => {
@@ -154,37 +169,36 @@ if (statusFilter !== 'all') {
     }
   };
 
-  const handleDeleteProduct = async (productId) => {
-    if (!productId) {
-      toast.error('Invalid product ID');
-      return;
-    }
-    
-    if (window.confirm('Are you sure you want to delete this product?')) {
-      try {
-        await productsApi.deleteProduct(productId);
-        toast.success('Product deleted successfully!');
-        await loadProducts(); // Reload products list
-      } catch (err) {
-        console.error('Error deleting product:', err);
-        toast.error(err.response?.data?.message || 'Failed to delete product');
-      }
-    }
-  };
-
-const handleToggleProductStatus = async (productId, newStatus) => {
+const handleToggleProductStatus = async (
+  productId,
+  newStatus,
+  options = { confirm: true, toast: true, reload: true }
+) => {
   if (!productId) return toast.error('Invalid product ID');
 
   const action = newStatus === 'active' ? 'activate' : 'deactivate';
 
-  if (window.confirm(`Are you sure you want to ${action} this product?`)) {
+  if (!options.confirm || window.confirm(`Are you sure you want to ${action} this product?`)) {
     try {
-      await productsApi.updateProduct(productId, { status: newStatus });
-      toast.success(`Product marked as ${newStatus}`);
-      await loadProducts();
+      const updated = await productsApi.updateProduct(productId, { status: newStatus });
+
+      if (options.toast) {
+        toast.success(`Product marked as ${newStatus}`);
+      }
+
+      if (options.reload) {
+        await loadProducts();
+      } else {
+        // 🔁 Update product locally
+        setProducts((prev) =>
+          prev.map((p) => (p._id === productId ? { ...p, status: updated.status } : p))
+        );
+      }
     } catch (err) {
       console.error(`Error changing product status:`, err);
-      toast.error(err.response?.data?.error || `Failed to ${action} product`);
+      if (options.toast !== false) {
+        toast.error(err.response?.data?.error || `Failed to ${action} product`);
+      }
     }
   }
 };

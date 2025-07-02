@@ -90,19 +90,29 @@ exports.createProduct = async (req, res) => {
 // Update product
 exports.updateProduct = async (req, res) => {
   try {
+    const updateData = { ...req.body };
+
+    if ('stock' in updateData && Number(updateData.stock) === 0) {
+      updateData.status = 'inactive';
+    }
+
     const product = await Product.findByIdAndUpdate(
       req.params.id,
-      { $set: req.body },
+      { $set: updateData },
       { new: true, runValidators: true }
     );
+
     if (!product) {
       return res.status(404).json({ error: 'Product not found' });
     }
+
     res.json(product);
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
 };
+
+
 
 // Delete product (soft delete)
 exports.deleteProduct = async (req, res) => {
@@ -192,16 +202,27 @@ exports.getCategories = async (req, res) => {
 exports.updateStock = async (req, res) => {
   try {
     const { stock } = req.body;
+    const numericStock = Number(stock);
+
+    const updateData = { stock: numericStock };
+
+    if (numericStock === 0) {
+      updateData.status = 'inactive';
+    }
+
     const product = await Product.findByIdAndUpdate(
       req.params.id,
-      { stock },
+      updateData,
       { new: true, runValidators: true }
     );
+
     if (!product) {
       return res.status(404).json({ error: 'Product not found' });
     }
+
     res.json(product);
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
-}; 
+};
+

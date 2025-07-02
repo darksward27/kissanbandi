@@ -41,9 +41,17 @@ const CheckoutPage = () => {
     };
   }, [state.items.length]);
 
-  const updateQuantity = (item, quantity) => {
-    if (quantity < 1) return;
-      dispatch({
+const updateQuantity = (item, quantity) => {
+  if (quantity < 1) return;
+
+  const maxQty = item.stock ?? Infinity; // Fallback in case stock is undefined
+
+  if (quantity > maxQty) {
+    toast.error(`Only ${maxQty} in stock`);
+    return;
+  }
+
+  dispatch({
     type: 'UPDATE_QUANTITY',
     payload: {
       id: item.id || item._id,
@@ -52,7 +60,8 @@ const CheckoutPage = () => {
       quantity
     }
   });
-  };
+};
+
 
   const removeItem = (item) => {
   dispatch({
@@ -362,9 +371,11 @@ const CheckoutPage = () => {
                           <button
                             onClick={() => updateQuantity(item, item.quantity + 1)}
                             className="px-4 py-2 text-green-600 hover:bg-green-50 rounded-r-xl transition-colors duration-200 font-bold text-lg"
+                            disabled={item.quantity >= item.stock}
                           >
                             +
                           </button>
+
                         </div>
                         
                         <button

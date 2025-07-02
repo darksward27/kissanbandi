@@ -378,7 +378,7 @@ exports.changePassword = async (req, res) => {
 exports.getWishlist = async (req, res) => {
   try {
     const user = await User.findById(req.user.userId)
-      .populate('wishlist', 'name price image') // Adjust fields as per your Product model
+      .populate('wishlist', 'name price image status stock category unit description')// Adjust fields as per your Product model
       .lean();
 
     if (!user) {
