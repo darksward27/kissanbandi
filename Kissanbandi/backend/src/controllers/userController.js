@@ -86,7 +86,7 @@ exports.login = async (req, res) => {
     }
 
     // Check if email is verified
-    if (!user.isEmailVerified && process.env.NODE_ENV !== 'development') {
+    if (!user.isEmailVerified) {
       return res.status(401).json({
         error: 'Please verify your email first',
         isEmailVerified: false
