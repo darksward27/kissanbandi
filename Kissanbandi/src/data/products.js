@@ -6,7 +6,7 @@ export const categories = [
   },
   {
     name: "Vegetables",
-    subcategories: ["Fresh Vegetables", "Organic Vegetables", "Root Vegetables", "Leafy Greens"]
+    subcategories: ["Fresh Vegetables", "Organic Vegetables", "Root Vegetables", "Leafy Greens","Seasonal Vegetables"]
   },
   {
     name: "Herbs",

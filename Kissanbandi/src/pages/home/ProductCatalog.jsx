@@ -1,10 +1,11 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Filter, Search, ChevronDown, Star, Heart, ShoppingCart, Sparkles } from 'lucide-react';
+import { Filter, Search, ChevronDown, Star, Heart, ShoppingCart, Sparkles, Lock } from 'lucide-react';
 import { useCart } from '../checkout/CartContext';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { categories } from '../../data/products';
 import { usersApi, productsApi } from '../../services/api';
+import { useAuth } from '../checkout/AuthProvider'; // Add this import
 
 const ProductCatalog = ({ showAll = false }) => {
   const [products, setProducts] = useState([]);
@@ -12,16 +13,24 @@ const ProductCatalog = ({ showAll = false }) => {
   const [error, setError] = useState(null);
   const [wishlist, setWishlist] = useState(new Set());
 
+  // Auth context
+  const auth = useAuth();
+  const isAuthenticated = auth?.user && !auth?.loading;
+
   useEffect(() => {
     document.documentElement.style.scrollBehavior = 'smooth';
     window.scrollTo({ top: 0 });
     loadProducts();
-    loadWishlist();
+    
+    // Only load wishlist if user is authenticated
+    if (isAuthenticated) {
+      loadWishlist();
+    }
 
     return () => {
       document.documentElement.style.scrollBehavior = 'auto';
     };
-  }, []);
+  }, [isAuthenticated]);
 
   const loadProducts = async () => {
     try {
@@ -116,8 +125,16 @@ const ProductCatalog = ({ showAll = false }) => {
     }))
   ];
 
+  // Modified handleAddToCart with login check
   const handleAddToCart = (product) => {
     if (!product) return;
+    
+    // Check if user is authenticated
+    if (!isAuthenticated) {
+      toast.error('Please login to add items to cart');
+      navigate('/login');
+      return;
+    }
     
     // Check product availability
     const productStatus = getProductStatus(product);
@@ -133,8 +150,16 @@ const ProductCatalog = ({ showAll = false }) => {
     setTimeout(() => toast.success(`Added ${product.name} to cart!`), 0);
   };
 
+  // Modified toggleWishlist with login check
   const toggleWishlist = async (productId) => {
     if (!productId) return;
+
+    // Check if user is authenticated
+    if (!isAuthenticated) {
+      toast.error('Please login to add items to wishlist');
+      navigate('/login');
+      return;
+    }
 
     try {
       const newWishlist = new Set(wishlist);
@@ -158,6 +183,12 @@ const ProductCatalog = ({ showAll = false }) => {
 
   const handleRetry = () => {
     loadProducts();
+  };
+
+  // Show login prompt for restricted actions
+  const showLoginPrompt = () => {
+    toast.error('Please login to continue');
+    navigate('/login');
   };
 
   if (loading) {
@@ -202,6 +233,25 @@ const ProductCatalog = ({ showAll = false }) => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50">
       <div className="container mx-auto px-4 py-8">
+        {/* Login Status Banner */}
+        {!isAuthenticated && (
+          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-2xl p-4 mb-8 text-center">
+            <div className="flex items-center justify-center space-x-2">
+              <Lock className="w-5 h-5 text-blue-600" />
+              <span className="text-blue-800 font-medium">
+                🔒 Please 
+                <button 
+                  onClick={() => navigate('/login')}
+                  className="text-blue-600 hover:text-blue-800 font-semibold underline mx-1"
+                >
+                  login
+                </button>
+                to add items to cart and wishlist
+              </span>
+            </div>
+          </div>
+        )}
+
         {/* Animated Header Section */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-12">
           <div className="relative">
@@ -295,16 +345,20 @@ const ProductCatalog = ({ showAll = false }) => {
                     }`}
                   />
                   <button 
-                    onClick={() => toggleWishlist(product._id || product.id)}
+                    onClick={() => isAuthenticated ? toggleWishlist(product._id || product.id) : showLoginPrompt()}
                     className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm rounded-full p-2.5 shadow-lg hover:bg-white hover:scale-110 transition-all duration-300 border border-green-100"
                   >
-                    <Heart 
-                      className={`w-5 h-5 transition-all duration-300 ${
-                        wishlist.has(product._id || product.id) 
-                          ? 'text-red-500 fill-current animate-pulse' 
-                          : 'text-gray-600 hover:text-red-400'
-                      }`} 
-                    />
+                    {!isAuthenticated ? (
+                      <Lock className="w-5 h-5 text-gray-400" />
+                    ) : (
+                      <Heart 
+                        className={`w-5 h-5 transition-all duration-300 ${
+                          wishlist.has(product._id || product.id) 
+                            ? 'text-red-500 fill-current animate-pulse' 
+                            : 'text-gray-600 hover:text-red-400'
+                        }`} 
+                      />
+                    )}
                   </button>
                   
                   {/* Status Badge */}
@@ -356,6 +410,14 @@ const ProductCatalog = ({ showAll = false }) => {
                       <div className="text-red-500 font-semibold text-sm px-4 py-2 bg-red-50 rounded-xl border border-red-200">
                         Sorry, Out of Stock
                       </div>
+                    ) : !isAuthenticated ? (
+                      <button 
+                        onClick={showLoginPrompt}
+                        className="bg-gradient-to-r from-gray-400 to-gray-500 text-white px-4 py-2 rounded-xl hover:from-gray-500 hover:to-gray-600 transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl flex items-center group/btn font-medium text-sm whitespace-nowrap"
+                      >
+                        <Lock className="w-4 h-4 mr-1" />
+                        Login to Add
+                      </button>
                     ) : (
                       <button 
                         onClick={() => handleAddToCart(product)}

@@ -203,6 +203,21 @@ const handleToggleProductStatus = async (
   }
 };
 
+const handleDeleteProduct = async (productId) => {
+  if (!productId) return toast.error('Invalid product ID');
+
+  const confirm = window.confirm('Are you sure you want to delete this product?');
+  if (!confirm) return;
+
+  try {
+    await productsApi.deleteProduct(productId);
+    toast.success('Product deleted successfully');
+    await loadProducts(); // Refresh the product list
+  } catch (err) {
+    console.error('Failed to delete product:', err);
+    toast.error(err.response?.data?.message || 'Failed to delete product');
+  }
+};
 
 
   const getStockStatus = (stock) => {

@@ -111,7 +111,7 @@ const Register = () => {
       
       const response = await api.post('/users/register', submitData);
       setRegistered(true);
-      toast.success('Registration successful! Please check your email to verify your account.');
+      toast.success('Registration successful!');
       
       // Store token and user data
       if (response.data.token) {
@@ -130,42 +130,42 @@ const Register = () => {
     }
   };
 
-  if (registered) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-md w-full space-y-8 bg-white p-8 rounded-xl shadow-lg">
-          <div>
-            <div className="flex justify-center">
-              <div className="bg-green-100 p-3 rounded-xl">
-                <Mail className="h-12 w-12 text-green-600" />
-              </div>
-            </div>
-            <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-              Check your email
-            </h2>
-            <p className="mt-2 text-center text-sm text-gray-600">
-              We've sent a verification link to {formData.email}
-            </p>
-            <p className="mt-2 text-center text-sm text-gray-500">
-              Please verify your email address to complete the registration process
-            </p>
-            <p className="mt-4 text-center text-sm text-gray-500">
-              Redirecting to login page in a few seconds...
-            </p>
-          </div>
-          <div className="text-center">
-            <Link
-              to="/login"
-              className="inline-flex items-center font-medium text-green-600 hover:text-green-500"
-            >
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Return to login
-            </Link>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  // if (registered) {
+  //   return (
+  //     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+  //       <div className="max-w-md w-full space-y-8 bg-white p-8 rounded-xl shadow-lg">
+  //         <div>
+  //           <div className="flex justify-center">
+  //             <div className="bg-green-100 p-3 rounded-xl">
+  //               <Mail className="h-12 w-12 text-green-600" />
+  //             </div>
+  //           </div>
+  //           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
+  //             Check your email
+  //           </h2>
+  //           <p className="mt-2 text-center text-sm text-gray-600">
+  //             We've sent a verification link to {formData.email}
+  //           </p>
+  //           <p className="mt-2 text-center text-sm text-gray-500">
+  //             Please verify your email address to complete the registration process
+  //           </p>
+  //           <p className="mt-4 text-center text-sm text-gray-500">
+  //             Redirecting to login page in a few seconds...
+  //           </p>
+  //         </div>
+  //         <div className="text-center">
+  //           <Link
+  //             to="/login"
+  //             className="inline-flex items-center font-medium text-green-600 hover:text-green-500"
+  //           >
+  //             <ArrowLeft className="mr-2 h-4 w-4" />
+  //             Return to login
+  //           </Link>
+  //         </div>
+  //       </div>
+  //     </div>
+  //   );
+  // }
 
   return (
     <div className="min-h-screen flex">
