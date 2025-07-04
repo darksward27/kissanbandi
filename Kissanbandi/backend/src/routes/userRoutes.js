@@ -30,6 +30,7 @@ router.post('/refresh-token', auth, userController.refreshToken);
 router.get('/check-session', auth, userController.checkSession);
 
 // Wishlist routes
+router.get('/wishlist', auth, userController.getWishlist);
 router.post('/wishlist/:productId', auth, userController.addToWishlist);
 router.delete('/wishlist/:productId', auth, userController.removeFromWishlist);
 

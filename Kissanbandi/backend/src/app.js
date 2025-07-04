@@ -33,20 +33,29 @@ connectDB().catch(err => {
 });
 
 // Middleware
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://127.0.0.1:5173',
+  'http://192.168.158.105:5173',
+  'https://kissanbandi.netlify.app',
+  'https://courageous-monstera-84b176.netlify.app',
+  process.env.CORS_ORIGIN,
+];
+
 app.use(cors({
-  origin: [
-    'http://localhost:5173',
-    'http://127.0.0.1:5173',
-    'http://192.168.158.105:5173',
-    /^http:\/\/192\.168\.\d{1,3}\.\d{1,3}:5173$/,  // Allow local network IPs
-    'https://kissanbandi.netlify.app',  // Add your Netlify domain
-    process.env.CORS_ORIGIN
-  ].filter(Boolean),
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      console.warn(`❌ CORS blocked origin: ${origin}`);
+      callback(new Error('CORS not allowed'));
+    }
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Cache-Control', 'Pragma'],
   exposedHeaders: ['Content-Range', 'X-Content-Range'],
-  maxAge: 600 // Increase preflight cache to 10 minutes
+  maxAge: 600
 }));
 
 app.use(express.json({ limit: '10mb' }));

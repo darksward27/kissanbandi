@@ -12,14 +12,16 @@
     "format": "prettier --write 'src/**/*.js'"
   },
   "keywords": [
+    "kissanbandi",
     "ecommerce",
     "agriculture",
-    "api"
+    "tech"
   ],
   "author": "",
   "license": "ISC",
   "dependencies": {
     "bcryptjs": "^2.4.3",
+    "cloudinary": "^2.7.0",
     "cors": "^2.8.5",
     "crypto": "^1.0.1",
     "dotenv": "^16.6.1",
@@ -39,7 +41,7 @@
     "cross-env": "^7.0.3",
     "eslint": "^8.35.0",
     "jest": "^29.5.0",
-    "nodemon": "^2.0.22",
+    "nodemon": "^3.1.10",
     "prettier": "^2.8.4"
   }
 }

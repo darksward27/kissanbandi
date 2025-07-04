@@ -1,19 +1,26 @@
-import React, { createContext, useContext, useReducer } from 'react';
-
+import React, { createContext, useContext, useReducer, useEffect, useState } from 'react';
+import  {useAuth}  from './AuthProvider';
 const CartContext = createContext();
 
 const cartReducer = (state, action) => {
   switch (action.type) {
     case 'ADD_TO_CART':
-      const existingItem = state.items.find(item => item.id === action.payload.id);
+       console.log("Adding to cart:", action.payload);
+  const existingItem = state.items.find(item =>
+  (item.id || item._id) === action.payload.id &&
+  item.size === action.payload.size &&
+  item.color === action.payload.color
+);
       if (existingItem) {
         return {
           ...state,
-          items: state.items.map(item =>
-            item.id === action.payload.id
-              ? { ...item, quantity: item.quantity + 1 }
-              : item
-          ),
+      items: state.items.map(item =>
+        (item.id || item._id) === action.payload.id &&
+        item.size === action.payload.size &&
+        item.color === action.payload.color
+          ? { ...item, quantity: item.quantity + 1 }
+          : item
+      ),
         };
       }
       return {
@@ -21,17 +28,40 @@ const cartReducer = (state, action) => {
         items: [...state.items, { ...action.payload, quantity: 1 }],
       };
 
-    case 'REMOVE_FROM_CART':
+    case 'INIT_CART':
       return {
         ...state,
-        items: state.items.filter(item => item.id !== action.payload),
+        items: action.payload,
       };
+
+      case 'REMOVE_FROM_CART':
+        if (
+          !action.payload ||
+          typeof action.payload !== 'object' ||
+          !('id' in action.payload)
+        ) {
+          console.error("Invalid REMOVE_FROM_CART payload:", action.payload);
+          return state;
+        }
+
+        return {
+          ...state,
+          items: state.items.filter(item =>
+            !(
+              (item.id||item._id) === action.payload.id &&
+              item.size === action.payload.size &&
+              item.color === action.payload.color
+            )
+          ),
+        };
 
     case 'UPDATE_QUANTITY':
       return {
         ...state,
         items: state.items.map(item =>
-          item.id === action.payload.id
+          (item.id || item._id)=== action.payload.id &&
+          item.size === action.payload.size &&
+          item.color === action.payload.color
             ? { ...item, quantity: action.payload.quantity }
             : item
         ),
@@ -48,8 +78,56 @@ const cartReducer = (state, action) => {
   }
 };
 
+const getInitialCart = (userId) => {
+  try {
+    const storedCart = localStorage.getItem(`cart_${userId}`);
+    return storedCart ? JSON.parse(storedCart) : { items: [] };
+  } catch (error) {
+    console.error('Failed to load cart from localStorage:', error);
+    return { items: [] };
+  }
+};
+
 export const CartProvider = ({ children }) => {
-  const [state, dispatch] = useReducer(cartReducer, { items: [] });
+  const auth = useAuth();
+  const loading = auth?.loading;
+  const userId = auth?.user?._id || 'guest';
+
+const [state, dispatch] = useReducer(
+  cartReducer,
+  undefined,
+  () => getInitialCart(userId)
+);
+  const [initialized, setInitialized] = useState(false);
+  // Re-initialize cart when userId changes
+
+  // ✅ Load cart when auth or userId changes
+  useEffect(() => {
+    if (!loading) {
+      try {
+        const storedCart = localStorage.getItem(`cart_${userId}`);
+        const parsed = storedCart ? JSON.parse(storedCart) : { items: [] };
+        console.log("Loaded cart for:", userId, parsed);
+        dispatch({ type: 'INIT_CART', payload: parsed.items });
+      } catch (error) {
+        console.error("Error loading cart:", error);
+      }
+    }
+  }, [userId, loading]);
+
+  // ✅ Save cart on change
+  useEffect(() => {
+    if (!loading) {
+      try {
+        localStorage.setItem(`cart_${userId}`, JSON.stringify({ items: state.items }));
+        console.log("Saved cart for:", userId, state.items);
+      } catch (error) {
+        console.error("Error saving cart:", error);
+      }
+    }
+  }, [state.items, userId, loading]);
+
+  if (loading) return <div>Loading cart...</div>;
 
   return (
     <CartContext.Provider value={{ state, dispatch }}>
@@ -60,9 +138,7 @@ export const CartProvider = ({ children }) => {
 
 export const useCart = () => {
   const context = useContext(CartContext);
-  if (!context) {
-    throw new Error('useCart must be used within a CartProvider');
-  }
+  if (!context) throw new Error('useCart must be used within a CartProvider');
   return context;
 };
 

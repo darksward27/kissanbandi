@@ -13,5 +13,7 @@ router.post('/', [auth, admin], productController.createProduct);
 router.put('/:id', [auth, admin], productController.updateProduct);
 router.delete('/:id', [auth, admin], productController.deleteProduct);
 router.patch('/:id/stock', [auth, admin], productController.updateStock);
+router.patch('/:id/inactive', [auth, admin], productController.InactiveProduct);
+router.patch('/:id/active', [auth, admin], productController.ActiveProduct);
 
 module.exports = router; 

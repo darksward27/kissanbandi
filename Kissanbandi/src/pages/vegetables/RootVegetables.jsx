@@ -8,13 +8,16 @@ import Image5 from "../../assets/images2/ginger.avif"
 import Image6 from "../../assets/images2/garlic.avif"
 import Image7 from "../../assets/images2/beetroot.jpg"
 import Image8 from "../../assets/images2/carrot.avif"
+import { useCart } from "../checkout/CartContext";
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../checkout/AuthProvider';
 
 const RootVegetables = () => {
   const [notifications, setNotifications] = useState([]);
   
   const rootVegetables = [
     {
-      id: 1,
+      id: 'root-fruit-1',
       name: "Fresh Carrot",
       category: "Root Vegetables",
       price: 45,
@@ -27,7 +30,7 @@ const RootVegetables = () => {
       textColor: "text-orange-700"
     },
     {
-      id: 2,
+      id: 'root-fruit-2',
       name: "Fresh Radish",
       category: "Root Vegetables",
       price: 30,
@@ -40,7 +43,7 @@ const RootVegetables = () => {
       textColor: "text-red-700"
     },
     {
-      id: 3,
+      id: 'root-fruit-3',
       name: "Sweet Potato",
       category: "Root Vegetables",
       price: 55,
@@ -53,7 +56,7 @@ const RootVegetables = () => {
       textColor: "text-amber-700"
     },
     {
-      id: 4,
+      id: 'root-fruit-4',
       name: "Fresh Turnip",
       category: "Root Vegetables",
       price: 40,
@@ -66,7 +69,7 @@ const RootVegetables = () => {
       textColor: "text-purple-700"
     },
     {
-      id: 5,
+      id: 'root-fruit-5',
       name: "Fresh Ginger",
       category: "Root Vegetables",
       price: 160,
@@ -79,7 +82,7 @@ const RootVegetables = () => {
       textColor: "text-yellow-700"
     },
     {
-      id: 6,
+      id: 'root-fruit-6',
       name: "Fresh Garlic",
       category: "Root Vegetables",
       price: 140,
@@ -92,7 +95,7 @@ const RootVegetables = () => {
       textColor: "text-stone-700"
     },
     {
-      id: 7,
+      id: 'root-fruit-7',
       name: "Fresh Beetroot",
       category: "Root Vegetables",
       price: 50,
@@ -105,7 +108,7 @@ const RootVegetables = () => {
       textColor: "text-rose-700"
     },
     {
-      id: 8,
+      id: 'root-fruit-8',
       name: "Fresh Yam",
       category: "Root Vegetables",
       price: 65,
@@ -130,12 +133,22 @@ const RootVegetables = () => {
     }, 3000);
   };
 
+  const navigate = useNavigate(); // ✅ define navigate here
+  const { dispatch } = useCart();
+  const { user } = useAuth();
+
   const handleAddToCart = (product) => {
+    if (!user) {
+      navigate('/login'); // ✅ works now
+      return;
+    }
+
+    dispatch({ type: "ADD_TO_CART", payload: product });
     showNotification(`Added ${product.name} to cart!`);
   };
 
   return (
-    <div className="w-full max-w-7xl mx-auto p-4">
+    <div className="w-full max-w-7xl mx-auto p-4 pt-20">
       <div className="mb-8 text-center">
         <h1 className="text-3xl font-bold text-green-600 hover:text-green-700 transition-colors duration-300">
           Root Vegetables

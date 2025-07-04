@@ -86,7 +86,7 @@ exports.login = async (req, res) => {
     }
 
     // Check if email is verified
-    if (!user.isEmailVerified) {
+    if (!user.isEmailVerified && process.env.NODE_ENV !== 'development') {
       return res.status(401).json({
         error: 'Please verify your email first',
         isEmailVerified: false
@@ -372,6 +372,23 @@ exports.changePassword = async (req, res) => {
     res.json({ message: 'Password updated successfully' });
   } catch (error) {
     res.status(400).json({ error: error.message });
+  }
+};
+
+exports.getWishlist = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.userId)
+      .populate('wishlist', 'name price image status stock category unit description')// Adjust fields as per your Product model
+      .lean();
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    res.json(user.wishlist || []);
+  } catch (error) {
+    console.error('Error fetching wishlist:', error);
+    res.status(500).json({ error: 'Failed to fetch wishlist' });
   }
 };
 

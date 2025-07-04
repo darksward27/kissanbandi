@@ -8,12 +8,15 @@ import Image5 from "../../assets/images2/durian.avif"
 import Image6 from "../../assets/images2/kiwi.avif"
 import Image7 from "../../assets/images2/litchi.avif"
 import Image8 from "../../assets/images2/kumquat.avif"
+import { useCart } from "../checkout/CartContext";
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../checkout/AuthProvider';
 const ExoticFruits = () => {
   const [notifications, setNotifications] = useState([]);
-  
+  const navigate = useNavigate();
   const exoticFruits = [
     {
-      id: 1,
+      id: 'fruit-a',
       name: "Dragon Fruit",
       category: "Exotic Fruits",
       price: 280,
@@ -24,7 +27,7 @@ const ExoticFruits = () => {
       description: "Vibrant pink flesh with black seeds"
     },
     {
-      id: 2,
+      id: 'fruit-0',
       name: "Passion Fruit",
       category: "Exotic Fruits",
       price: 150,
@@ -35,7 +38,7 @@ const ExoticFruits = () => {
       description: "Tangy and aromatic tropical fruit"
     },
     {
-      id: 3,
+      id:'fruit-1',
       name: "Rambutan",
       category: "Exotic Fruits",
       price: 220,
@@ -46,7 +49,7 @@ const ExoticFruits = () => {
       description: "Sweet and juicy with hairy exterior"
     },
     {
-      id: 4,
+      id:'fruit-2',
       name: "Mangosteen",
       category: "Exotic Fruits",
       price: 350,
@@ -57,7 +60,7 @@ const ExoticFruits = () => {
       description: "Queen of tropical fruits"
     },
     {
-      id: 5,
+      id:'fruit-3',
       name: "Durian",
       category: "Exotic Fruits",
       price: 800,
@@ -68,7 +71,7 @@ const ExoticFruits = () => {
       description: "King of fruits with unique aroma"
     },
     {
-      id: 6,
+      id: 'fruit-4',
       name: "Kiwi Berry",
       category: "Exotic Fruits",
       price: 420,
@@ -79,7 +82,7 @@ const ExoticFruits = () => {
       description: "Mini kiwis with sweet flavor"
     },
     {
-      id: 7,
+      id: 'fruit-5',
       name: "Lychee",
       category: "Exotic Fruits",
       price: 180,
@@ -90,7 +93,7 @@ const ExoticFruits = () => {
       description: "Sweet and fragrant white flesh"
     },
     {
-      id: 8,
+      id:'fruit-6',
       name: "Kumquat",
       category: "Exotic Fruits",
       price: 160,
@@ -113,10 +116,20 @@ const ExoticFruits = () => {
     }, 3000);
   };
 
+    const { dispatch } = useCart(); // ✅ get dispatch from CartContext
+
+  const { user } = useAuth(); // ✅ check if user is logged in
+
   const handleAddToCart = (product) => {
+    if (!user) {
+      // Redirect to login if not authenticated
+      navigate('/login'); // 🔁 adjust route if your login path is different
+      return;
+    }
+
+    dispatch({ type: "ADD_TO_CART", payload: product });
     showNotification(`Added ${product.name} to cart!`);
   };
-
   return (
     <div className="w-full max-w-7xl mx-auto p-4">
       <div className="mb-8 text-center">

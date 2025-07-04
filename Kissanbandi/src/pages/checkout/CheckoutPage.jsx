@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useCart } from '../checkout/CartContext';
 import { useAuth } from '../checkout/AuthProvider';
 import { useNavigate } from 'react-router-dom';
-import { ChevronRight, Trash2, MapPin, ShoppingBag } from 'lucide-react';
+import { ChevronRight, Trash2, MapPin, ShoppingBag, CreditCard, Truck, CheckCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { ordersApi } from '../../services/api';
 
@@ -12,6 +12,7 @@ const CheckoutPage = () => {
   const navigate = useNavigate();
   const [paymentMethod, setPaymentMethod] = useState('razorpay');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [itemsLoaded, setItemsLoaded] = useState(false);
 
   useEffect(() => {
     // Load Razorpay script
@@ -23,26 +24,55 @@ const CheckoutPage = () => {
     // Scroll to top on mount
     window.scrollTo({ top: 0, behavior: 'smooth' });
 
+    // Animate items loading
+    setTimeout(() => setItemsLoaded(true), 100);
+
     // Show toast if cart is empty
     if (state.items.length === 0) {
-      toast.error('Your cart is empty');
+      toast.error('Your cart is empty', { id: 'cart-empty' });
     }
 
     // Cleanup function
     return () => {
       document.documentElement.style.scrollBehavior = 'auto';
-      document.body.removeChild(script);
+      if (document.body.contains(script)) {
+        document.body.removeChild(script);
+      }
     };
   }, [state.items.length]);
 
-  const updateQuantity = (id, quantity) => {
-    if (quantity < 1) return;
-    dispatch({ type: 'UPDATE_QUANTITY', payload: { id, quantity } });
-  };
+const updateQuantity = (item, quantity) => {
+  if (quantity < 1) return;
 
-  const removeItem = (id) => {
-    dispatch({ type: 'REMOVE_FROM_CART', payload: id });
-    toast.success('Item removed from cart');
+  const maxQty = item.stock ?? Infinity; // Fallback in case stock is undefined
+
+  if (quantity > maxQty) {
+    toast.error(`Only ${maxQty} in stock`);
+    return;
+  }
+
+  dispatch({
+    type: 'UPDATE_QUANTITY',
+    payload: {
+      id: item.id || item._id,
+      size: item.size,
+      color: item.color,
+      quantity
+    }
+  });
+};
+
+
+  const removeItem = (item) => {
+  dispatch({
+    type: 'REMOVE_FROM_CART',
+    payload: {
+      id: item.id || item._id,
+      size: item.size,
+      color: item.color
+    }
+  });
+  toast.success('Item removed from cart',{ id: 'cart-empty' });
   };
 
   const calculateSubtotal = () => {
@@ -72,11 +102,12 @@ const CheckoutPage = () => {
     try {
       if (!user) {
         navigate('/login');
-        toast.error('Please login to continue');
+        toast.error('Please login to continue',{ id: 'cart-empty' });
         return;
       }
 
       if (!user.address) {
+        toast.dismiss('cart-empty');
         toast.error('Please update your address in profile to proceed');
         navigate('/profile');
         return;
@@ -85,76 +116,118 @@ const CheckoutPage = () => {
       setIsProcessing(true);
 
       if (paymentMethod === 'razorpay') {
-        // Create Razorpay order
-        const orderResponse = await ordersApi.createRazorpayOrder({
-          amount: total
-        });
-
-        if (!orderResponse.orderId) {
-          throw new Error('Failed to create order');
+        // Validate Razorpay key
+        const razorpayKey = import.meta.env.VITE_RAZORPAY_KEY_ID;
+        console.log("Razorpay Key:", import.meta.env.VITE_RAZORPAY_KEY_ID);
+        if (!razorpayKey || !razorpayKey.startsWith('rzp_')) {
+          toast.dismiss('cart-empty');
+          toast.error('Invalid Razorpay configuration. Please contact support.');
+          setIsProcessing(false);
+          return;
         }
 
-        // Initialize Razorpay payment
-        const options = {
-          key: import.meta.env.VITE_RAZORPAY_KEY_ID,
-          amount: total * 100,
-          currency: "INR",
-          name: "KissanBandi",
-          description: "Purchase of fresh produce",
-          order_id: orderResponse.orderId,
-          handler: async function(response) {
-            try {
-              // Verify payment
-              const verificationResponse = await ordersApi.verifyPayment({
-                razorpay_order_id: response.razorpay_order_id,
-                razorpay_payment_id: response.razorpay_payment_id,
-                razorpay_signature: response.razorpay_signature,
-                order_details: {
-                  items: state.items.map(item => ({
-                    product: item._id || item.id,
-                    quantity: item.quantity,
-                    price: item.price
-                  })),
-                  shippingAddress: {
-                    address: formatAddress(user.address),
-                    city: user.city || '',
-                    state: user.state || '',
-                    pincode: user.pincode || '',
-                    phone: user.phone || ''
-                  },
-                  shipping: subtotal > 500 ? 0 : 50
-                }
-              });
+        console.log('Using Razorpay Key:', razorpayKey); // Debug log
 
-              if (verificationResponse.success) {
-                toast.success('Payment successful!');
-                dispatch({ type: 'CLEAR_CART' });
-                navigate('/orders');
-              } else {
-                throw new Error('Payment verification failed');
-              }
-            } catch (error) {
-              console.error('Payment verification error:', error);
-              toast.error('Payment verification failed. Please contact support.');
-            }
-          },
-          prefill: {
-            name: user.name,
-            email: user.email,
-            contact: user.phone || ''
-          },
-          theme: {
-            color: "#16a34a"
-          },
-          modal: {
-            ondismiss: function() {
-              setIsProcessing(false);
-            }
+        try {
+          // Create Razorpay order
+          const orderResponse = await ordersApi.createRazorpayOrder({ 
+            amount: total 
+          }, user.token);
+
+          console.log('Order Response:', orderResponse); // Debug log
+
+          if (!orderResponse.orderId) {
+            throw new Error('Failed to create order');
           }
-        };
 
-        const razorpay = new window.Razorpay(options);
-        razorpay.open();
+          // Check if Razorpay is loaded
+          if (!window.Razorpay) {
+            toast.dismiss('cart-empty');
+            toast.error('Payment system not loaded. Please refresh and try again.');
+            setIsProcessing(false);
+            return;
+          }
+
+          // Initialize Razorpay payment
+          const options = {
+            key: razorpayKey,
+            amount: total * 100,
+            currency: "INR",
+            name: "KissanBandi",
+            description: "Purchase of fresh produce",
+            order_id: orderResponse.orderId,
+            handler: async function(response) {
+              try {
+                console.log('Payment Response:', response); // Debug log
+                
+                // Verify payment
+                const verificationResponse = await ordersApi.verifyPayment({
+                  razorpay_order_id: response.razorpay_order_id,
+                  razorpay_payment_id: response.razorpay_payment_id,
+                  razorpay_signature: response.razorpay_signature,
+                  order_details: {
+                    items: state.items.map(item => ({
+                      product: item._id || item.id,
+                      quantity: item.quantity,
+                      price: item.price
+                    })),
+                    shippingAddress: {
+                      address: formatAddress(user.address),
+                      city: user.city || '',
+                      state: user.state || '',
+                      pincode: user.pincode || '',
+                      phone: user.phone || ''
+                    },
+                    shipping: subtotal > 500 ? 0 : 50
+                  }
+                }, user.token);
+
+                if (verificationResponse.success) {
+                  toast.dismiss('cart-empty');
+                  toast.success('Payment successful!');
+                  dispatch({ type: 'CLEAR_CART' });
+                  navigate('/orders');
+                } else {
+                  throw new Error('Payment verification failed');
+                }
+              } catch (error) {
+                console.error('Payment verification error:', error);
+                toast.dismiss('cart-empty');
+                toast.error('Payment verification failed. Please contact support.');
+              } finally {
+                setIsProcessing(false);
+              }
+            },
+            prefill: {
+              name: user.name,
+              email: user.email,
+              contact: user.phone || ''
+            },
+            theme: {
+              color: "#16a34a"
+            },
+            modal: {
+              ondismiss: function() {
+                setIsProcessing(false);
+                toast.info('Payment cancelled');
+              }
+            }
+          };
+
+          const razorpay = new window.Razorpay(options);
+          razorpay.on('payment.failed', function (response) {
+            console.error('Payment failed:', response.error);
+            toast.dismiss('cart-empty');
+            toast.error(`Payment failed: ${response.error.description}`);
+            setIsProcessing(false);
+          });
+          
+          razorpay.open();
+        } catch (orderError) {
+          console.error('Order creation error:', orderError);
+          toast.error('Failed to initiate payment. Please try again.',{ id: 'cart-empty' });
+          setIsProcessing(false);
+        }
       } else {
         await handleCODOrder();
       }
@@ -169,10 +242,12 @@ const CheckoutPage = () => {
     try {
       const response = await ordersApi.createOrder({
         items: state.items.map(item => ({
+          
           product: item._id || item.id,
           quantity: item.quantity,
           price: item.price
         })),
+        
         shippingAddress: {
           address: formatAddress(user.address),
           city: user.city || '',
@@ -180,11 +255,12 @@ const CheckoutPage = () => {
           pincode: user.pincode || '',
           phone: user.phone || ''
         },
-        paymentMethod: 'cod'
-      });
+        paymentMethod: 'cod',
+        shipping: subtotal > 500 ? 0 : 50
+      }, user.token);
 
       if (response._id) {
-        toast.success('Order placed successfully!');
+        toast.success('Order placed successfully!',{ id: 'cart-empty' });
         dispatch({ type: 'CLEAR_CART' });
         navigate('/orders');
       } else {
@@ -201,153 +277,238 @@ const CheckoutPage = () => {
   // Show empty cart state if no items
   if (state.items.length === 0) {
     return (
-      <div className="container mx-auto px-4 py-8 mt-32">
-        <div className="max-w-md mx-auto text-center bg-white rounded-xl shadow-sm p-8">
-          <div className="text-gray-400 mb-4">
-            <ShoppingBag className="w-20 h-20 mx-auto" />
+      <div className="min-h-screen bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50">
+        <div className="container mx-auto px-4 py-8 pt-32">
+          <div className="max-w-md mx-auto text-center">
+            <div className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-xl border border-green-100 p-8 transform hover:scale-105 transition-all duration-500">
+              <div className="text-green-300 mb-6 animate-bounce">
+                <ShoppingBag className="w-24 h-24 mx-auto" />
+              </div>
+              <h2 className="text-3xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent mb-4">
+                Your cart is empty
+              </h2>
+              <p className="text-gray-600 mb-8 leading-relaxed">
+                Looks like you haven't added any items to your cart yet.
+                Start shopping to add items to your cart.
+              </p>
+              <button
+                onClick={() => navigate('/')}
+                className="group bg-gradient-to-r from-green-600 to-emerald-600 text-white px-8 py-4 rounded-2xl font-medium hover:from-green-700 hover:to-emerald-700 transition-all duration-300 inline-flex items-center transform hover:scale-105 hover:shadow-lg"
+              >
+                <ShoppingBag className="w-5 h-5 mr-2 group-hover:animate-pulse" />
+                Continue Shopping
+                <ChevronRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
+              </button>
+            </div>
           </div>
-          <h2 className="text-2xl font-bold text-gray-800 mb-4">
-            Your cart is empty
-          </h2>
-          <p className="text-gray-600 mb-8">
-            Looks like you haven't added any items to your cart yet.
-            Start shopping to add items to your cart.
-          </p>
-          <button
-            onClick={() => navigate('/')}
-            className="bg-green-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-green-700 transition duration-200 inline-flex items-center"
-          >
-            <ShoppingBag className="w-5 h-5 mr-2" />
-            Continue Shopping
-          </button>
         </div>
       </div>
     );
   }
-
+  
   // Regular checkout view with items
   return (
-    <div className="container mx-auto px-4 py-8 mt-32">
-      <h1 className="text-2xl font-bold mb-8">Checkout</h1>
-      
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Cart Items */}
-        <div className="lg:col-span-2">
-          <div className="bg-white rounded-xl shadow-sm p-6">
-            <h2 className="text-xl font-semibold mb-4">
-              Cart Items ({state.items.length})
-            </h2>
-            
-            {state.items.map((item) => (
-              <div key={item.id} className="flex items-center py-4 border-b">
-                <img
-                  src={item.image}
-                  alt={item.name}
-                  className="w-20 h-20 object-cover rounded-lg"
-                />
-                
-                <div className="ml-4 flex-1">
-                  <h3 className="font-semibold text-gray-800">{item.name}</h3>
-                  <p className="text-sm text-gray-600">{item.category}</p>
-                  <div className="text-green-600 font-medium">
-                    ₹{item.price}/{item.unit}
-                  </div>
-                </div>
-
-                <div className="flex items-center space-x-4">
-                  <div className="flex items-center border rounded-lg">
-                    <button
-                      onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                      className="px-3 py-1 hover:bg-gray-100"
-                    >
-                      -
-                    </button>
-                    <span className="px-3 py-1 border-x">
-                      {item.quantity}
-                    </span>
-                    <button
-                      onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                      className="px-3 py-1 hover:bg-gray-100"
-                    >
-                      +
-                    </button>
-                  </div>
-                  
-                  <button
-                    onClick={() => removeItem(item.id)}
-                    className="text-red-500 hover:text-red-600"
-                  >
-                    <Trash2 className="w-5 h-5" />
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
+    <div className="min-h-screen bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50">
+      <div className="container mx-auto px-4 py-8 pt-32">
+        <div className="text-center mb-12">
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent mb-2">
+            Checkout
+          </h1>
+          <div className="w-24 h-1 bg-gradient-to-r from-green-600 to-emerald-600 mx-auto rounded-full"></div>
         </div>
+        
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Cart Items */}
+          <div className="lg:col-span-2">
+            <div className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-xl border border-green-100 p-8 hover:shadow-2xl transition-all duration-500">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-bold text-gray-800">
+                  Cart Items
+                </h2>
+                <div className="bg-gradient-to-r from-green-100 to-emerald-100 text-green-700 px-4 py-2 rounded-full text-sm font-semibold">
+                  {state.items.length} {state.items.length === 1 ? 'item' : 'items'}
+                </div>
+              </div>
+              
+              <div className="space-y-4">
+                {state.items.map((item, index) => (
+                  <div 
+                    key={item._id} 
+                    className={`group bg-gradient-to-r from-white to-green-50/50 rounded-2xl p-6 border border-green-100 hover:border-green-200 hover:shadow-lg transition-all duration-300 transform hover:scale-[1.02] ${itemsLoaded ? 'animate-fade-in-up' : 'opacity-0'}`}
+                    style={{ animationDelay: `${index * 100}ms` }}
+                  >
+                    <div className="flex items-center">
+                      <div className="relative overflow-hidden rounded-xl">
+                        <img
+                          src={item.image}
+                          alt={item.name}
+                          className="w-24 h-24 object-cover transition-transform duration-300 group-hover:scale-110"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                      </div>
+                      
+                      <div className="ml-6 flex-1">
+                        <h3 className="font-bold text-gray-800 text-lg group-hover:text-green-700 transition-colors">
+                          {item.name}
+                        </h3>
+                        <p className="text-green-600 text-sm font-medium mb-1">{item.category}</p>
+                        <div className="bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent font-bold text-lg">
+                          ₹{item.price}/{item.unit}
+                        </div>
+                      </div>
 
-        {/* Order Summary */}
-        <div className="lg:col-span-1">
-          <div className="bg-white rounded-xl shadow-sm p-6 sticky top-24">
-            <h2 className="text-xl font-semibold mb-4">Order Summary</h2>
-            
-            <div className="space-y-3 mb-6">
-              <div className="flex justify-between text-gray-600">
-                <span>Subtotal</span>
-                <span>₹{subtotal.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between text-gray-600">
-                <span>Shipping</span>
-                <span>{shipping === 0 ? 'Free' : `₹${shipping}`}</span>
-              </div>
-              <div className="border-t pt-3 flex justify-between font-semibold text-lg">
-                <span>Total</span>
-                <span>₹{total.toFixed(2)}</span>
+                      <div className="flex items-center space-x-6">
+                        <div className="flex items-center bg-white rounded-xl border-2 border-green-100 shadow-sm hover:shadow-md transition-all duration-200">
+                          <button
+                            onClick={() => updateQuantity(item, item.quantity - 1)}
+                            className="px-4 py-2 text-green-600 hover:bg-green-50 rounded-l-xl transition-colors duration-200 font-bold text-lg"
+                          >
+                            −
+                          </button>
+                          <span className="px-4 py-2 border-x-2 border-green-100 font-bold text-gray-700 min-w-[3rem] text-center">
+                            {item.quantity}
+                          </span>
+                          <button
+                            onClick={() => updateQuantity(item, item.quantity + 1)}
+                            className="px-4 py-2 text-green-600 hover:bg-green-50 rounded-r-xl transition-colors duration-200 font-bold text-lg"
+                            disabled={item.quantity >= item.stock}
+                          >
+                            +
+                          </button>
+
+                        </div>
+                        
+                        <button
+                          onClick={() => removeItem(item)}
+                          className="p-3 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all duration-200 transform hover:scale-110"
+                        >
+                          <Trash2 className="w-5 h-5" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
+          </div>
 
-            {/* Payment Methods */}
-            <div className="mb-6">
-              <h3 className="font-medium mb-3">Select Payment Method</h3>
-              <div className="space-y-2">
-                <label className="flex items-center space-x-2">
-                  <input
-                    type="radio"
-                    name="payment"
-                    value="razorpay"
-                    checked={paymentMethod === 'razorpay'}
-                    onChange={(e) => setPaymentMethod(e.target.value)}
-                    className="text-green-600"
-                  />
-                  <span>Online Payment (RazorPay)</span>
-                </label>
-                <label className="flex items-center space-x-2">
-                  <input
-                    type="radio"
-                    name="payment"
-                    value="cod"
-                    checked={paymentMethod === 'cod'}
-                    onChange={(e) => setPaymentMethod(e.target.value)}
-                    className="text-green-600"
-                  />
-                  <span>Cash on Delivery</span>
-                </label>
+          {/* Order Summary */}
+          <div className="lg:col-span-1">
+            <div className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-xl border border-green-100 p-8 sticky top-24 hover:shadow-2xl transition-all duration-500">
+              <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center">
+                <CheckCircle className="w-6 h-6 text-green-600 mr-2" />
+                Order Summary
+              </h2>
+              
+              <div className="space-y-4 mb-8">
+                <div className="flex justify-between text-gray-600 text-lg">
+                  <span>Subtotal</span>
+                  <span className="font-semibold">₹{subtotal.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between text-gray-600 text-lg items-center">
+                  <span className="flex items-center">
+                    <Truck className="w-4 h-4 mr-1" />
+                    Shipping
+                  </span>
+                  <span className={`font-semibold ${shipping === 0 ? 'text-green-600' : ''}`}>
+                    {shipping === 0 ? 'Free' : `₹${shipping}`}
+                  </span>
+                </div>
+                <div className="border-t-2 border-green-100 pt-4 flex justify-between font-bold text-xl">
+                  <span className="text-gray-800">Total</span>
+                  <span className="bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">
+                    ₹{total.toFixed(2)}
+                  </span>
+                </div>
               </div>
-            </div>
 
-            <button 
-              onClick={handleProceedToPayment}
-              disabled={isProcessing}
-              className="w-full bg-green-600 text-white py-3 rounded-lg font-medium hover:bg-green-700 transition duration-200 disabled:bg-gray-400 disabled:cursor-not-allowed"
-            >
-              {isProcessing ? 'Processing...' : 'Proceed to Payment'}
-            </button>
+              {/* Payment Methods */}
+              <div className="mb-8">
+                <h3 className="font-bold text-gray-800 mb-4 flex items-center">
+                  <CreditCard className="w-5 h-5 text-green-600 mr-2" />
+                  Payment Method
+                </h3>
+                <div className="space-y-3">
+                  <label className="group flex items-center space-x-3 p-4 rounded-xl border-2 border-green-100 hover:border-green-300 cursor-pointer transition-all duration-200 hover:bg-green-50/50">
+                    <input
+                      type="radio"
+                      name="payment"
+                      value="razorpay"
+                      checked={paymentMethod === 'razorpay'}
+                      onChange={(e) => setPaymentMethod(e.target.value)}
+                      className="text-green-600 focus:ring-green-500 w-5 h-5"
+                    />
+                    <div className="flex items-center">
+                      <CreditCard className="w-5 h-5 text-green-600 mr-2" />
+                      <span className="font-medium text-gray-700 group-hover:text-green-700">
+                        Online Payment (RazorPay)
+                      </span>
+                    </div>
+                  </label>
+                  <label className="group flex items-center space-x-3 p-4 rounded-xl border-2 border-green-100 hover:border-green-300 cursor-pointer transition-all duration-200 hover:bg-green-50/50">
+                    <input
+                      type="radio"
+                      name="payment"
+                      value="cod"
+                      checked={paymentMethod === 'cod'}
+                      onChange={(e) => setPaymentMethod(e.target.value)}
+                      className="text-green-600 focus:ring-green-500 w-5 h-5"
+                    />
+                    <div className="flex items-center">
+                      <MapPin className="w-5 h-5 text-green-600 mr-2" />
+                      <span className="font-medium text-gray-700 group-hover:text-green-700">
+                        Cash on Delivery
+                      </span>
+                    </div>
+                  </label>
+                </div>
+              </div>
 
-            <div className="mt-4 text-sm text-gray-500 text-center">
-              Free delivery on orders above ₹500
+              <button 
+                onClick={handleProceedToPayment}
+                disabled={isProcessing}
+                className="group w-full bg-gradient-to-r from-green-600 to-emerald-600 text-white py-4 rounded-2xl font-bold hover:from-green-700 hover:to-emerald-700 transition-all duration-300 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed transform hover:scale-105 hover:shadow-xl flex items-center justify-center text-lg"
+              >
+                {isProcessing ? (
+                  <>
+                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                    Processing...
+                  </>
+                ) : (
+                  <>
+                    Proceed to Payment
+                    <ChevronRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
+                  </>
+                )}
+              </button>
+
+              <div className="mt-6 text-center">
+                <div className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-green-100 to-emerald-100 text-green-700 text-sm font-medium rounded-full">
+                  <Truck className="w-4 h-4 mr-2" />
+                  Free delivery on orders above ₹500
+                </div>
+              </div>
             </div>
           </div>
         </div>
       </div>
+
+      <style>{`
+        @keyframes fade-in-up {
+          from {
+            opacity: 0;
+            transform: translateY(20px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        
+        .animate-fade-in-up {
+          animation: fade-in-up 0.6s ease-out forwards;
+        }
+      `}</style>
     </div>
   );
 };
