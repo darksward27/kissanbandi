@@ -3,13 +3,13 @@ import { toast } from 'react-hot-toast';
 
 // Create axios instance with default config
 const api = axios.create({
-  baseURL: 'http://localhost:5000/api',
+  baseURL: import.meta.env.VITE_API_URL,
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
   },
-  withCredentials: true, // Important for CORS
-  timeout: 30000, // 30 second timeout
+  withCredentials: true,
+  timeout: 30000,
 });
 
 // Request interceptor for adding auth token
@@ -43,6 +43,8 @@ api.interceptors.request.use(
   }
 );
 
+
+
 // Response interceptor for handling errors
 api.interceptors.response.use(
   (response) => response,
@@ -66,7 +68,7 @@ api.interceptors.response.use(
       sessionStorage.removeItem('kissanbandi_token');
       sessionStorage.removeItem('adminUser');
       sessionStorage.removeItem('kissanbandi_user');
-      window.location.reload();
+      window.location.href = '/login';
     }
 
     // Handle other errors
@@ -81,46 +83,56 @@ api.interceptors.response.use(
 export const productsApi = {
   // Get all products with optional filters
   getAllProducts: async (filters = {}) => {
-    try {
-      console.log('Making API request to /products with filters:', filters);
-      const timestamp = new Date().getTime();
-      const response = await api.get('/products', { 
-        params: { ...filters, _t: timestamp },
-        headers: {
-          'Cache-Control': 'no-cache',
-          'Pragma': 'no-cache'
-        }
-      });
-      
-      console.log('Full API response:', {
-        status: response.status,
-        headers: response.headers,
-        data: response.data,
-        dataType: typeof response.data,
-        isArray: Array.isArray(response.data)
-      });
-      
-      // Handle different response structures
-      let products;
-      if (Array.isArray(response.data)) {
-        products = response.data;
-      } else if (response.data && typeof response.data === 'object') {
-        products = response.data.products || response.data.data || [];
-      } else {
-        products = [];
+  try {
+    console.log('🔄 Fetching products with filters:', filters);
+
+    const timestamp = Date.now();
+
+    const response = await api.get('/products', {
+      params: { ...filters, _t: timestamp },
+      headers: {
+        'Cache-Control': 'no-cache',
+        'Pragma': 'no-cache'
       }
-      
-      console.log('Processed products:', products);
-      return products;
-    } catch (error) {
-      console.error('Error in getAllProducts:', {
-        message: error.message,
-        response: error.response?.data,
-        status: error.response?.status
-      });
-      throw error;
+    });
+
+    const { data } = response;
+
+    // Debug full API response structure
+    console.log('✅ API response received:', data);
+
+    // Normalize the data
+    let products = [];
+
+    if (Array.isArray(data)) {
+      products = data;
+    } else if (data && typeof data === 'object') {
+      if (Array.isArray(data.products)) {
+        products = data.products;
+      } else if (Array.isArray(data.data)) {
+        products = data.data;
+      }
     }
-  },
+
+    // Fallback check
+    if (!Array.isArray(products)) {
+      console.warn('⚠️ Unexpected products format. Setting to empty array.');
+      products = [];
+    }
+
+    console.log('📦 Products to return:', products);
+    return products;
+
+  } catch (error) {
+    console.error('❌ Error fetching products:', {
+      message: error.message,
+      status: error.response?.status,
+      data: error.response?.data
+    });
+    throw error;
+  }
+},
+
 
   // Get product by ID
   getProductById: async (id) => {
@@ -145,6 +157,15 @@ export const productsApi = {
     const response = await api.delete(`/products/${id}`);
     return response.data;
   },
+    InactiveProduct: async (id) => {
+      const response = await api.patch(`/products/${id}/inactive`);
+      return response.data;
+    },
+
+    ActiveProduct: async (id) => {
+      const response = await api.patch(`/products/${id}/active`);
+      return response.data;
+    },
 
   // Get products by category
   getProductsByCategory: async (category, subcategory = null) => {
@@ -315,6 +336,30 @@ export const ordersApi = {
       throw error;
     }
   },
+  getMyOrders: async () => {
+  try {
+    const timestamp = new Date().getTime();
+    const response = await api.get('/orders/my-orders', {
+      params: { _t: timestamp },
+      headers: {
+        'Cache-Control': 'no-cache',
+        'Pragma': 'no-cache'
+      }
+    });
+
+    // Normalize response
+    return Array.isArray(response.data)
+      ? response.data
+      : response.data?.orders || response.data?.data || [];
+  } catch (error) {
+    console.error('Error fetching user orders:', {
+      message: error.message,
+      status: error.response?.status,
+      data: error.response?.data
+    });
+    throw error;
+  }
+},
 
   getOrder: async (id) => {
     const response = await api.get(`/orders/${id}`);
@@ -326,15 +371,23 @@ export const ordersApi = {
     return response.data;
   },
 
-  createRazorpayOrder: async (data) => {
-    const response = await api.post('/orders/razorpay/create', data);
-    return response.data;
-  },
+createRazorpayOrder: async (data, token) => {
+  const response = await api.post('/orders/razorpay/create', data, {
+    headers: {
+      Authorization: `Bearer ${token}`
+    }
+  });
+  return response.data;
+},
 
-  verifyPayment: async (data) => {
-    const response = await api.post('/orders/razorpay/verify', data);
-    return response.data;
-  }
+verifyPayment: async (data, token) => {
+  const response = await api.post('/orders/razorpay/verify', data, {
+    headers: {
+      Authorization: `Bearer ${token}`
+    }
+  });
+  return response.data;
+}
 };
 
 // Users API
@@ -361,6 +414,21 @@ export const usersApi = {
   
   updateCustomer: async (userId, userData) => {
     const response = await api.put(`/users/${userId}/profile`, userData);
+    return response.data;
+  },
+
+  getWishlist: async () => {
+    const response = await api.get('/users/wishlist');
+    return response.data;
+  },
+
+  addToWishlist: async (productId) => {
+    const response = await api.post(`/users/wishlist/${productId}`);
+    return response.data;
+  },
+
+  removeFromWishlist: async (productId) => {
+    const response = await api.delete(`/users/wishlist/${productId}`);
     return response.data;
   }
 };

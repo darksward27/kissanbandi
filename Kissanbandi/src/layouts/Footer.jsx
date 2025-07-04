@@ -7,27 +7,35 @@ import {
   MapPin,
   Phone,
   Mail,
-  Clock
+  Clock,
+  Leaf,
+  Heart
 } from 'lucide-react';
 
 const Footer = () => {
   return (
-    <footer className="bg-gray-50">
+    <footer className="bg-green-50">
       {/* Newsletter Section */}
-      <div className="bg-green-600 py-12">
+      <div className="bg-green-100 py-12">
         <div className="container mx-auto px-4">
           <div className="max-w-3xl mx-auto text-center">
-            <h3 className="text-2xl font-semibold text-white mb-4">
-              Get Fresh Updates & Special Offers
-            </h3>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <div className="flex items-center justify-center mb-4">
+              <Leaf className="w-6 h-6 text-green-600 mr-2" />
+              <h3 className="text-2xl font-bold text-green-800">
+                Stay Fresh with Our Updates
+              </h3>
+            </div>
+            <p className="text-green-700 mb-6">
+              Get exclusive deals, seasonal offers, and fresh produce updates delivered to your inbox
+            </p>
+            <div className="flex flex-col sm:flex-row gap-3 justify-center max-w-md mx-auto">
               <input
                 type="email"
-                placeholder="Enter your email"
-                className="px-6 py-3 rounded-full flex-1 max-w-md focus:outline-none"
+                placeholder="Your email address"
+                className="px-4 py-3 rounded-lg flex-1 focus:outline-none focus:ring-2 focus:ring-green-400 text-gray-800 border border-green-200"
               />
-              <button className="bg-white text-green-600 px-8 py-3 rounded-full font-semibold hover:bg-gray-100 transition duration-200">
-                Subscribe Now
+              <button className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors">
+                Join Now
               </button>
             </div>
           </div>
@@ -36,37 +44,72 @@ const Footer = () => {
 
       {/* Main Footer Content */}
       <div className="container mx-auto px-4 py-16">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-12 text-center md:text-left">
-      {/* Company Info */}
-          <div>
-            <h2 className="text-2xl font-bold text-green-700 mb-6">KissanBandi</h2>
-            <p className="text-gray-600 mb-6">
-              Delivering fresh, premium quality fruits and vegetables directly from farms 
-              to your doorstep since 2024.
+        <div className="grid grid-cols-1 lg:grid-cols-4 md:grid-cols-2 gap-8">
+          
+          {/* Company Info - Spans 2 columns on large screens */}
+          <div className="lg:col-span-2">
+            <div className="flex items-center mb-4">
+              <div className="bg-green-600 p-2 rounded-full mr-3">
+                <Leaf className="w-6 h-6 text-white" />
+              </div>
+              <h2 className="text-2xl font-bold text-green-800">
+                KissanBandi
+              </h2>
+            </div>
+            <p className="text-gray-700 mb-6 max-w-md">
+              Bridging the gap between fresh farms and your family table. 
+              Premium quality, sustainable farming, delivered with love since 2024.
             </p>
-            <div className="flex space-x-4">
-              <a href="#" className="text-gray-400 hover:text-green-600 transition-colors">
-                <Facebook className="w-6 h-6" />
+            
+            {/* Stats */}
+            <div className="grid grid-cols-3 gap-4 mb-6 max-w-md">
+              <div className="text-center">
+                <div className="text-xl font-bold text-green-600">500+</div>
+                <div className="text-sm text-gray-600">Happy Families</div>
+              </div>
+              <div className="text-center">
+                <div className="text-xl font-bold text-green-600">50+</div>
+                <div className="text-sm text-gray-600">Partner Farms</div>
+              </div>
+              <div className="text-center">
+                <div className="text-xl font-bold text-green-600">24/7</div>
+                <div className="text-sm text-gray-600">Fresh Supply</div>
+              </div>
+            </div>
+
+            {/* Social Media */}
+            <div className="flex space-x-3">
+              <a href="#" className="bg-green-100 hover:bg-green-200 text-green-600 p-2 rounded-full transition-colors">
+                <Facebook className="w-5 h-5" />
               </a>
-              <a href="#" className="text-gray-400 hover:text-green-600 transition-colors">
-                <Twitter className="w-6 h-6" />
+              <a href="#" className="bg-green-100 hover:bg-green-200 text-green-600 p-2 rounded-full transition-colors">
+                <Twitter className="w-5 h-5" />
               </a>
-              <a href="#" className="text-gray-400 hover:text-green-600 transition-colors">
-                <Instagram className="w-6 h-6" />
+              <a href="#" className="bg-green-100 hover:bg-green-200 text-green-600 p-2 rounded-full transition-colors">
+                <Instagram className="w-5 h-5" />
               </a>
-              <a href="#" className="text-gray-400 hover:text-green-600 transition-colors">
-                <Youtube className="w-6 h-6" />
+              <a href="#" className="bg-green-100 hover:bg-green-200 text-green-600 p-2 rounded-full transition-colors">
+                <Youtube className="w-5 h-5" />
               </a>
             </div>
           </div>
 
           {/* Quick Links */}
           <div>
-            <h3 className="text-lg font-semibold mb-6">Quick Links</h3>
-            <ul className="space-y-4">
-              {['About Us', 'Shop Now', 'Our Farmers', 'Delivery Areas', 'FAQs', 'Contact Us'].map((link) => (
+            <h3 className="text-lg font-bold text-gray-800 mb-4">
+              Explore
+            </h3>
+            <ul className="space-y-2">
+              {[
+                'Fresh Fruits',
+                'Organic Vegetables',
+                'Our Farmers',
+                'Delivery Zones',
+                'Seasonal Offers',
+                'Farm Stories'
+              ].map((link) => (
                 <li key={link}>
-                  <a href="#" className="text-gray-600 hover:text-green-600 transition-colors">
+                  <a href="#" className="text-green-600 hover:text-green-800 transition-colors">
                     {link}
                   </a>
                 </li>
@@ -76,50 +119,69 @@ const Footer = () => {
 
           {/* Contact Info */}
           <div>
-            <h3 className="text-lg font-semibold mb-6">Contact Us</h3>
-            <ul className="space-y-4">
+            <h3 className="text-lg font-bold text-gray-800 mb-4">
+              Get in Touch
+            </h3>
+            <ul className="space-y-3">
               <li className="flex items-start space-x-3">
-                <MapPin className="w-5 h-5 text-green-600 mt-1" />
-                <span className="text-gray-600">
-                  123 Fresh Market Street,<br />
-                  Garden City, 12345
-                </span>
+                <MapPin className="w-5 h-5 text-green-600 mt-0.5" />
+                <div>
+                  <div className="font-semibold text-gray-800">Visit Us</div>
+                  <span className="text-gray-600 text-sm">
+                    123 Fresh Market Street,<br />
+                    Garden City, 12345
+                  </span>
+                </div>
               </li>
-              <li className="flex items-center space-x-3">
-                <Phone className="w-5 h-5 text-green-600" />
-                <span className="text-gray-600">+91 1234567890</span>
+              <li className="flex items-start space-x-3">
+                <Phone className="w-5 h-5 text-green-600 mt-0.5" />
+                <div>
+                  <div className="font-semibold text-gray-800">Call Us</div>
+                  <span className="text-gray-600 text-sm">+91 1234567890</span>
+                </div>
               </li>
-              <li className="flex items-center space-x-3">
-                <Mail className="w-5 h-5 text-green-600" />
-                <span className="text-gray-600">support@freshharvest.com</span>
+              <li className="flex items-start space-x-3">
+                <Mail className="w-5 h-5 text-green-600 mt-0.5" />
+                <div>
+                  <div className="font-semibold text-gray-800">Email Us</div>
+                  <span className="text-gray-600 text-sm">support@kissanbandi.com</span>
+                </div>
               </li>
-              <li className="flex items-center space-x-3">
-                <Clock className="w-5 h-5 text-green-600" />
-                <span className="text-gray-600">Mon - Sat: 8:00 AM - 10:00 PM</span>
+              <li className="flex items-start space-x-3">
+                <Clock className="w-5 h-5 text-green-600 mt-0.5" />
+                <div>
+                  <div className="font-semibold text-gray-800">Open Hours</div>
+                  <span className="text-gray-600 text-sm">Mon - Sat: 8AM - 10PM</span>
+                </div>
               </li>
             </ul>
           </div>
-
-          
         </div>
       </div>
 
       {/* Bottom Bar */}
-      <div className="border-t border-gray-200">
+      <div className="bg-green-200 text-gray-800">
         <div className="container mx-auto px-4 py-6">
-          <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
-            <div className="text-gray-600 text-sm">
-              © 2024 FreshHarvest. All rights reserved.
+          <div className="flex flex-col lg:flex-row justify-between items-center space-y-3 lg:space-y-0">
+            <div className="flex items-center text-sm">
+              <Heart className="w-4 h-4 text-green-600 mr-2" />
+              <span>© 2024 KissanBandi. Made with love for fresh living.</span>
             </div>
-            <div className="flex items-center space-x-6">
-              <a href="#" className="text-gray-600 hover:text-green-600 text-sm">
+            <div className="flex flex-wrap items-center justify-center gap-4">
+              <a href="#" className="text-green-700 hover:text-green-900 text-sm transition-colors">
                 Privacy Policy
               </a>
-              <a href="#" className="text-gray-600 hover:text-green-600 text-sm">
+              <span className="text-green-600">•</span>
+              <a href="#" className="text-green-700 hover:text-green-900 text-sm transition-colors">
                 Terms of Service
               </a>
-              <a href="#" className="text-gray-600 hover:text-green-600 text-sm">
+              <span className="text-green-600">•</span>
+              <a href="#" className="text-green-700 hover:text-green-900 text-sm transition-colors">
                 Shipping Policy
+              </a>
+              <span className="text-green-600">•</span>
+              <a href="#" className="text-green-700 hover:text-green-900 text-sm transition-colors">
+                Refund Policy
               </a>
             </div>
           </div>

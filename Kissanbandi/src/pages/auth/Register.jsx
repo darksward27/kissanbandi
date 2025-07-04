@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { User, Mail, Lock, Phone, MapPin, CreditCard, Building2, ArrowLeft, Loader } from 'lucide-react';
 import api from '../../services/api';
+import { Eye, EyeOff } from 'lucide-react';
 
 const INDIAN_STATES = [
   'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh',
@@ -36,7 +37,8 @@ const Register = () => {
   const [loading, setLoading] = useState(false);
   const [registered, setRegistered] = useState(false);
   const [isBusinessAccount, setIsBusinessAccount] = useState(false);
-
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const handleChange = (e) => {
     const { name, value } = e.target;
     if (name.includes('.')) {
@@ -109,7 +111,7 @@ const Register = () => {
       
       const response = await api.post('/users/register', submitData);
       setRegistered(true);
-      toast.success('Registration successful! Please check your email to verify your account.');
+      toast.success('Registration successful!');
       
       // Store token and user data
       if (response.data.token) {
@@ -128,42 +130,42 @@ const Register = () => {
     }
   };
 
-  if (registered) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-md w-full space-y-8 bg-white p-8 rounded-xl shadow-lg">
-          <div>
-            <div className="flex justify-center">
-              <div className="bg-green-100 p-3 rounded-xl">
-                <Mail className="h-12 w-12 text-green-600" />
-              </div>
-            </div>
-            <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-              Check your email
-            </h2>
-            <p className="mt-2 text-center text-sm text-gray-600">
-              We've sent a verification link to {formData.email}
-            </p>
-            <p className="mt-2 text-center text-sm text-gray-500">
-              Please verify your email address to complete the registration process
-            </p>
-            <p className="mt-4 text-center text-sm text-gray-500">
-              Redirecting to login page in a few seconds...
-            </p>
-          </div>
-          <div className="text-center">
-            <Link
-              to="/login"
-              className="inline-flex items-center font-medium text-green-600 hover:text-green-500"
-            >
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Return to login
-            </Link>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  // if (registered) {
+  //   return (
+  //     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+  //       <div className="max-w-md w-full space-y-8 bg-white p-8 rounded-xl shadow-lg">
+  //         <div>
+  //           <div className="flex justify-center">
+  //             <div className="bg-green-100 p-3 rounded-xl">
+  //               <Mail className="h-12 w-12 text-green-600" />
+  //             </div>
+  //           </div>
+  //           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
+  //             Check your email
+  //           </h2>
+  //           <p className="mt-2 text-center text-sm text-gray-600">
+  //             We've sent a verification link to {formData.email}
+  //           </p>
+  //           <p className="mt-2 text-center text-sm text-gray-500">
+  //             Please verify your email address to complete the registration process
+  //           </p>
+  //           <p className="mt-4 text-center text-sm text-gray-500">
+  //             Redirecting to login page in a few seconds...
+  //           </p>
+  //         </div>
+  //         <div className="text-center">
+  //           <Link
+  //             to="/login"
+  //             className="inline-flex items-center font-medium text-green-600 hover:text-green-500"
+  //           >
+  //             <ArrowLeft className="mr-2 h-4 w-4" />
+  //             Return to login
+  //           </Link>
+  //         </div>
+  //       </div>
+  //     </div>
+  //   );
+  // }
 
   return (
     <div className="min-h-screen flex">
@@ -294,34 +296,48 @@ const Register = () => {
                     <label htmlFor="password" className="block text-sm font-medium text-gray-700">
                       Password
                     </label>
-                    <div className="mt-1">
+                    <div className="relative mt-1">
                       <input
                         id="password"
                         name="password"
-                        type="password"
+                        type={showPassword ? "text" : "password"}
                         required
                         className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm"
                         placeholder="Create password"
                         value={formData.password}
                         onChange={handleChange}
                       />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((prev) => !prev)}
+                      className="absolute inset-y-0 right-0 flex items-center px-3 text-sm text-gray-500"
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
                     </div>
                   </div>
                   <div>
                     <label htmlFor="confirm-password" className="block text-sm font-medium text-gray-700">
                       Confirm Password
                     </label>
-                    <div className="mt-1">
+                    <div className="relative mt-1">
                       <input
                         id="confirm-password"
                         name="confirmPassword"
-                        type="password"
+                        type={showConfirmPassword ? "text" : "password"}
                         required
                         className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm"
                         placeholder="Confirm password"
                         value={formData.confirmPassword}
                         onChange={handleChange}
                       />
+                      <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword((prev) => !prev)}
+                      className="absolute inset-y-0 right-0 flex items-center px-3 text-sm text-gray-500"
+                    >
+                      {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
                     </div>
                   </div>
                 </div>

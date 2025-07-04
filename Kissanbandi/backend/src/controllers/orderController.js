@@ -418,7 +418,8 @@ exports.createRazorpayOrder = async (req, res) => {
       error: 'Failed to create payment order',
       details: error.message
     });
-  }
+  }console.log('req.user:', req.user);
+
 };
 
 // Verify Razorpay payment
