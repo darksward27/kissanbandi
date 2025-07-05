@@ -98,34 +98,34 @@ const Profile = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50">
+    <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50">
       <div className="container mx-auto px-4 py-8 mt-32">
         <div className="max-w-3xl mx-auto">
           {/* Header Animation */}
           <div className="text-center mb-8">
-            <div className="inline-block p-3 bg-gradient-to-r from-green-400 to-emerald-500 rounded-full shadow-lg mb-4 animate-bounce duration-2000">
+            <div className="inline-block p-3 bg-gradient-to-r from-amber-500 to-orange-600 rounded-full shadow-lg mb-4 animate-bounce duration-2000">
               <User className="w-8 h-8 text-white" />
             </div>
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-amber-700 to-orange-700 bg-clip-text text-transparent">
               Profile Settings
             </h1>
-            <p className="text-green-700 mt-2">Manage your account settings and preferences</p>
+            <p className="text-amber-700 mt-2">Manage your account settings and preferences</p>
           </div>
 
-          <div className="bg-white rounded-2xl shadow-xl border border-green-100 p-8 hover:shadow-2xl transition-all duration-500">
+          <div className="bg-white rounded-2xl shadow-xl border border-amber-200 p-8 hover:shadow-2xl transition-all duration-500">
             <form onSubmit={handleSubmit} className="space-y-8">
               {/* Basic Information */}
               <div className="space-y-6">
-                <div className="flex items-center space-x-3 p-4 bg-gradient-to-r from-green-100 to-emerald-100 rounded-xl">
-                  <div className="w-10 h-10 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full flex items-center justify-center">
+                <div className="flex items-center space-x-3 p-4 bg-gradient-to-r from-amber-100 to-orange-100 rounded-xl">
+                  <div className="w-10 h-10 bg-gradient-to-r from-amber-600 to-orange-600 rounded-full flex items-center justify-center">
                     <User className="w-5 h-5 text-white" />
                   </div>
-                  <h3 className="text-lg font-semibold text-green-800">Basic Information</h3>
+                  <h3 className="text-lg font-semibold text-amber-800">Basic Information</h3>
                 </div>
                 
                 <div className="grid grid-cols-1 gap-6">
                   <div className="group">
-                    <label htmlFor="name" className="block text-sm font-medium text-green-700 mb-2">
+                    <label htmlFor="name" className="block text-sm font-medium text-amber-700 mb-2">
                       Full Name
                     </label>
                     <input
@@ -135,12 +135,12 @@ const Profile = () => {
                       required
                       value={formData.name}
                       onChange={handleChange}
-                      className="w-full px-4 py-3 border-2 border-green-200 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-300 group-hover:border-green-300 bg-white"
+                      className="w-full px-4 py-3 border-2 border-amber-200 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-all duration-300 group-hover:border-amber-300 bg-white"
                     />
                   </div>
                   
                   <div className="group">
-                    <label htmlFor="email" className="block text-sm font-medium text-green-700 mb-2">
+                    <label htmlFor="email" className="block text-sm font-medium text-amber-700 mb-2">
                       Email Address
                     </label>
                     <div className="flex items-center space-x-3">
@@ -148,10 +148,10 @@ const Profile = () => {
                         type="email"
                         value={user?.email}
                         disabled
-                        className="flex-1 px-4 py-3 border-2 border-green-200 rounded-xl shadow-sm bg-green-50 text-green-600"
+                        className="flex-1 px-4 py-3 border-2 border-amber-200 rounded-xl shadow-sm bg-amber-50 text-amber-600"
                       />
                       {user?.isEmailVerified && (
-                        <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gradient-to-r from-green-100 to-emerald-100 text-green-800">
+                        <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gradient-to-r from-amber-100 to-orange-100 text-amber-800">
                           ✓ Verified
                         </span>
                       )}
@@ -162,16 +162,16 @@ const Profile = () => {
 
               {/* Contact Information */}
               <div className="space-y-6">
-                <div className="flex items-center space-x-3 p-4 bg-gradient-to-r from-emerald-100 to-teal-100 rounded-xl">
-                  <div className="w-10 h-10 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full flex items-center justify-center">
+                <div className="flex items-center space-x-3 p-4 bg-gradient-to-r from-orange-100 to-yellow-100 rounded-xl">
+                  <div className="w-10 h-10 bg-gradient-to-r from-orange-600 to-yellow-600 rounded-full flex items-center justify-center">
                     <Phone className="w-5 h-5 text-white" />
                   </div>
-                  <h3 className="text-lg font-semibold text-emerald-800">Contact Information</h3>
+                  <h3 className="text-lg font-semibold text-orange-800">Contact Information</h3>
                 </div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="group">
-                    <label htmlFor="phone" className="block text-sm font-medium text-green-700 mb-2">
+                    <label htmlFor="phone" className="block text-sm font-medium text-amber-700 mb-2">
                       Phone Number
                     </label>
                     <input
@@ -181,13 +181,13 @@ const Profile = () => {
                       required
                       value={formData.phone}
                       onChange={handleChange}
-                      className="w-full px-4 py-3 border-2 border-green-200 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-300 group-hover:border-green-300 bg-white"
+                      className="w-full px-4 py-3 border-2 border-amber-200 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-all duration-300 group-hover:border-amber-300 bg-white"
                       placeholder="+91 9876543210"
                     />
                   </div>
                   
                   <div className="group">
-                    <label htmlFor="alternatePhone" className="block text-sm font-medium text-green-700 mb-2">
+                    <label htmlFor="alternatePhone" className="block text-sm font-medium text-amber-700 mb-2">
                       Alternate Phone (Optional)
                     </label>
                     <input
@@ -196,7 +196,7 @@ const Profile = () => {
                       type="tel"
                       value={formData.alternatePhone}
                       onChange={handleChange}
-                      className="w-full px-4 py-3 border-2 border-green-200 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-300 group-hover:border-green-300 bg-white"
+                      className="w-full px-4 py-3 border-2 border-amber-200 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-all duration-300 group-hover:border-amber-300 bg-white"
                       placeholder="+91 9876543210"
                     />
                   </div>
@@ -205,16 +205,16 @@ const Profile = () => {
 
               {/* Address Information */}
               <div className="space-y-6">
-                <div className="flex items-center space-x-3 p-4 bg-gradient-to-r from-teal-100 to-green-100 rounded-xl">
-                  <div className="w-10 h-10 bg-gradient-to-r from-teal-500 to-green-500 rounded-full flex items-center justify-center">
+                <div className="flex items-center space-x-3 p-4 bg-gradient-to-r from-yellow-100 to-amber-100 rounded-xl">
+                  <div className="w-10 h-10 bg-gradient-to-r from-yellow-600 to-amber-600 rounded-full flex items-center justify-center">
                     <MapPin className="w-5 h-5 text-white" />
                   </div>
-                  <h3 className="text-lg font-semibold text-teal-800">Address Information</h3>
+                  <h3 className="text-lg font-semibold text-yellow-800">Address Information</h3>
                 </div>
                 
                 <div className="grid grid-cols-1 gap-6">
                   <div className="group">
-                    <label htmlFor="address.street" className="block text-sm font-medium text-green-700 mb-2">
+                    <label htmlFor="address.street" className="block text-sm font-medium text-amber-700 mb-2">
                       Street Address
                     </label>
                     <input
@@ -224,12 +224,12 @@ const Profile = () => {
                       required
                       value={formData.address.street}
                       onChange={handleChange}
-                      className="w-full px-4 py-3 border-2 border-green-200 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-300 group-hover:border-green-300 bg-white"
+                      className="w-full px-4 py-3 border-2 border-amber-200 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-all duration-300 group-hover:border-amber-300 bg-white"
                     />
                   </div>
                   
                   <div className="group">
-                    <label htmlFor="address.locality" className="block text-sm font-medium text-green-700 mb-2">
+                    <label htmlFor="address.locality" className="block text-sm font-medium text-amber-700 mb-2">
                       Locality/Area
                     </label>
                     <input
@@ -239,13 +239,13 @@ const Profile = () => {
                       required
                       value={formData.address.locality}
                       onChange={handleChange}
-                      className="w-full px-4 py-3 border-2 border-green-200 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-300 group-hover:border-green-300 bg-white"
+                      className="w-full px-4 py-3 border-2 border-amber-200 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-all duration-300 group-hover:border-amber-300 bg-white"
                     />
                   </div>
                   
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <div className="group">
-                      <label htmlFor="address.city" className="block text-sm font-medium text-green-700 mb-2">
+                      <label htmlFor="address.city" className="block text-sm font-medium text-amber-700 mb-2">
                         City
                       </label>
                       <input
@@ -255,12 +255,12 @@ const Profile = () => {
                         required
                         value={formData.address.city}
                         onChange={handleChange}
-                        className="w-full px-4 py-3 border-2 border-green-200 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-300 group-hover:border-green-300 bg-white"
+                        className="w-full px-4 py-3 border-2 border-amber-200 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-all duration-300 group-hover:border-amber-300 bg-white"
                       />
                     </div>
                     
                     <div className="group">
-                      <label htmlFor="address.state" className="block text-sm font-medium text-green-700 mb-2">
+                      <label htmlFor="address.state" className="block text-sm font-medium text-amber-700 mb-2">
                         State
                       </label>
                       <select
@@ -269,7 +269,7 @@ const Profile = () => {
                         required
                         value={formData.address.state}
                         onChange={handleChange}
-                        className="w-full px-4 py-3 border-2 border-green-200 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-300 group-hover:border-green-300 bg-white"
+                        className="w-full px-4 py-3 border-2 border-amber-200 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-all duration-300 group-hover:border-amber-300 bg-white"
                       >
                         <option value="">Select State</option>
                         {INDIAN_STATES.map(state => (
@@ -279,7 +279,7 @@ const Profile = () => {
                     </div>
                     
                     <div className="group">
-                      <label htmlFor="address.pincode" className="block text-sm font-medium text-green-700 mb-2">
+                      <label htmlFor="address.pincode" className="block text-sm font-medium text-amber-700 mb-2">
                         Pincode
                       </label>
                       <input
@@ -289,7 +289,7 @@ const Profile = () => {
                         required
                         value={formData.address.pincode}
                         onChange={handleChange}
-                        className="w-full px-4 py-3 border-2 border-green-200 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-300 group-hover:border-green-300 bg-white"
+                        className="w-full px-4 py-3 border-2 border-amber-200 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-all duration-300 group-hover:border-amber-300 bg-white"
                         placeholder="6-digit pincode"
                       />
                     </div>
@@ -302,7 +302,7 @@ const Profile = () => {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="inline-flex items-center px-8 py-4 border border-transparent rounded-xl shadow-lg text-base font-medium text-white bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-105 hover:shadow-xl transition-all duration-300"
+                  className="inline-flex items-center px-8 py-4 border border-transparent rounded-xl shadow-lg text-base font-medium text-white bg-gradient-to-r from-amber-600 to-orange-700 hover:from-amber-700 hover:to-orange-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-105 hover:shadow-xl transition-all duration-300"
                 >
                   {loading ? (
                     <>
@@ -321,8 +321,6 @@ const Profile = () => {
           </div>
         </div>
       </div>
-
-      
     </div>
   );
 };

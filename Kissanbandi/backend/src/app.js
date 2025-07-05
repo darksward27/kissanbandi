@@ -1,5 +1,4 @@
-// Load environment variables first
-require('dotenv').config();
+require('dotenv').config(); 
 console.log('\x1b[33m%s\x1b[0m', `MongoDB URI from .env: ${process.env.MONGODB_URI}`);
 
 const express = require('express');
@@ -13,6 +12,7 @@ const productRoutes = require('./routes/productRoutes');
 const userRoutes = require('./routes/userRoutes');
 const orderRoutes = require('./routes/orderRoutes');
 const analyticsRoutes = require('./routes/analyticsRoutes');
+const blogRoutes = require('./routes/blogRoutes');
 
 // Validate required environment variables
 const requiredEnvVars = ['MONGODB_URI', 'JWT_SECRET'];
@@ -62,6 +62,10 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(morgan('dev'));
 
+// Serve uploaded images
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+
 // Basic route for API health check
 app.get('/api/health', (req, res) => {
   res.json({
@@ -76,6 +80,9 @@ app.use('/api/products', productRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/analytics', analyticsRoutes);
+
+//Blog Routes
+app.use('/api/blogs', blogRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
@@ -130,3 +137,5 @@ process.on('uncaughtException', (err) => {
   // Close server & exit process
   server.close(() => process.exit(1));
 }); 
+
+

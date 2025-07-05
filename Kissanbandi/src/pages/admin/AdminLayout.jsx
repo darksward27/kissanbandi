@@ -13,6 +13,7 @@ const AdminSidebar = ({ isOpen, onClose, isMinimized, onToggleMinimize }) => {
     { name: 'Orders', icon: '🛒', path: '/admin/orders' },
     { name: 'Users', icon: '👥', path: '/admin/customers' },
     { name: 'Analytics', icon: '📈', path: '/admin/analytics' },
+    {name:"Blogs", icon: '📝', path: '/admin/blogs'},
     { name: 'Settings', icon: '⚙️', path: '/admin/settings' },
   ];
 

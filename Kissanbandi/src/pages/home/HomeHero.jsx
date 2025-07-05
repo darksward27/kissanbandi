@@ -1,269 +1,324 @@
-import React, {useEffect, useState} from 'react';
-import { ChevronRight } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
-import bgImage from '../../assets/images/BG/background-pattern.jpg';
-import image1 from "../../assets/images/BG/vegetables.jpg";
-import image2 from "../../assets/images/BG/fruits.jpg";
-// Using existing images for now - replace with actual images later:
-// import image3 from "../../assets/images/BG/herbs.jpg"; 
-// import image4 from "../../assets/images/BG/organic-basket.jpg";
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import {
+  ChevronRight,
+  ChevronLeft,
+  Star,
+  Award,
+  Leaf,
+  Heart,
+} from "lucide-react";
 
-const HomeHero = () => {
-    const navigate = useNavigate();
-    const [currentSlide, setCurrentSlide] = useState(0);
+const BOGATHero = () => {
+  const [currentSlide, setCurrentSlide] = useState(0);
+  const [isTransitioning, setIsTransitioning] = useState(false);
+  const navigate = useNavigate();
 
-    // Carousel content data
-    const carouselData = [
-        {
-            badge: "🌱 100% Fresh & Natural",
-            title: "Farm Fresh Vegetables & Fruits",
-            description: "Discover our exceptional selection of fresh, locally sourced vegetables and fruits, handpicked for quality and freshness.",
-            buttonText: "SHOP NOW",
-            image: image1,
-            imageAlt: "Fresh produce showcase",
-            action: () => navigate('/category/vegetables/fruits-veg')
-        },
-        {
-            badge: "🌿 Premium Organic",
-            title: "Fresh Organic Herbs & Greens",
-            description: "Explore our carefully cultivated organic herbs and leafy greens, grown without pesticides for pure, natural flavor.",
-            buttonText: "BROWSE HERBS",
-            image: image2, // Using fruits image temporarily - replace with herbs image
-            imageAlt: "Fresh organic herbs and greens",
-            action: () => navigate('/category/vegetables/organic-vegetables')
-        },
-        {
-            badge: "🥗 Farm to Table",
-            title: "Handpicked Seasonal Produce",
-            description: "Experience the best of each season with our rotating selection of peak-freshness produce, delivered straight from local farms.",
-            buttonText: "VIEW SEASONAL",
-            image: image1, // Using vegetables image temporarily - replace with seasonal image
-            imageAlt: "Seasonal fresh produce",
-            action: () => navigate('/seasonal')
-        },
-        {
-            badge: "🧺 Curated Selection",
-            title: "Premium Organic Bundles",
-            description: "Save time and money with our thoughtfully curated organic produce bundles, perfect for healthy families and conscious cooking.",
-            buttonText: "SHOP BUNDLES",
-            image: image2, // Using fruits image temporarily - replace with bundles image
-            imageAlt: "Organic produce bundles",
-            action: () => navigate('/bundles')
-        }
-    ];
+  // Product data with corresponding background images
+  const products = [
+    {
+      id: 1,
+      name: "South Indian Filter Coffee Powder",
+      tagline: "Traditional Blend with 70% Coffee, 30% Chicory",
+      description:
+        "Sourced from our family-owned estate in Chikkamagaluru. Shadow-grown beneath native trees, handpicked with care, and roasted in small batches to preserve aroma and ensure consistent quality.",
+      features: [
+        "Balanced taste with 70:30 coffee-to-chicory ratio",
+        "Single-Origin from Chikkamagaluru",
+        "Shadow-Grown under native forest trees",
+        "Roasted in Small Batches",
+      ],
+      weight: "450gm",
+      badge: "Premium Coffee",
+      image: "/src/assets/sample1.jpg",
+      backgroundImage: "src/assets/hero3.jpg",
+      color: "from-amber-100 to-orange-100",
+      accentColor: "amber",
+    },
+    {
+      id: 2,
+      name: "Black Pepper Powder",
+      tagline: "King of Spices - Strong Flavour & Bold Aroma",
+      description:
+        "Handpicked from the rich soils of India, our premium black peppercorns are sun-dried to preserve their potent aroma and deep flavour. Rich in piperine for enhanced wellness.",
+      features: [
+        "Known as the 'King of Spices'",
+        "Rich in Piperine for better digestion",
+        "100% Natural with no preservatives",
+        "Ethically sourced premium grade",
+      ],
+      weight: "200gm",
+      badge: "Wellness Spice",
+      image: "/src/assets/sample2.jpg",
+      backgroundImage: "src/assets/hero2.jpg",
+      color: "from-stone-100 to-amber-50",
+      accentColor: "stone",
+    },
+    {
+      id: 3,
+      name: "Whole Cardamom",
+      tagline: "Queen of Spices - Premium Indian Elaichi",
+      description:
+        "Hand-selected, bold-sized pods with rich essential oil content. Traditionally used to aid digestion, freshen breath, and elevate teas, sweets, and curries with signature warm-sweet aroma.",
+      features: [
+        "Premium Quality hand-selected pods",
+        "Aromatic & Flavorful for all dishes",
+        "Health-Boosting digestive properties",
+        "Ethically sourced from trusted farms",
+      ],
+      weight: "100gm",
+      badge: "Royal Spice",
+      image: "/src/assets/sample3.jpg",
+      backgroundImage: "src/assets/hero1.jpg",
+      color: "from-green-100 to-emerald-50",
+      accentColor: "green",
+    },
+  ];
 
-    useEffect(() => {
-        // Smooth scroll polyfill
-        window.scrollTo({ top: 0});
-    
-        return () => {
-          document.documentElement.style.scrollBehavior = 'auto';
-        };
-    }, []);
+  // Auto-advance carousel
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setIsTransitioning(true);
+      setTimeout(() => {
+        setCurrentSlide((prev) => (prev + 1) % products.length);
+        setTimeout(() => setIsTransitioning(false), 100);
+      }, 300);
+    }, 6000);
 
-    // Auto-advance carousel
-    useEffect(() => {
-        const interval = setInterval(() => {
-            setCurrentSlide((prev) => (prev + 1) % carouselData.length);
-        }, 5000); // Change slide every 5 seconds
+    return () => clearInterval(interval);
+  }, [products.length]);
 
-        return () => clearInterval(interval);
-    }, [carouselData.length]);
-
-    const handleNavigateToFruits = (e) => {
-        e.preventDefault();
-        navigate('/organicfruits');
-    };
-
-    const handleNavigateToVegetables = (e) => {
-        e.preventDefault();
-        navigate('/seasonals');
-    };
-
-    const handleNavigateToFruitsVeg = (e) => {
-        e.preventDefault();
-        navigate('/fruitsveg');
-    };
-
-    const handleSlideChange = (index) => {
+  const handleSlideChange = (index) => {
+    if (index !== currentSlide && !isTransitioning) {
+      setIsTransitioning(true);
+      setTimeout(() => {
         setCurrentSlide(index);
-    };
+        setTimeout(() => setIsTransitioning(false), 100);
+      }, 300);
+    }
+  };
 
-    const currentSlideData = carouselData[currentSlide];
-    return (
-        <div
-            className="relative py-8 min-h-screen flex items-center"
+  const handleShopNowClick = () => {
+    navigate('/products');
+  };
+
+  const currentProduct = products[currentSlide];
+
+  return (
+    <div className="min-h-screen relative overflow-hidden">
+      {/* Dynamic Background Images with Black Overlay */}
+      <div className="absolute inset-0 transition-all duration-1000">
+        {products.map((product, index) => (
+          <div
+            key={product.id}
+            className={`absolute inset-0 transition-all duration-1000 ${
+              index === currentSlide
+                ? "opacity-100 scale-100"
+                : "opacity-0 scale-105"
+            }`}
             style={{
-                backgroundImage: `url(${bgImage})`,
-                backgroundRepeat: 'repeat',
-                backgroundPosition: 'center',
+              backgroundImage: `url(${product.backgroundImage})`,
+              backgroundSize: "cover",
+              backgroundPosition: "center",
+              backgroundRepeat: "no-repeat",
             }}
-        >
-            {/* Enhanced gradient overlay */}
-            <div className="absolute inset-0 bg-gradient-to-br from-green-50/90 via-white/85 to-emerald-50/90 backdrop-blur-sm"></div>
-            
-            {/* Floating background elements */}
-            <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                <div className="absolute top-20 left-10 w-32 h-32 bg-gradient-to-br from-green-200/30 to-emerald-200/30 rounded-full blur-xl animate-pulse"></div>
-                <div className="absolute top-40 right-20 w-48 h-48 bg-gradient-to-br from-emerald-200/20 to-green-200/20 rounded-full blur-2xl animate-pulse delay-1000"></div>
-                <div className="absolute bottom-20 left-1/3 w-24 h-24 bg-gradient-to-br from-green-300/40 to-emerald-300/40 rounded-full blur-lg animate-pulse delay-500"></div>
-            </div>
+          >
+            {/* Black overlay for better text readability */}
+            <div className="absolute inset-0 bg-black/40"></div>
+          </div>
+        ))}
+      </div>
 
-            <div className="container mx-auto mt-32 px-4 relative animate-in fade-in duration-1000">
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    {/* Enhanced Main Hero Card - Fixed overlapping issue */}
-                    <div className="lg:col-span-2 bg-gradient-to-br from-white/95 to-green-50/95 backdrop-blur-lg rounded-3xl p-8 relative overflow-hidden shadow-2xl border border-green-100/50 hover:shadow-3xl hover:shadow-green-200/20 transition-all duration-500 group animate-in slide-in-from-left duration-800">
-                        {/* Animated background pattern */}
-                        <div className="absolute inset-0 bg-gradient-to-br from-green-500/5 to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-                        
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
-                            {/* Text Content - Left Side */}
-                            <div className="z-10 space-y-6">
-                                <span className="inline-block text-emerald-600 text-xl font-semibold px-4 py-2 bg-gradient-to-r from-emerald-100 to-green-100 rounded-full shadow-md animate-pulse">
-                                    {currentSlideData.badge}
-                                </span>
-                                <h1 className="text-3xl lg:text-4xl xl:text-5xl font-bold bg-gradient-to-r from-gray-800 to-green-800 bg-clip-text text-transparent leading-tight transition-all duration-500">
-                                    {currentSlideData.title}
-                                </h1>
-                                <p className="text-gray-600 text-lg leading-relaxed transition-all duration-500">
-                                    {currentSlideData.description}
-                                </p>
-                                <button 
-                                    onClick={currentSlideData.action}
-                                    className="group/btn bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white px-10 py-4 rounded-full transition-all duration-300 shadow-lg hover:shadow-xl hover:shadow-green-300/50 hover:scale-105 hover:-translate-y-1 font-semibold text-lg relative overflow-hidden"
-                                >
-                                    <span className="relative z-10 flex items-center space-x-2">
-                                        <span>{currentSlideData.buttonText}</span>
-                                        <ChevronRight className="w-5 h-5 group-hover/btn:translate-x-1 transition-transform duration-300" />
-                                    </span>
-                                    <div className="absolute inset-0 bg-gradient-to-r from-emerald-600 to-green-600 opacity-0 group-hover/btn:opacity-100 transition-opacity duration-300"></div>
-                                </button>
-                            </div>
-                            
-                            {/* Enhanced Hero Image - Right Side - Fixed positioning */}
-                            <div className="relative w-full h-80 lg:h-96">
-                                <div className="w-full h-full rounded-2xl overflow-hidden shadow-2xl shadow-green-300/30 hover:shadow-green-400/40 transition-all duration-500 group-hover:scale-105">
-                                    <img
-                                        src={currentSlideData.image}
-                                        alt={currentSlideData.imageAlt}
-                                        className="w-full h-full object-cover transition-all duration-700 hover:scale-110"
-                                        key={currentSlide} // Force re-render for smooth transitions
-                                    />
-                                    <div className="absolute inset-0 bg-gradient-to-l from-transparent to-green-500/10 opacity-0 hover:opacity-100 transition-opacity duration-300"></div>
-                                </div>
-                                {/* Floating accent elements */}
-                                <div className="absolute -top-4 -right-4 w-8 h-8 bg-gradient-to-br from-green-400 to-emerald-400 rounded-full shadow-lg animate-bounce delay-300"></div>
-                                <div className="absolute -bottom-6 -right-2 w-6 h-6 bg-gradient-to-br from-emerald-400 to-green-400 rounded-full shadow-md animate-bounce delay-700"></div>
-                            </div>
-                        </div>
+      {/* Enhanced Background Pattern - Removed brown elements */}
+      <div className="absolute inset-0 opacity-10 z-10">
+        <div className="absolute top-10 left-5 md:top-20 md:left-10 w-24 h-24 md:w-32 md:h-32 rounded-full bg-white/20 blur-xl"></div>
+        <div className="absolute top-32 right-10 md:top-40 md:right-20 w-32 h-32 md:w-48 md:h-48 rounded-full bg-white/15 blur-2xl"></div>
+        <div className="absolute bottom-10 left-1/4 md:bottom-20 md:left-1/3 w-16 h-16 md:w-24 md:h-24 rounded-full bg-white/25 blur-lg"></div>
+        <div className="absolute bottom-32 right-1/4 w-20 h-20 md:w-28 md:h-28 rounded-full bg-white/20 blur-xl"></div>
+      </div>
 
-                        {/* Enhanced Slider dots - Now functional */}
-                        <div className="flex space-x-3 mt-8">
-                            {carouselData.map((_, index) => (
-                                <button
-                                    key={index}
-                                    onClick={() => handleSlideChange(index)}
-                                    className={`w-3 h-3 rounded-full transition-all duration-300 cursor-pointer ${
-                                        index === currentSlide
-                                            ? 'bg-gradient-to-r from-green-500 to-emerald-500 shadow-md scale-110'
-                                            : 'bg-gradient-to-r from-gray-300 to-gray-400 hover:from-green-300 hover:to-emerald-300 hover:scale-105'
-                                    }`}
-                                    aria-label={`Go to slide ${index + 1}`}
-                                />
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* Enhanced Side Cards */}
-                    <div className="space-y-8">
-                        {/* First Enhanced Offer Card */}
-                        <div className="bg-gradient-to-br from-green-50/95 to-emerald-100/95 backdrop-blur-lg rounded-3xl p-6 relative overflow-hidden shadow-xl border border-green-200/50 hover:shadow-2xl hover:shadow-green-300/30 transition-all duration-500 group hover:scale-105 hover:-translate-y-2 animate-in slide-in-from-right duration-800 delay-200">
-                            {/* Animated background gradient */}
-                            <div className="absolute inset-0 bg-gradient-to-br from-green-400/10 to-emerald-400/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-                            
-                            {/* Floating particles */}
-                            <div className="absolute top-2 right-4 w-2 h-2 bg-green-400 rounded-full animate-ping"></div>
-                            <div className="absolute top-6 right-8 w-1 h-1 bg-emerald-400 rounded-full animate-ping delay-300"></div>
-                            
-                            <div className="relative z-10 mb-20">
-                                <span className="inline-block text-sm text-green-700 font-semibold px-3 py-1 bg-gradient-to-r from-green-200 to-emerald-200 rounded-full shadow-sm">
-                                    ✨ SPECIAL OFFER
-                                </span>
-                                <h2 className="text-4xl font-bold bg-gradient-to-r from-green-700 to-emerald-700 bg-clip-text text-transparent mt-3 group-hover:scale-110 transition-transform duration-300">
-                                    20% Off
-                                </h2>
-                                <h3 className="text-xl font-semibold text-gray-800 mt-2 group-hover:text-green-800 transition-colors duration-300">
-                                    Seasonal Vegetables
-                                </h3>
-                                <a
-                                    href="#"
-                                    onClick={handleNavigateToVegetables}
-                                    className="inline-flex items-center text-green-600 mt-4 hover:text-green-800 font-medium group/link"
-                                >
-                                    <span className="border-b-2 border-transparent group-hover/link:border-green-600 transition-all duration-300">
-                                        Shop Collection
-                                    </span>
-                                    <ChevronRight className="w-4 h-4 ml-1 group-hover:translate-x-2 transition-transform duration-300" />
-                                </a>
-                            </div>
-                            <div className="absolute right-0 bottom-0 w-32 h-32 overflow-hidden rounded-tl-[100px]">
-                                <div className="relative w-full h-full">
-                                    <img
-                                        src={image1}
-                                        alt="Fresh seasonal vegetables"
-                                        className="w-full h-full object-cover transform group-hover:scale-125 transition-transform duration-700"
-                                    />
-                                    <div className="absolute inset-0 bg-gradient-to-tl from-green-500/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Second Enhanced Offer Card */}
-                        <div className="bg-gradient-to-br from-orange-50/95 to-red-50/95 backdrop-blur-lg rounded-3xl p-6 relative overflow-hidden shadow-xl border border-orange-200/50 hover:shadow-2xl hover:shadow-orange-300/30 transition-all duration-500 group hover:scale-105 hover:-translate-y-2 animate-in slide-in-from-right duration-800 delay-400">
-                            {/* Animated background gradient */}
-                            <div className="absolute inset-0 bg-gradient-to-br from-orange-400/10 to-red-400/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-                            
-                            {/* Floating particles */}
-                            <div className="absolute top-2 right-4 w-2 h-2 bg-orange-400 rounded-full animate-ping"></div>
-                            <div className="absolute top-6 right-8 w-1 h-1 bg-red-400 rounded-full animate-ping delay-300"></div>
-                            
-                            <div className="relative z-10 mb-20">
-                                <span className="inline-block text-sm text-orange-700 font-semibold px-3 py-1 bg-gradient-to-r from-orange-200 to-red-200 rounded-full shadow-sm">
-                                    🍎 FRESH ARRIVAL
-                                </span>
-                                <h2 className="text-4xl font-bold bg-gradient-to-r from-orange-700 to-red-700 bg-clip-text text-transparent mt-3 group-hover:scale-110 transition-transform duration-300">
-                                    15% Off
-                                </h2>
-                                <h3 className="text-xl font-semibold text-gray-800 mt-2 group-hover:text-orange-800 transition-colors duration-300">
-                                    Organic Fruits
-                                </h3>
-                                <a
-                                    href="#"
-                                    onClick={handleNavigateToFruits}
-                                    className="inline-flex items-center text-orange-600 mt-4 hover:text-orange-800 font-medium group/link"
-                                >
-                                    <span className="border-b-2 border-transparent group-hover/link:border-orange-600 transition-all duration-300">
-                                        Shop Collection
-                                    </span>
-                                    <ChevronRight className="w-4 h-4 ml-1 group-hover:translate-x-2 transition-transform duration-300" />
-                                </a>
-                            </div>
-                            <div className="absolute right-0 bottom-0 w-32 h-32 overflow-hidden rounded-tl-[100px]">
-                                <div className="relative w-full h-full">
-                                    <img
-                                        src={image2}
-                                        alt="Fresh organic fruits"
-                                        className="w-full h-full object-cover transform group-hover:scale-125 transition-transform duration-700"
-                                    />
-                                    <div className="absolute inset-0 bg-gradient-to-tl from-orange-500/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+      <div className="container mx-auto px-4 py-6 md:py-12 lg:py-16 relative z-20">
+        {/* Brand Header */}
+        <div className="text-center mb-6 md:mb-12">
+          <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold mb-2 md:mb-4 text-white drop-shadow-2xl">
+            BOGAT
+          </h1>
+          <p className="text-base md:text-lg lg:text-xl text-white/90 max-w-2xl mx-auto font-medium drop-shadow-lg">
+            Premium Spices & Coffee - From Our Farm to Your Kitchen
+          </p>
         </div>
-    );
+
+        {/* Main Product Showcase */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8 lg:gap-12 items-center mb-8 md:mb-12">
+          {/* Left Side - Product Image */}
+          <div className="relative order-2 lg:order-1">
+            <div className="relative w-full h-80 md:h-96 lg:h-[500px] rounded-2xl md:rounded-3xl overflow-hidden shadow-2xl">
+              {/* Image Container */}
+              <div
+                className={`absolute inset-0 bg-gradient-to-br ${currentProduct.color} transition-all duration-500`}
+              >
+                <img
+                  src={currentProduct.image}
+                  alt={currentProduct.name}
+                  className={`w-full h-full object-cover transition-all duration-700 ${
+                    isTransitioning
+                      ? "opacity-0 scale-110"
+                      : "opacity-100 scale-100"
+                  }`}
+                />
+              </div>
+
+              {/* Floating Badge */}
+              <div
+                className="absolute top-4 left-4 md:top-6 md:left-6 px-3 py-1.5 md:px-4 md:py-2 rounded-full text-white font-semibold text-xs md:text-sm shadow-lg"
+                style={{ backgroundColor: "#823000" }}
+              >
+                {currentProduct.badge}
+              </div>
+
+              {/* Weight Badge */}
+              <div
+                className="absolute bottom-4 right-4 md:bottom-6 md:right-6 px-3 py-1.5 md:px-4 md:py-2 rounded-full text-white font-bold text-xs md:text-sm shadow-lg"
+                style={{ backgroundColor: "#f59b52" }}
+              >
+                {currentProduct.weight}
+              </div>
+
+              {/* Navigation Arrows */}
+              <button
+                onClick={() =>
+                  handleSlideChange(
+                    currentSlide === 0 ? products.length - 1 : currentSlide - 1
+                  )
+                }
+                className="absolute left-2 md:left-4 top-1/2 transform -translate-y-1/2 w-10 h-10 md:w-12 md:h-12 rounded-full bg-white/90 shadow-lg flex items-center justify-center hover:bg-white transition-all duration-300 hover:scale-110"
+              >
+                <ChevronLeft
+                  className="w-5 h-5 md:w-6 md:h-6"
+                  style={{ color: "#823000" }}
+                />
+              </button>
+              <button
+                onClick={() =>
+                  handleSlideChange((currentSlide + 1) % products.length)
+                }
+                className="absolute right-2 md:right-4 top-1/2 transform -translate-y-1/2 w-10 h-10 md:w-12 md:h-12 rounded-full bg-white/90 shadow-lg flex items-center justify-center hover:bg-white transition-all duration-300 hover:scale-110"
+              >
+                <ChevronRight
+                  className="w-5 h-5 md:w-6 md:h-6"
+                  style={{ color: "#823000" }}
+                />
+              </button>
+            </div>
+          </div>
+
+          {/* Right Side - Product Description with Enhanced Glassmorphism */}
+          <div className="order-1 lg:order-2 space-y-4 md:space-y-6 backdrop-blur-2xl bg-white/10 rounded-3xl p-6 md:p-8 shadow-2xl border border-white/20 relative overflow-hidden">
+            {/* Enhanced Glassmorphism effects */}
+            <div className="absolute inset-0 bg-gradient-to-br from-white/20 via-white/5 to-white/10 rounded-3xl"></div>
+            <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/5 to-white/15 rounded-3xl"></div>
+
+            {/* Subtle inner glow */}
+            <div className="absolute inset-0 rounded-3xl shadow-inner shadow-white/20"></div>
+
+            {/* Content wrapper */}
+            <div className="relative z-10">
+              <div
+                className={`transition-all duration-500 ${
+                  isTransitioning
+                    ? "opacity-0 translate-y-4"
+                    : "opacity-100 translate-y-0"
+                }`}
+              >
+                {/* Product Name */}
+                <h2 className="text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-bold leading-tight mb-2 md:mb-4 text-white drop-shadow-2xl">
+                  {currentProduct.name}
+                </h2>
+
+                {/* Tagline */}
+                <p className="text-base md:text-lg lg:text-xl font-medium mb-4 md:mb-6 text-white/90 drop-shadow-lg">
+                  {currentProduct.tagline}
+                </p>
+
+                {/* Description */}
+                <p className="text-white/85 text-sm md:text-base lg:text-lg leading-relaxed mb-6 md:mb-8 drop-shadow-lg">
+                  {currentProduct.description}
+                </p>
+
+                {/* Features */}
+                <div className="space-y-2 md:space-y-3 mb-6 md:mb-8">
+                  {currentProduct.features.map((feature, index) => (
+                    <div
+                      key={index}
+                      className="flex items-start space-x-2 md:space-x-3"
+                    >
+                      <div className="w-1.5 h-1.5 md:w-2 md:h-2 rounded-full mt-2 md:mt-3 flex-shrink-0 bg-white/80 shadow-lg"></div>
+                      <span className="text-white/90 font-medium text-sm md:text-base drop-shadow-md">
+                        {feature}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Quality Badges with Enhanced Glassmorphism */}
+                <div className="flex flex-wrap gap-2 md:gap-4 mb-6 md:mb-8">
+                  <div className="flex items-center space-x-1 md:space-x-2 px-3 py-1.5 md:px-4 md:py-2 rounded-full bg-white/20 backdrop-blur-lg border border-white/30 shadow-lg">
+                    <Leaf className="w-4 h-4 md:w-5 md:h-5 text-green-300" />
+                    <span className="text-xs md:text-sm font-semibold text-white">
+                      100% Natural
+                    </span>
+                  </div>
+                  <div className="flex items-center space-x-1 md:space-x-2 px-3 py-1.5 md:px-4 md:py-2 rounded-full bg-white/20 backdrop-blur-lg border border-white/30 shadow-lg">
+                    <Award className="w-4 h-4 md:w-5 md:h-5 text-yellow-300" />
+                    <span className="text-xs md:text-sm font-semibold text-white">
+                      Premium Grade
+                    </span>
+                  </div>
+                  <div className="flex items-center space-x-1 md:space-x-2 px-3 py-1.5 md:px-4 md:py-2 rounded-full bg-white/20 backdrop-blur-lg border border-white/30 shadow-lg">
+                    <Heart className="w-4 h-4 md:w-5 md:h-5 text-red-300" />
+                    <span className="text-xs md:text-sm font-semibold text-white">
+                      Fresh & Pure
+                    </span>
+                  </div>
+                </div>
+
+                {/* CTA Button with Enhanced Glassmorphism */}
+                <button 
+                  onClick={handleShopNowClick}
+                  className="group relative overflow-hidden bg-gradient-to-r from-[#4B2E0F] via-[#7B3F00] to-[#D2A679] backdrop-blur-xl border border-white/20 text-white px-6 py-3 md:px-8 md:py-4 rounded-full font-bold text-base md:text-lg shadow-2xl hover:shadow-white/30 transition-all duration-300 hover:scale-105 hover:-translate-y-1 flex items-center space-x-2 md:space-x-3 w-full md:w-auto justify-center md:justify-start"
+                >
+                  <span>Shop Now</span>
+                  <ChevronRight className="w-4 h-4 md:w-5 md:h-5 group-hover:translate-x-1 transition-transform duration-300" />
+
+                  {/* Enhanced shimmer effect */}
+                  <span className="absolute top-0 left-[-150%] w-[200%] h-full bg-gradient-to-r from-transparent via-white/60 to-transparent opacity-80 blur-md animate-shimmer" />
+                </button>
+
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Product Dots Navigation */}
+        <div className="flex justify-center space-x-3 md:space-x-4 mb-6">
+          {products.map((_, index) => (
+            <button
+              key={index}
+              onClick={() => handleSlideChange(index)}
+              className={`w-3 h-3 md:w-4 md:h-4 rounded-full transition-all duration-300 border-2 border-white/50 ${
+                index === currentSlide
+                  ? "scale-125 shadow-lg bg-white"
+                  : "scale-100 opacity-60 hover:opacity-100 bg-white/30"
+              }`}
+            />
+          ))}
+        </div>
+      </div>
+
+      {/* Enhanced Mobile Bottom Gradient */}
+      <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-white/30 to-transparent pointer-events-none md:hidden"></div>
+    </div>
+  );
 };
 
-export default HomeHero;
+export default BOGATHero;

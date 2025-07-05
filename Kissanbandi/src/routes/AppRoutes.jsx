@@ -19,6 +19,10 @@ import Profile from '../pages/profile/Profile';
 import Orders from '../pages/orders/Orders';
 import Wishlist from '../pages/wishlist/Wishlist';
 
+// Blog imports
+import BlogsPage from '../pages/BlogsPage';
+import BlogDetail from '../pages/BlogDetail';
+
 import SeasonalFruits from '../pages/fruits/seasonal';
 import ExoticFruits from '../pages/fruits/ExoticFruits';
 import FreshVegetables from '../pages/vegetables/FreshVegetables';
@@ -42,13 +46,17 @@ const AppRoutes = () => {
         <Route path="admin/login" element={<AdminLogin />} />
         <Route path="search" element={<SearchResults />} />
 
+   {/* 📝 Blog Routes */}
+        <Route path="blogs" element={<BlogsPage />} />
+        <Route path="blog/:id" element={<BlogDetail />} />
+
         {/* 🥦 Fruits & Vegetables routes */}
         <Route path="category/fruits/seasonal-fruits" element={<SeasonalFruits />} />
         <Route path="category/fruits/exotic-fruits" element={<ExoticFruits />} />
         <Route path="category/fruits/organic-fruits" element={<OrganicFruits />} />
         
         <Route path="category/vegetables/organic-vegetables" element={<OrganicVegetables />} />
-        <Route path="category/vegetables/fresh-vegetables" element={<FreshVegetables />} />        
+        <Route path="/products" element={<FreshVegetables />} />        
         <Route path="category/vegetables/seasonal-vegetables" element={<SeasonalVegetables />} />
         <Route path="category/vegetables/root-vegetables" element={<RootVegetables/>} />
         <Route path="category/vegetables/fruits-veg" element={<FruitsVeg />} />

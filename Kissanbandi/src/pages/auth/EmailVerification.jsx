@@ -42,7 +42,9 @@ const EmailVerification = () => {
         return (
           <div className="text-center">
             <div className="flex justify-center mb-4">
-              <Loader className="h-12 w-12 text-green-500 animate-spin" />
+              <div className="bg-amber-100 p-3 rounded-full border border-amber-200">
+                <Loader className="h-12 w-12 text-amber-600 animate-spin" />
+              </div>
             </div>
             <h2 className="text-2xl font-bold text-gray-900 mb-2">
               Verifying your email
@@ -50,6 +52,11 @@ const EmailVerification = () => {
             <p className="text-gray-600">
               Please wait while we verify your email address...
             </p>
+            <div className="mt-4">
+              <div className="w-full bg-amber-200 rounded-full h-1.5">
+                <div className="bg-gradient-to-r from-amber-500 to-orange-600 h-1.5 rounded-full animate-pulse" style={{width: '70%'}}></div>
+              </div>
+            </div>
           </div>
         );
 
@@ -57,7 +64,7 @@ const EmailVerification = () => {
         return (
           <div className="text-center">
             <div className="flex justify-center mb-4">
-              <div className="bg-green-100 p-3 rounded-full">
+              <div className="bg-green-100 p-3 rounded-full border border-green-200 animate-bounce">
                 <CheckCircle className="h-12 w-12 text-green-500" />
               </div>
             </div>
@@ -69,7 +76,7 @@ const EmailVerification = () => {
             </p>
             <Link
               to="/login"
-              className="inline-flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-base font-medium text-white bg-green-600 hover:bg-green-700"
+              className="inline-flex items-center justify-center px-6 py-3 border border-transparent rounded-lg shadow-lg text-base font-medium text-white bg-gradient-to-r from-amber-600 to-orange-700 hover:from-amber-700 hover:to-orange-800 transition-all duration-200 hover:shadow-xl transform hover:scale-105"
             >
               Sign In
             </Link>
@@ -80,7 +87,7 @@ const EmailVerification = () => {
         return (
           <div className="text-center">
             <div className="flex justify-center mb-4">
-              <div className="bg-red-100 p-3 rounded-full">
+              <div className="bg-red-100 p-3 rounded-full border border-red-200">
                 <XCircle className="h-12 w-12 text-red-500" />
               </div>
             </div>
@@ -92,7 +99,7 @@ const EmailVerification = () => {
             </p>
             <Link
               to="/register"
-              className="inline-flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-base font-medium text-white bg-green-600 hover:bg-green-700"
+              className="inline-flex items-center justify-center px-6 py-3 border border-transparent rounded-lg shadow-lg text-base font-medium text-white bg-gradient-to-r from-amber-600 to-orange-700 hover:from-amber-700 hover:to-orange-800 transition-all duration-200 hover:shadow-xl transform hover:scale-105"
             >
               Register Again
             </Link>
@@ -105,12 +112,12 @@ const EmailVerification = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8 bg-white p-8 rounded-xl shadow-lg">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-md w-full space-y-8 bg-white p-8 rounded-xl shadow-xl border border-amber-200">
         {renderContent()}
       </div>
     </div>
   );
 };
 
-export default EmailVerification; 
+export default EmailVerification;

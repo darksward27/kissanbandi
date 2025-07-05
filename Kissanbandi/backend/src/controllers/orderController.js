@@ -3,8 +3,9 @@ const Product = require('../models/Product');
 const razorpay = require('../config/razorpay');
 const crypto = require('crypto');
 const RazorpayTransaction = require('../models/RazorpayTransaction');
-
+require('dotenv').config();
 // Create new order
+
 exports.createOrder = async (req, res) => {
   try {
     const { items, shippingAddress, paymentMethod } = req.body;
