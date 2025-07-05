@@ -4,6 +4,7 @@ import { useCart } from "../pages/checkout/CartContext";
 import { useAuth } from "../pages/checkout/AuthProvider";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { allProducts } from "../data/products";
+import logoImage from '/src/assets/Sri_Bogat_logo.png';
 
 const Navbar = () => {
   const { state } = useCart();
@@ -178,7 +179,7 @@ const Navbar = () => {
               <div className="flex items-center space-x-2 md:space-x-3">
                 {/* Logo Image - Made bigger */}
                 <img 
-                  src="/src/assets/Sri_Bogat_logo.png" 
+                   src={logoImage}
                   alt="Bogat Logo" 
                   className={`transition-all duration-300 object-contain ${
                     isScrolled ? 'h-10 w-10 md:h-12 md:w-12' : 'h-12 w-12 md:h-16 md:w-16'
