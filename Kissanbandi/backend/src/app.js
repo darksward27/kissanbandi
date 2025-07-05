@@ -37,7 +37,7 @@ const allowedOrigins = [
   'http://localhost:5173',
   'http://127.0.0.1:5173',
   'http://192.168.158.105:5173',
-  'https://kissanbandi.netlify.app',
+  'https://bogat.netlify.app',
   'https://beamish-kitten-183019.netlify.app',
   process.env.CORS_ORIGIN,
 ];
