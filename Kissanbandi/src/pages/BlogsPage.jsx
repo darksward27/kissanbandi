@@ -16,6 +16,8 @@ import {
   Sparkles
 } from 'lucide-react';
 
+import blogHeroImage from '/src/assets/blog1.jpg';
+
 const BlogsPage = () => {
   const [blogs, setBlogs] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -164,7 +166,7 @@ const BlogsPage = () => {
         <div 
           className="absolute inset-0"
           style={{
-            backgroundImage: 'url(/src/assets/blog1.jpg)',
+            backgroundImage: `url(${blogHeroImage})`,
             backgroundSize: 'cover',
             backgroundPosition: 'center',
             backgroundRepeat: 'no-repeat'
