@@ -12,9 +12,9 @@ import {
 } from 'lucide-react';
 
 // ✅ Import images instead of using direct string paths
-import sample1 from '../../assets/sample1.jpg';
-import sample2 from '../../assets/sample2.jpg';
-import sample3 from '../../assets/sample3.jpg';
+import sample1 from '../../assets/sample1.jpeg';
+import sample2 from '../../assets/sample2.jpeg';
+import sample3 from '../../assets/sample3.jpeg';
 import bgHero from '../../assets/bogat1.jpg'; // background image
 
 const BOGATProductsShowcase = () => {
@@ -139,7 +139,7 @@ const BOGATProductsShowcase = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#F5EFE6] via-[#EBDACD] to-[#D8C3A5]">
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 py-12">
         <h2 className="text-4xl font-bold text-center bg-gradient-to-r from-[#23150c] to-[#dda64e] bg-clip-text text-transparent mb-12">
           Complete BOGAT Collection
         </h2>

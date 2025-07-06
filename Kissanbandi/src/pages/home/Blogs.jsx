@@ -103,16 +103,33 @@ const Blogs = () => {
   const getCleanTags = (tags) => {
     if (!tags) return [];
     
+    // If already an array, clean each tag
     if (Array.isArray(tags)) {
-      return tags;
+      return tags.map(tag => {
+        if (typeof tag === 'string') {
+          return tag.replace(/[\[\]"']/g, '').trim();
+        }
+        return String(tag).trim();
+      }).filter(tag => tag && tag.length > 0);
     }
     
     if (typeof tags === 'string') {
+      // Remove outer brackets and quotes first
+      let cleanedTags = tags.replace(/^[\[\]"']+|[\[\]"']+$/g, '');
+      
       try {
-        const parsed = JSON.parse(tags);
-        return Array.isArray(parsed) ? parsed : [tags];
-      } catch {
-        return tags.split(',').map(tag => tag.trim()).filter(tag => tag);
+        // Try to parse as JSON first
+        const parsed = JSON.parse(cleanedTags);
+        if (Array.isArray(parsed)) {
+          return parsed.map(tag => String(tag).replace(/[\[\]"']/g, '').trim())
+                      .filter(tag => tag && tag.length > 0);
+        }
+      } catch (e) {
+        // If JSON parsing fails, treat as comma-separated string
+        return cleanedTags
+          .split(',')
+          .map(tag => tag.replace(/[\[\]"']/g, '').trim())
+          .filter(tag => tag && tag.length > 0);
       }
     }
     
@@ -197,7 +214,7 @@ const Blogs = () => {
                 }`}
               >
                 {/* Image */}
-                <div className={`relative overflow-hidden ${index === 0 ? 'h-56' : 'h-48'}`}>
+                <div className="relative overflow-hidden h-48">
                   <img
                     src={getImageUrl(blog.image)}
                     alt={blog.title}

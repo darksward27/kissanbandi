@@ -10,9 +10,9 @@ import {
 } from "lucide-react";
 
 // ✅ Import images directly (this is CRITICAL for Vite)
-import sample1 from "../../assets/sample1.jpg";
-import sample2 from "../../assets/sample2.jpg";
-import sample3 from "../../assets/sample3.jpg";
+import sample1 from "../../assets/sample1.jpeg";
+import sample2 from "../../assets/sample2.jpeg";
+import sample3 from "../../assets/sample3.jpeg";
 import hero1 from "../../assets/hero1.jpg";
 import hero2 from "../../assets/hero2.jpg";
 import hero3 from "../../assets/hero3.jpg";
@@ -146,12 +146,12 @@ const BOGATHero = () => {
       <div className="container mx-auto px-4 py-6 md:py-12 lg:py-16 relative z-20">
         {/* Header */}
         <div className="text-center mb-6 md:mb-12">
-          <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold mb-2 md:mb-4 text-white drop-shadow-2xl">
-            BOGAT
-          </h1>
-          <p className="text-base md:text-lg lg:text-xl text-white/90 max-w-2xl mx-auto font-medium drop-shadow-lg">
-            Premium Spices & Coffee - From Our Farm to Your Kitchen
-          </p>
+        <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold mb-2 md:mb-4 drop-shadow-2xl text-shimmer">
+  BOGAT
+</h1>
+<p className="text-base md:text-lg lg:text-xl max-w-2xl mx-auto font-medium drop-shadow-lg text-shimmer">
+  Premium Spices & Coffee - From Our Farm to Your Kitchen
+</p>
         </div>
 
         {/* Main Grid */}
@@ -232,12 +232,12 @@ const BOGATHero = () => {
                 </div>
               </div>
 
-              <button
-                onClick={handleShopNowClick}
-                className="mt-6 bg-gradient-to-r from-amber-600 via-amber-500 to-yellow-400 px-6 py-3 rounded-full text-white font-semibold hover:scale-105 transition-all"
-              >
-                Shop Now <ChevronRight className="inline ml-2" />
-              </button>
+             <button
+  onClick={handleShopNowClick}
+  className="mt-6 relative btn-shimmer bg-gradient-to-r from-[#4b2e1f] to-[#d1a873] px-6 py-3 rounded-full text-white font-semibold hover:scale-105 transition-all shadow-lg"
+>
+  Shop Now <ChevronRight className="inline ml-2" />
+</button>
             </div>
           </div>
         </div>
