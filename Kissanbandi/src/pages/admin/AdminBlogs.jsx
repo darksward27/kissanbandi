@@ -38,7 +38,7 @@ const AdminBlogs = () => {
   });
 
   // API Base URL - Update this to match your backend
-  const API_BASE_URL ='https://bogat.onrender.com/api';
+  const API_BASE_URL ='http://localhost:5000/api';
   
   // Helper function to get auth headers
   const getAuthHeaders = () => {
@@ -331,20 +331,20 @@ const AdminBlogs = () => {
     // If it's a local file path with full system path, extract filename
     if (imagePath.includes('uploads/blog/') || imagePath.includes('uploads\\blog\\')) {
       const filename = imagePath.split(/[/\\]/).pop(); // Handle both / and \ separators
-      const imageUrl = `https://bogat.onrender.com/uploads/blog/${filename}`;
+      const imageUrl = `http://localhost:5000/uploads/blog/${filename}`;
       console.log('Converted image URL:', imageUrl); // Debug log
       return imageUrl;
     }
     
     // If it's just a filename, construct full URL
     if (!imagePath.includes('/') && !imagePath.includes('\\')) {
-      const imageUrl = `https://bogat.onrender.com/uploads/blog/${imagePath}`;
+      const imageUrl = `http://localhost:5000/uploads/blog/${imagePath}`;
       console.log('Filename to URL:', imageUrl); // Debug log
       return imageUrl;
     }
     
     // Default case - assume it's a relative path
-    const imageUrl = `https://bogat.onrender.com/${imagePath}`;
+    const imageUrl = `http://localhost:5000/${imagePath}`;
     console.log('Default case URL:', imageUrl); // Debug log
     return imageUrl;
   };
@@ -412,51 +412,48 @@ const AdminBlogs = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-amber-50 p-6 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-amber-50 to-orange-100 p-6 flex items-center justify-center">
         <div className="text-center">
-          <Loader className="w-8 h-8 text-amber-700 animate-spin mx-auto mb-4" />
-          <p className="text-amber-700">Loading blogs...</p>
+          <div className="relative">
+            <div className="animate-spin rounded-full h-16 w-16 border-4 border-amber-200 border-t-amber-600"></div>
+            <div className="absolute inset-0 animate-pulse rounded-full h-16 w-16 border-4 border-amber-300 opacity-20"></div>
+          </div>
+          <p className="text-amber-700 mt-4 font-medium">Loading blogs...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-amber-50 p-6">
-      <div className="max-w-7xl mx-auto">
+    <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50">
+      <div className="max-w-7xl mx-auto p-6 space-y-8">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-amber-900 mb-2">Blog Management</h1>
-          <p className="text-amber-700">Create, edit, and manage your blog posts</p>
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-amber-600 to-orange-600 bg-clip-text text-transparent">
+            Blog Management
+          </h1>
+          <p className="text-gray-600 mt-2">Create, edit, and manage your blog posts</p>
         </div>
 
         {/* Error Message */}
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6">
-            <p>{error}</p>
-            <button 
-              onClick={() => setError('')}
-              className="float-right text-red-500 hover:text-red-700"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-        )}
-
-        {/* Debug Section - Remove this in production */}
-        {process.env.NODE_ENV === 'development' && blogs.length > 0 && (
-          <div className="bg-gray-100 rounded-lg p-4 mb-6">
-            <h3 className="text-sm font-medium text-gray-700 mb-2">Debug Info (Development Only)</h3>
-            <div className="text-xs text-gray-600 space-y-1">
-              <div>API Base URL: {API_BASE_URL}</div>
-              <div>First Blog Image Path: {blogs[0]?.image || 'No image'}</div>
-              <div>Converted URL: {blogs[0]?.image ? getImageUrl(blogs[0].image) : 'N/A'}</div>
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-2xl mb-6 shadow-lg">
+            <div className="flex items-center justify-between">
+              <p>{error}</p>
+              <button 
+                onClick={() => setError('')}
+                className="text-red-500 hover:text-red-700 transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
             </div>
           </div>
         )}
 
+     
+
         {/* Action Bar */}
-        <div className="bg-white rounded-lg shadow-sm border border-amber-200 p-6 mb-6">
+        <div className="bg-white rounded-2xl shadow-lg border border-amber-100 p-6 mb-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div className="flex flex-col sm:flex-row gap-4 flex-1">
               {/* Search */}
@@ -467,7 +464,7 @@ const AdminBlogs = () => {
                   placeholder="Search blogs..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border border-amber-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                  className="w-full pl-10 pr-4 py-3 border border-amber-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all duration-200"
                 />
               </div>
 
@@ -477,7 +474,7 @@ const AdminBlogs = () => {
                 <select
                   value={filterStatus}
                   onChange={(e) => setFilterStatus(e.target.value)}
-                  className="pl-10 pr-8 py-2 border border-amber-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent bg-white"
+                  className="pl-10 pr-8 py-3 border border-amber-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent bg-white transition-all duration-200"
                 >
                   <option value="all">All Blogs</option>
                   <option value="published">Published</option>
@@ -489,7 +486,7 @@ const AdminBlogs = () => {
             {/* Create Button */}
             <button
               onClick={() => setShowCreateForm(true)}
-              className="bg-amber-700 text-white px-6 py-2 rounded-lg hover:bg-amber-800 transition-colors flex items-center gap-2"
+              className="bg-gradient-to-r from-amber-600 to-orange-600 text-white px-6 py-3 rounded-xl hover:from-amber-700 hover:to-orange-700 transform hover:scale-105 transition-all duration-200 shadow-lg hover:shadow-xl flex items-center gap-2"
             >
               <Plus className="w-4 h-4" />
               Create Blog
@@ -499,23 +496,23 @@ const AdminBlogs = () => {
 
         {/* Create/Edit Form */}
         {showCreateForm && (
-          <div className="bg-white rounded-lg shadow-sm border border-amber-200 p-6 mb-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-semibold text-amber-900">
+          <div className="bg-white rounded-2xl shadow-lg border border-amber-100 p-6 mb-6">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold bg-gradient-to-r from-amber-600 to-orange-600 bg-clip-text text-transparent">
                 {editingBlog ? 'Edit Blog' : 'Create New Blog'}
               </h2>
               <button
                 onClick={resetForm}
-                className="text-amber-600 hover:text-amber-800 transition-colors"
+                className="text-amber-600 hover:text-amber-800 hover:bg-amber-100 p-2 rounded-lg transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-6">
               {/* Title */}
               <div>
-                <label className="block text-sm font-medium text-amber-800 mb-1">
+                <label className="block text-sm font-medium text-amber-800 mb-2">
                   Title *
                 </label>
                 <input
@@ -523,7 +520,7 @@ const AdminBlogs = () => {
                   required
                   value={formData.title}
                   onChange={(e) => setFormData({...formData, title: e.target.value})}
-                  className="w-full px-4 py-2 border border-amber-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                  className="w-full px-4 py-3 border border-amber-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all duration-200"
                   placeholder="Enter blog title"
                   disabled={submitting}
                 />
@@ -531,15 +528,15 @@ const AdminBlogs = () => {
 
               {/* Content */}
               <div>
-                <label className="block text-sm font-medium text-amber-800 mb-1">
+                <label className="block text-sm font-medium text-amber-800 mb-2">
                   Content *
                 </label>
                 <textarea
                   required
-                  rows={6}
+                  rows={8}
                   value={formData.content}
                   onChange={(e) => setFormData({...formData, content: e.target.value})}
-                  className="w-full px-4 py-2 border border-amber-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                  className="w-full px-4 py-3 border border-amber-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all duration-200"
                   placeholder="Write your blog content here..."
                   disabled={submitting}
                 />
@@ -547,7 +544,7 @@ const AdminBlogs = () => {
 
               {/* Image Upload */}
               <div>
-                <label className="block text-sm font-medium text-amber-800 mb-1">
+                <label className="block text-sm font-medium text-amber-800 mb-2">
                   Blog Image
                 </label>
                 
@@ -557,7 +554,7 @@ const AdminBlogs = () => {
                     <img
                       src={formData.imageFile ? URL.createObjectURL(formData.imageFile) : getImageUrl(formData.image)}
                       alt="Preview"
-                      className="w-32 h-32 object-cover rounded-lg border border-amber-300"
+                      className="w-32 h-32 object-cover rounded-xl border border-amber-200 shadow-md"
                       onError={(e) => {
                         console.error('Image load error for URL:', e.target.src);
                         console.error('Original formData.image:', formData.image);
@@ -570,7 +567,7 @@ const AdminBlogs = () => {
                     <button
                       type="button"
                       onClick={removeImage}
-                      className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors"
+                      className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors shadow-lg"
                       disabled={submitting}
                     >
                       <X className="w-3 h-3" />
@@ -578,13 +575,13 @@ const AdminBlogs = () => {
                   </div>
                 )}
                 
-                <div className="space-y-3">
+                <div className="space-y-4">
                   {/* File Upload */}
                   <div>
-                    <label className="flex items-center justify-center w-full h-32 border-2 border-dashed border-amber-300 rounded-lg cursor-pointer hover:border-amber-400 hover:bg-amber-50 transition-colors">
+                    <label className="flex items-center justify-center w-full h-32 border-2 border-dashed border-amber-300 rounded-xl cursor-pointer hover:border-amber-400 hover:bg-amber-50 transition-colors">
                       <div className="text-center">
                         <Upload className="w-8 h-8 text-amber-500 mx-auto mb-2" />
-                        <p className="text-sm text-amber-600">Upload from device</p>
+                        <p className="text-sm text-amber-600 font-medium">Upload from device</p>
                         <p className="text-xs text-amber-500">PNG, JPG, GIF up to 5MB</p>
                       </div>
                       <input
@@ -599,13 +596,13 @@ const AdminBlogs = () => {
                   
                   {/* URL Input */}
                   <div className="relative">
-                    <span className="text-xs text-amber-600 mb-1 block">Or paste image URL:</span>
+                    <span className="text-xs text-amber-600 mb-2 block font-medium">Or paste image URL:</span>
                     <ImageIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-amber-500 w-4 h-4" />
                     <input
                       type="url"
                       value={formData.image}
                       onChange={(e) => setFormData({...formData, image: e.target.value, imageFile: null})}
-                      className="w-full pl-10 pr-4 py-2 border border-amber-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                      className="w-full pl-10 pr-4 py-3 border border-amber-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all duration-200"
                       placeholder="https://example.com/image.jpg"
                       disabled={!!formData.imageFile || submitting}
                     />
@@ -615,17 +612,17 @@ const AdminBlogs = () => {
 
               {/* Tags */}
               <div>
-                <label className="block text-sm font-medium text-amber-800 mb-1">
+                <label className="block text-sm font-medium text-amber-800 mb-2">
                   Tags
                 </label>
                 
                 {/* Display existing tags */}
                 {formData.tags.length > 0 && (
-                  <div className="flex flex-wrap gap-2 mb-3 p-3 bg-amber-50 rounded-lg border border-amber-200">
+                  <div className="flex flex-wrap gap-2 mb-4 p-4 bg-amber-50 rounded-xl border border-amber-200">
                     {formData.tags.map((tag, index) => (
                       <span
                         key={index}
-                        className="inline-flex items-center gap-1 px-3 py-1 bg-amber-100 text-amber-700 text-sm rounded-full"
+                        className="inline-flex items-center gap-1 px-3 py-1 bg-amber-100 text-amber-700 text-sm rounded-full shadow-sm"
                       >
                         {tag}
                         <button
@@ -648,7 +645,7 @@ const AdminBlogs = () => {
                     value={formData.tagInput}
                     onChange={(e) => setFormData({...formData, tagInput: e.target.value})}
                     onKeyPress={handleTagInputKeyPress}
-                    className="flex-1 px-4 py-2 border border-amber-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                    className="flex-1 px-4 py-3 border border-amber-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all duration-200"
                     placeholder="Enter a tag and press Enter"
                     disabled={submitting}
                   />
@@ -656,14 +653,14 @@ const AdminBlogs = () => {
                     type="button"
                     onClick={addTag}
                     disabled={!formData.tagInput.trim() || submitting}
-                    className="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                    className="px-4 py-3 bg-gradient-to-r from-amber-500 to-orange-600 text-white rounded-xl hover:from-amber-600 hover:to-orange-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 shadow-lg"
                   >
                     <Plus className="w-4 h-4" />
                     Add
                   </button>
                 </div>
                 
-                <p className="text-xs text-amber-600 mt-1">
+                <p className="text-xs text-amber-600 mt-2">
                   Type a tag and press Enter or click Add button. Click × to remove tags.
                 </p>
               </div>
@@ -671,25 +668,25 @@ const AdminBlogs = () => {
               {/* Status */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-amber-800 mb-1">
+                  <label className="block text-sm font-medium text-amber-800 mb-2">
                     Author
                   </label>
                   <input
                     type="text"
                     value={formData.author}
                     onChange={(e) => setFormData({...formData, author: e.target.value})}
-                    className="w-full px-4 py-2 border border-amber-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                    className="w-full px-4 py-3 border border-amber-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all duration-200"
                     disabled={submitting}
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-amber-800 mb-1">
+                  <label className="block text-sm font-medium text-amber-800 mb-2">
                     Status
                   </label>
                   <select
                     value={formData.status}
                     onChange={(e) => setFormData({...formData, status: e.target.value})}
-                    className="w-full px-4 py-2 border border-amber-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent bg-white"
+                    className="w-full px-4 py-3 border border-amber-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent bg-white transition-all duration-200"
                     disabled={submitting}
                   >
                     <option value="draft">Draft</option>
@@ -703,7 +700,7 @@ const AdminBlogs = () => {
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="bg-amber-700 text-white px-6 py-2 rounded-lg hover:bg-amber-800 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="bg-gradient-to-r from-amber-600 to-orange-600 text-white px-6 py-3 rounded-xl hover:from-amber-700 hover:to-orange-700 transform hover:scale-105 transition-all duration-200 shadow-lg hover:shadow-xl flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {submitting ? (
                     <Loader className="w-4 h-4 animate-spin" />
@@ -719,7 +716,7 @@ const AdminBlogs = () => {
                   type="button"
                   onClick={resetForm}
                   disabled={submitting}
-                  className="bg-gray-500 text-white px-6 py-2 rounded-lg hover:bg-gray-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="bg-gray-500 text-white px-6 py-3 rounded-xl hover:bg-gray-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
                 >
                   Cancel
                 </button>
@@ -731,7 +728,7 @@ const AdminBlogs = () => {
         {/* Blogs List */}
         <div className="grid gap-6">
           {filteredBlogs.length === 0 ? (
-            <div className="bg-white rounded-lg shadow-sm border border-amber-200 p-12 text-center">
+            <div className="bg-white rounded-2xl shadow-lg border border-amber-100 p-12 text-center">
               <div className="text-amber-600 mb-4">
                 <Search className="w-12 h-12 mx-auto" />
               </div>
@@ -745,23 +742,23 @@ const AdminBlogs = () => {
             </div>
           ) : (
             filteredBlogs.map((blog) => (
-              <div key={blog._id} className="bg-white rounded-lg shadow-sm border border-amber-200 overflow-hidden">
+              <div key={blog._id} className="bg-white rounded-2xl shadow-lg border border-amber-100 overflow-hidden hover:shadow-xl transition-all duration-300">
                 <div className="p-6">
-                  <div className="flex justify-between items-start mb-4">
+                  <div className="flex justify-between items-start mb-6">
                     <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <h3 className="text-xl font-semibold text-amber-900">{blog.title}</h3>
-                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                      <div className="flex items-center gap-3 mb-3">
+                        <h3 className="text-xl font-bold text-amber-900">{blog.title}</h3>
+                        <span className={`px-3 py-1 text-xs font-medium rounded-full ${
                           blog.status === 'publish'
-                            ? 'bg-green-100 text-green-700' 
-                            : 'bg-yellow-100 text-yellow-700'
+                            ? 'bg-green-100 text-green-700 border border-green-200' 
+                            : 'bg-yellow-100 text-yellow-700 border border-yellow-200'
                         }`}>
                           {blog.status === 'publish' ? 'Published' : 'Draft'}
                         </span>
                       </div>
                       
                       {/* Meta Info */}
-                      <div className="flex items-center gap-4 text-sm text-amber-600 mb-3">
+                      <div className="flex items-center gap-4 text-sm text-amber-600 mb-4">
                         <div className="flex items-center gap-1">
                           <User className="w-4 h-4" />
                           {blog.author}
@@ -773,7 +770,7 @@ const AdminBlogs = () => {
                       </div>
 
                       {/* Content Preview */}
-                      <p className="text-amber-800 mb-4 line-clamp-3">
+                      <p className="text-amber-800 mb-4 line-clamp-3 leading-relaxed">
                         {blog.content && blog.content.length > 150 
                           ? blog.content.substring(0, 150) + '...' 
                           : blog.content
@@ -784,14 +781,14 @@ const AdminBlogs = () => {
                       {blog.tags && blog.tags.length > 0 && (
                         <div className="flex items-center gap-2 mb-4">
                           <Tag className="w-4 h-4 text-amber-600" />
-                          <div className="flex flex-wrap gap-1">
+                          <div className="flex flex-wrap gap-2">
                             {blog.tags
                               .map(tag => cleanTagText(tag))
                               .filter(tag => tag) // Remove empty tags after cleaning
                               .map((tag, index) => (
                                 <span
                                   key={index}
-                                  className="px-2 py-1 bg-amber-100 text-amber-700 text-xs rounded-full"
+                                  className="px-2 py-1 bg-amber-100 text-amber-700 text-xs rounded-full border border-amber-200"
                                 >
                                   {tag}
                                 </span>
@@ -808,7 +805,7 @@ const AdminBlogs = () => {
                         <img
                           src={getImageUrl(blog.image)}
                           alt={blog.title}
-                          className="w-24 h-24 object-cover rounded-lg"
+                          className="w-24 h-24 object-cover rounded-xl border border-amber-200 shadow-md"
                           onError={(e) => {
                             console.error('Blog image load error for URL:', e.target.src);
                             console.error('Original blog.image:', blog.image);
@@ -827,7 +824,7 @@ const AdminBlogs = () => {
                   <div className="flex items-center gap-2 pt-4 border-t border-amber-100">
                     <button
                       onClick={() => handleEdit(blog)}
-                      className="flex items-center gap-1 px-3 py-1 text-sm text-amber-700 hover:bg-amber-50 rounded-lg transition-colors"
+                      className="flex items-center gap-1 px-4 py-2 text-sm text-amber-700 hover:bg-amber-50 hover:text-amber-800 rounded-xl transition-colors border border-amber-200 hover:border-amber-300"
                     >
                       <Edit className="w-4 h-4" />
                       Edit
@@ -835,10 +832,10 @@ const AdminBlogs = () => {
                     
                     <button
                       onClick={() => togglePublish(blog._id)}
-                      className={`flex items-center gap-1 px-3 py-1 text-sm rounded-lg transition-colors ${
+                      className={`flex items-center gap-1 px-4 py-2 text-sm rounded-xl transition-colors border ${
                         blog.status === 'publish'
-                          ? 'text-yellow-700 hover:bg-yellow-50'
-                          : 'text-green-700 hover:bg-green-50'
+                          ? 'text-yellow-700 hover:bg-yellow-50 border-yellow-200 hover:border-yellow-300'
+                          : 'text-green-700 hover:bg-green-50 border-green-200 hover:border-green-300'
                       }`}
                     >
                       {blog.status === 'publish' ? (
@@ -856,7 +853,7 @@ const AdminBlogs = () => {
                     
                     <button
                       onClick={() => handleDelete(blog._id)}
-                      className="flex items-center gap-1 px-3 py-1 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                      className="flex items-center gap-1 px-4 py-2 text-sm text-red-600 hover:bg-red-50 rounded-xl transition-colors border border-red-200 hover:border-red-300"
                     >
                       <Trash2 className="w-4 h-4" />
                       Delete

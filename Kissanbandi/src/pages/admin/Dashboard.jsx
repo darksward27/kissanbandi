@@ -102,7 +102,7 @@ const Dashboard = () => {
       categoryCount[category] = (categoryCount[category] || 0) + 1;
     });
 
-    const colors = ['#10b981', '#059669', '#047857', '#065f46', '#064e3b'];
+    const colors = ['#d97706', '#b45309', '#92400e', '#78350f', '#451a03'];
     return Object.entries(categoryCount)
       .map(([name, count], index) => ({
         name,
@@ -224,11 +224,11 @@ const Dashboard = () => {
 
   if (stats.loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100 p-6">
+      <div className="min-h-screen bg-gradient-to-br from-amber-50 to-orange-100 p-6">
         <div className="flex justify-center items-center h-64">
           <div className="relative">
-            <div className="animate-spin rounded-full h-16 w-16 border-4 border-green-200 border-t-green-600"></div>
-            <div className="absolute inset-0 animate-pulse rounded-full h-16 w-16 border-4 border-green-300 opacity-20"></div>
+            <div className="animate-spin rounded-full h-16 w-16 border-4 border-amber-200 border-t-amber-600"></div>
+            <div className="absolute inset-0 animate-pulse rounded-full h-16 w-16 border-4 border-amber-300 opacity-20"></div>
           </div>
         </div>
       </div>
@@ -237,7 +237,7 @@ const Dashboard = () => {
 
   if (stats.error) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100 p-6">
+      <div className="min-h-screen bg-gradient-to-br from-amber-50 to-orange-100 p-6">
         <div className="text-center">
           <div className="bg-white rounded-2xl shadow-lg p-8 max-w-md mx-auto">
             <div className="text-red-500 mb-4">
@@ -245,7 +245,7 @@ const Dashboard = () => {
             </div>
             <button 
               onClick={loadDashboardStats}
-              className="bg-gradient-to-r from-green-500 to-emerald-600 text-white px-6 py-3 rounded-xl hover:from-green-600 hover:to-emerald-700 transform hover:scale-105 transition-all duration-200 shadow-lg"
+              className="bg-gradient-to-r from-amber-500 to-orange-600 text-white px-6 py-3 rounded-xl hover:from-amber-600 hover:to-orange-700 transform hover:scale-105 transition-all duration-200 shadow-lg"
             >
               Retry
             </button>
@@ -260,28 +260,28 @@ const Dashboard = () => {
       title: 'Total Orders',
       value: stats.totalOrders,
       icon: ShoppingBag,
-      color: 'from-green-400 to-green-600',
+      color: 'from-amber-400 to-amber-600',
       change: stats.orderGrowth || '0%'
     },
     {
       title: 'Total Customers',
       value: stats.totalCustomers,
       icon: Users,
-      color: 'from-emerald-400 to-emerald-600',
+      color: 'from-orange-400 to-orange-600',
       change: stats.customerGrowth || '0%'
     },
     {
       title: 'Total Products',
       value: stats.totalProducts,
       icon: Package,
-      color: 'from-teal-400 to-teal-600',
+      color: 'from-yellow-400 to-yellow-600',
       change: stats.productGrowth || '0%'
     },
     {
       title: 'Total Revenue',
       value: `₹${stats.totalRevenue.toLocaleString()}`,
       icon: IndianRupee,
-      color: 'from-lime-400 to-lime-600',
+      color: 'from-amber-500 to-orange-600',
       change: stats.revenueGrowth || '0%'
     }
   ];
@@ -301,18 +301,18 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50">
+    <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50">
       <div className="p-6 space-y-8">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-4xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">
+            <h1 className="text-4xl font-bold bg-gradient-to-r from-amber-600 to-orange-600 bg-clip-text text-transparent">
               Dashboard
             </h1>
             <p className="text-gray-600 mt-2">Welcome back! Here's your business overview</p>
           </div>
           <div className="animate-bounce">
-            <TrendingUp className="w-8 h-8 text-green-600" />
+            <TrendingUp className="w-8 h-8 text-amber-600" />
           </div>
         </div>
 
@@ -321,7 +321,7 @@ const Dashboard = () => {
           {statCards.map((stat, index) => (
             <div 
               key={index} 
-              className="group bg-white rounded-2xl shadow-lg hover:shadow-xl p-6 transform hover:scale-105 transition-all duration-300 animate-fade-in border border-green-100"
+              className="group bg-white rounded-2xl shadow-lg hover:shadow-xl p-6 transform hover:scale-105 transition-all duration-300 animate-fade-in border border-amber-100"
               style={{ animationDelay: `${index * 100}ms` }}
             >
               <div className="flex items-center justify-between">
@@ -329,7 +329,7 @@ const Dashboard = () => {
                   <p className="text-gray-500 text-sm font-medium">{stat.title}</p>
                   <p className="text-3xl font-bold mt-2 text-gray-800">{stat.value}</p>
                   <div className="flex items-center mt-2">
-                    <span className="text-green-600 text-sm font-medium">{stat.change}</span>
+                    <span className="text-amber-600 text-sm font-medium">{stat.change}</span>
                     <span className="text-gray-400 text-sm ml-1">vs last month</span>
                   </div>
                 </div>
@@ -344,40 +344,40 @@ const Dashboard = () => {
         {/* Charts Section */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Revenue Chart */}
-          <div className="bg-white rounded-2xl shadow-lg p-6 border border-green-100">
+          <div className="bg-white rounded-2xl shadow-lg p-6 border border-amber-100">
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-xl font-bold text-gray-800">Revenue Trend</h3>
               <div className="flex items-center space-x-2">
-                <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+                <div className="w-3 h-3 bg-amber-500 rounded-full animate-pulse"></div>
                 <span className="text-sm text-gray-500">Live</span>
               </div>
             </div>
             <ResponsiveContainer width="100%" height={300}>
               <LineChart data={revenueData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0fdf4" />
+                <CartesianGrid strokeDasharray="3 3" stroke="#fef3c7" />
                 <XAxis dataKey="month" stroke="#6b7280" />
                 <YAxis stroke="#6b7280" />
                 <Tooltip 
                   contentStyle={{ 
-                    backgroundColor: '#f0fdf4', 
-                    border: '1px solid #10b981',
+                    backgroundColor: '#fef3c7', 
+                    border: '1px solid #d97706',
                     borderRadius: '12px'
                   }} 
                 />
                 <Line 
                   type="monotone" 
                   dataKey="revenue" 
-                  stroke="#10b981" 
+                  stroke="#d97706" 
                   strokeWidth={3}
-                  dot={{ fill: '#10b981', strokeWidth: 2, r: 6 }}
-                  activeDot={{ r: 8, stroke: '#10b981', strokeWidth: 2 }}
+                  dot={{ fill: '#d97706', strokeWidth: 2, r: 6 }}
+                  activeDot={{ r: 8, stroke: '#d97706', strokeWidth: 2 }}
                 />
               </LineChart>
             </ResponsiveContainer>
           </div>
 
           {/* Product Categories */}
-          <div className="bg-white rounded-2xl shadow-lg p-6 border border-green-100">
+          <div className="bg-white rounded-2xl shadow-lg p-6 border border-amber-100">
             <h3 className="text-xl font-bold text-gray-800 mb-6">Product Categories</h3>
             <ResponsiveContainer width="100%" height={300}>
               <PieChart>
@@ -404,7 +404,7 @@ const Dashboard = () => {
                     className="w-3 h-3 rounded-full" 
                     style={{ backgroundColor: item.color }}
                   ></div>
-                  <span className="text-sm text-gray-600">{item.name}</span>
+                  <span className="text-sm text-gray-600">Bogat Products</span>
                   <span className="text-sm font-medium text-gray-800">{item.value}</span>
                 </div>
               ))}
@@ -415,20 +415,20 @@ const Dashboard = () => {
         {/* Bottom Section */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Recent Orders */}
-          <div className="lg:col-span-2 bg-white rounded-2xl shadow-lg p-6 border border-green-100">
+          <div className="lg:col-span-2 bg-white rounded-2xl shadow-lg p-6 border border-amber-100">
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-xl font-bold text-gray-800">Recent Orders</h3>
-              <Clock className="w-5 h-5 text-green-600" />
+              <Clock className="w-5 h-5 text-amber-600" />
             </div>
             <div className="space-y-4">
               {recentOrders.map((order, index) => (
                 <div 
                   key={order.id} 
-                  className="flex items-center justify-between p-4 bg-green-50 rounded-xl hover:bg-green-100 transition-colors duration-200"
+                  className="flex items-center justify-between p-4 bg-amber-50 rounded-xl hover:bg-amber-100 transition-colors duration-200"
                   style={{ animationDelay: `${index * 50}ms` }}
                 >
                   <div className="flex items-center space-x-4">
-                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                    <div className="w-2 h-2 bg-amber-500 rounded-full animate-pulse"></div>
                     <div>
                       <p className="font-medium text-gray-800">{order.id}</p>
                       <p className="text-sm text-gray-500">{order.customer}</p>
@@ -446,19 +446,19 @@ const Dashboard = () => {
           </div>
 
           {/* Top Products */}
-          <div className="bg-white rounded-2xl shadow-lg p-6 border border-green-100">
+          <div className="bg-white rounded-2xl shadow-lg p-6 border border-amber-100">
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-xl font-bold text-gray-800">Top Products</h3>
-              <Award className="w-5 h-5 text-green-600" />
+              <Award className="w-5 h-5 text-amber-600" />
             </div>
             <div className="space-y-4">
               {topProducts.map((product, index) => (
                 <div 
                   key={index} 
-                  className="flex items-center justify-between p-3 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl hover:from-green-100 hover:to-emerald-100 transition-all duration-200"
+                  className="flex items-center justify-between p-3 bg-gradient-to-r from-amber-50 to-orange-50 rounded-xl hover:from-amber-100 hover:to-orange-100 transition-all duration-200"
                 >
                   <div className="flex items-center space-x-3">
-                    <div className="w-8 h-8 bg-gradient-to-r from-green-400 to-emerald-500 rounded-lg flex items-center justify-center">
+                    <div className="w-8 h-8 bg-gradient-to-r from-amber-400 to-orange-500 rounded-lg flex items-center justify-center">
                       <span className="text-white font-bold text-sm">{index + 1}</span>
                     </div>
                     <div>
@@ -466,7 +466,7 @@ const Dashboard = () => {
                       <p className="text-xs text-gray-500">{product.sales} sales</p>
                     </div>
                   </div>
-                  <p className="font-bold text-green-600 text-sm">₹{product.revenue.toLocaleString()}</p>
+                  <p className="font-bold text-amber-600 text-sm">₹{product.revenue.toLocaleString()}</p>
                 </div>
               ))}
             </div>
@@ -474,15 +474,14 @@ const Dashboard = () => {
         </div>
 
         {/* Quick Actions */}
-        <div className="bg-white rounded-2xl shadow-lg p-6 border border-green-100">
+        <div className="bg-white rounded-2xl shadow-lg p-6 border border-amber-100">
           <h3 className="text-xl font-bold text-gray-800 mb-6">Quick Actions</h3>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {[
-              
-              { label: 'Add Product', icon: Package, color: 'from-green-400 to-green-600',href:'/admin/products'},
-              { label: 'View Orders', icon: ShoppingBag, color: 'from-emerald-400 to-emerald-600', href:'/admin/orders' },
-              { label: 'Manage Users', icon: Users, color: 'from-teal-400 to-teal-600',href:'/admin/customers' },
-              { label: 'Analytics', icon: Eye, color: 'from-lime-400 to-lime-600', href:'/admin/analytics' }
+              { label: 'Add Product', icon: Package, color: 'from-amber-400 to-amber-600', href:'/admin/products'},
+              { label: 'View Orders', icon: ShoppingBag, color: 'from-orange-400 to-orange-600', href:'/admin/orders' },
+              { label: 'Manage Users', icon: Users, color: 'from-yellow-400 to-yellow-600', href:'/admin/customers' },
+              { label: 'Analytics', icon: Eye, color: 'from-amber-500 to-orange-600', href:'/admin/analytics' }
             ].map((action, index) => (
               <Link
                 to={action.href}

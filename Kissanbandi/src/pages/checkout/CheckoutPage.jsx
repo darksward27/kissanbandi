@@ -351,8 +351,7 @@ const updateQuantity = (item, quantity) => {
                         <h3 className="font-bold text-gray-800 text-lg group-hover:text-amber-700 transition-colors">
                           {item.name}
                         </h3>
-                        <p className="text-amber-600 text-sm font-medium mb-1">{item.category}</p>
-                        <div className="bg-gradient-to-r from-amber-700 to-orange-700 bg-clip-text text-transparent font-bold text-lg">
+                                                <div className="bg-gradient-to-r from-amber-700 to-orange-700 bg-clip-text text-transparent font-bold text-lg">
                           ₹{item.price}/{item.unit}
                         </div>
                       </div>

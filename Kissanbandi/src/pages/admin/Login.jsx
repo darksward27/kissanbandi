@@ -16,7 +16,7 @@ const Login = () => {
   // Redirect if already logged in
   useEffect(() => {
     if (isAuthenticated && user?.role === 'admin') {
-      const from = location.state?.from?.pathname || '/admin/dashboard';
+      const from = location.state?.from?.pathname || '/admin';
       navigate(from, { replace: true });
     }
   }, [isAuthenticated, user, navigate, location]);
@@ -37,7 +37,7 @@ const Login = () => {
       await adminLogin(email, password, rememberMe);
 
       toast.success('Login successful');
-      const from = location.state?.from?.pathname || '/admin/dashboard';
+      const from = location.state?.from?.pathname || '/admin';
       navigate(from, { replace: true });
     } catch (err) {
       toast.error(err.message || 'Login failed');

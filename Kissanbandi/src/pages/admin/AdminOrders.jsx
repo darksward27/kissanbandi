@@ -279,7 +279,7 @@ const AdminOrders = () => {
       case 'processing':
         return 'bg-yellow-100 text-yellow-800 border-yellow-200';
       case 'pending':
-        return 'bg-gray-100 text-gray-800 border-gray-200';
+        return 'bg-amber-100 text-amber-800 border-amber-200';
       default:
         return 'bg-gray-100 text-gray-800 border-gray-200';
     }
@@ -310,7 +310,7 @@ const AdminOrders = () => {
     }
 
     return (
-      <div className="flex flex-col sm:flex-row justify-between items-center mt-4 px-4 sm:px-6 py-3 bg-green-50 border-t border-green-100">
+      <div className="flex flex-col sm:flex-row justify-between items-center mt-4 px-4 sm:px-6 py-3 bg-amber-50 border-t border-amber-100">
         <div className="text-sm text-gray-700 mb-2 sm:mb-0">
           Showing page {currentPage} of {totalPages} ({orders.length} orders)
         </div>
@@ -318,14 +318,14 @@ const AdminOrders = () => {
           <button
             onClick={() => loadOrders(1)}
             disabled={currentPage === 1 || loading}
-            className="px-2 py-1 text-sm rounded bg-white text-gray-700 hover:bg-green-50 disabled:bg-gray-100 disabled:text-gray-400 border border-green-200"
+            className="px-2 py-1 text-sm rounded bg-white text-gray-700 hover:bg-amber-50 disabled:bg-gray-100 disabled:text-gray-400 border border-amber-200"
           >
             First
           </button>
           <button
             onClick={() => loadOrders(currentPage - 1)}
             disabled={currentPage === 1 || loading}
-            className="px-3 py-1 text-sm rounded bg-white text-gray-700 hover:bg-green-50 disabled:bg-gray-100 disabled:text-gray-400 border border-green-200"
+            className="px-3 py-1 text-sm rounded bg-white text-gray-700 hover:bg-amber-50 disabled:bg-gray-100 disabled:text-gray-400 border border-amber-200"
           >
             Previous
           </button>
@@ -335,8 +335,8 @@ const AdminOrders = () => {
               onClick={() => loadOrders(page)}
               className={`px-3 py-1 text-sm rounded border ${
                 currentPage === page 
-                  ? 'bg-green-600 text-white border-green-600' 
-                  : 'bg-white text-gray-700 hover:bg-green-50 border-green-200'
+                  ? 'bg-amber-600 text-white border-amber-600' 
+                  : 'bg-white text-gray-700 hover:bg-amber-50 border-amber-200'
               }`}
             >
               {page}
@@ -345,14 +345,14 @@ const AdminOrders = () => {
           <button
             onClick={() => loadOrders(currentPage + 1)}
             disabled={currentPage === totalPages || loading}
-            className="px-3 py-1 text-sm rounded bg-white text-gray-700 hover:bg-green-50 disabled:bg-gray-100 disabled:text-gray-400 border border-green-200"
+            className="px-3 py-1 text-sm rounded bg-white text-gray-700 hover:bg-amber-50 disabled:bg-gray-100 disabled:text-gray-400 border border-amber-200"
           >
             Next
           </button>
           <button
             onClick={() => loadOrders(totalPages)}
             disabled={currentPage === totalPages || loading}
-            className="px-2 py-1 text-sm rounded bg-white text-gray-700 hover:bg-green-50 disabled:bg-gray-100 disabled:text-gray-400 border border-green-200"
+            className="px-2 py-1 text-sm rounded bg-white text-gray-700 hover:bg-amber-50 disabled:bg-gray-100 disabled:text-gray-400 border border-amber-200"
           >
             Last
           </button>
@@ -377,7 +377,7 @@ const AdminOrders = () => {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {orders.map((order) => (
-          <div key={order._id} className="bg-white rounded-lg shadow-md border border-green-100 hover:shadow-lg transition-shadow">
+          <div key={order._id} className="bg-white rounded-lg shadow-md border border-amber-100 hover:shadow-lg transition-shadow">
             <div className="p-4">
               <div className="flex justify-between items-start mb-3">
                 <div className="flex items-center space-x-2">
@@ -385,7 +385,7 @@ const AdminOrders = () => {
                     type="checkbox"
                     checked={selectedOrders.has(order._id)}
                     onChange={() => toggleOrderSelection(order._id)}
-                    className="rounded border-green-300 text-green-600 focus:ring-green-500"
+                    className="rounded border-amber-300 text-amber-600 focus:ring-amber-500"
                   />
                   <h3 className="font-medium text-gray-900 text-sm">#{order._id.slice(-8)}</h3>
                 </div>
@@ -433,7 +433,7 @@ const AdminOrders = () => {
               <div className="flex space-x-2">
                 <button
                   onClick={() => handleViewDetails(order)}
-                  className="flex-1 px-3 py-2 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center space-x-1"
+                  className="flex-1 px-3 py-2 text-sm bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors flex items-center justify-center space-x-1"
                 >
                   <Eye className="w-4 h-4" />
                   <span>View Details</span>
@@ -442,7 +442,7 @@ const AdminOrders = () => {
                   value={order.status || 'pending'}
                   onChange={(e) => handleStatusUpdate(order._id, e.target.value)}
                   disabled={updatingStatus === order._id}
-                  className="px-2 py-2 text-sm border border-green-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white"
+                  className="px-2 py-2 text-sm border border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 bg-white"
                 >
                   {STATUS_OPTIONS.map(status => (
                     <option key={status} value={status}>
@@ -465,19 +465,19 @@ const AdminOrders = () => {
 
     return (
       <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-green-200">
-          <thead className="bg-green-50">
+        <table className="min-w-full divide-y divide-amber-200">
+          <thead className="bg-amber-50">
             <tr>
               <th className="px-3 sm:px-6 py-3 text-left">
                 <input
                   type="checkbox"
                   checked={selectedOrders.size === orders.length && orders.length > 0}
                   onChange={toggleAllOrders}
-                  className="rounded border-green-300 text-green-600 focus:ring-green-500"
+                  className="rounded border-amber-300 text-amber-600 focus:ring-amber-500"
                 />
               </th>
               <th 
-                className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-green-800 uppercase tracking-wider cursor-pointer hover:bg-green-100"
+                className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-amber-800 uppercase tracking-wider cursor-pointer hover:bg-amber-100"
                 onClick={() => handleSort('_id')}
               >
                 <div className="flex items-center space-x-1">
@@ -486,7 +486,7 @@ const AdminOrders = () => {
                 </div>
               </th>
               <th 
-                className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-green-800 uppercase tracking-wider cursor-pointer hover:bg-green-100 hidden sm:table-cell"
+                className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-amber-800 uppercase tracking-wider cursor-pointer hover:bg-amber-100 hidden sm:table-cell"
                 onClick={() => handleSort('user.name')}
               >
                 <div className="flex items-center space-x-1">
@@ -494,9 +494,9 @@ const AdminOrders = () => {
                   <SortIcon field="user.name" />
                 </div>
               </th>
-              <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-green-800 uppercase tracking-wider hidden md:table-cell">Items</th>
+              <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-amber-800 uppercase tracking-wider hidden md:table-cell">Items</th>
               <th 
-                className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-green-800 uppercase tracking-wider cursor-pointer hover:bg-green-100"
+                className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-amber-800 uppercase tracking-wider cursor-pointer hover:bg-amber-100"
                 onClick={() => handleSort('totalAmount')}
               >
                 <div className="flex items-center space-x-1">
@@ -504,20 +504,20 @@ const AdminOrders = () => {
                   <SortIcon field="totalAmount" />
                 </div>
               </th>
-              <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-green-800 uppercase tracking-wider">Status</th>
-              <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-green-800 uppercase tracking-wider hidden lg:table-cell">Contact</th>
-              <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-green-800 uppercase tracking-wider">Actions</th>
+              <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-amber-800 uppercase tracking-wider">Status</th>
+              <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-amber-800 uppercase tracking-wider hidden lg:table-cell">Contact</th>
+              <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-amber-800 uppercase tracking-wider">Actions</th>
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-green-100">
+          <tbody className="bg-white divide-y divide-amber-100">
             {orders.map((order) => (
-              <tr key={order._id} className="hover:bg-green-50 transition-colors">
+              <tr key={order._id} className="hover:bg-amber-50 transition-colors">
                 <td className="px-3 sm:px-6 py-4">
                   <input
                     type="checkbox"
                     checked={selectedOrders.has(order._id)}
                     onChange={() => toggleOrderSelection(order._id)}
-                    className="rounded border-green-300 text-green-600 focus:ring-green-500"
+                    className="rounded border-amber-300 text-amber-600 focus:ring-amber-500"
                   />
                 </td>
                 <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900">
@@ -548,14 +548,14 @@ const AdminOrders = () => {
                 <td className="px-3 sm:px-6 py-4">
                   {updatingStatus === order._id ? (
                     <div className="flex items-center">
-                      <Loader className="w-4 h-4 animate-spin mr-2 text-green-600" />
+                      <Loader className="w-4 h-4 animate-spin mr-2 text-amber-600" />
                       <span className="text-sm text-gray-500">Updating...</span>
                     </div>
                   ) : (
                     <select
                       value={order.status || 'pending'}
                       onChange={(e) => handleStatusUpdate(order._id, e.target.value)}
-                      className={`px-2 py-1 rounded-full text-xs font-medium border ${getStatusBadgeClass(order.status)} focus:ring-2 focus:ring-green-500`}
+                      className={`px-2 py-1 rounded-full text-xs font-medium border ${getStatusBadgeClass(order.status)} focus:ring-2 focus:ring-amber-500`}
                       disabled={updatingStatus === order._id}
                     >
                       {STATUS_OPTIONS.map(status => (
@@ -579,7 +579,7 @@ const AdminOrders = () => {
                 <td className="px-3 sm:px-6 py-4">
                   <button
                     onClick={() => handleViewDetails(order)}
-                    className="text-green-600 hover:text-green-900 text-sm font-medium flex items-center space-x-1"
+                    className="text-amber-600 hover:text-amber-900 text-sm font-medium flex items-center space-x-1"
                   >
                     <Eye className="w-4 h-4" />
                     <span className="hidden sm:inline">View</span>
@@ -595,9 +595,9 @@ const AdminOrders = () => {
 
   if (loading && !orders.length) {
     return (
-      <div className="flex justify-center items-center min-h-screen bg-green-50">
+      <div className="flex justify-center items-center min-h-screen bg-amber-50">
         <div className="flex flex-col items-center bg-white p-8 rounded-lg shadow-lg">
-          <Loader className="w-8 h-8 animate-spin text-green-600 mb-4" />
+          <Loader className="w-8 h-8 animate-spin text-amber-600 mb-4" />
           <p className="text-gray-600">Loading orders...</p>
         </div>
       </div>
@@ -606,7 +606,7 @@ const AdminOrders = () => {
 
   if (error && !orders.length) {
     return (
-      <div className="p-4 sm:p-6 bg-green-50 min-h-screen">
+      <div className="p-4 sm:p-6 bg-amber-50 min-h-screen">
         <div className="max-w-2xl mx-auto bg-white rounded-xl p-6 shadow-lg border border-red-200">
           <div className="flex items-center space-x-3">
             <AlertCircle className="w-6 h-6 text-red-600" />
@@ -625,22 +625,22 @@ const AdminOrders = () => {
   }
 
   return (
-    <div className="min-h-screen bg-green-50">
+    <div className="min-h-screen bg-amber-50">
       <div className="container mx-auto px-4 py-6 sm:py-8">
         {/* Header */}
         <div className="mb-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4">
-            <h1 className="text-2xl sm:text-3xl font-bold text-green-900 mb-2 sm:mb-0">Orders Management</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold text-amber-900 mb-2 sm:mb-0">Orders Management</h1>
             <div className="flex items-center space-x-2">
               <button
                 onClick={() => setViewMode(viewMode === 'table' ? 'card' : 'table')}
-                className="p-2 text-green-600 hover:bg-green-100 rounded-lg transition-colors"
+                className="p-2 text-amber-600 hover:bg-amber-100 rounded-lg transition-colors"
               >
                 {viewMode === 'table' ? <Grid className="w-5 h-5" /> : <List className="w-5 h-5" />}
               </button>
               <button
                 onClick={() => setShowFilters(!showFilters)}
-                className="p-2 text-green-600 hover:bg-green-100 rounded-lg transition-colors sm:hidden"
+                className="p-2 text-amber-600 hover:bg-amber-100 rounded-lg transition-colors sm:hidden"
               >
                 <Filter className="w-5 h-5" />
               </button>
@@ -651,13 +651,13 @@ const AdminOrders = () => {
           <div className={`space-y-4 ${showFilters ? 'block' : 'hidden sm:block'}`}>
             {/* Search */}
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-green-500 w-5 h-5" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-amber-500 w-5 h-5" />
               <input
                 type="text"
                 placeholder="Search orders by ID, customer name, or phone..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-3 border border-green-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white"
+                className="w-full pl-10 pr-4 py-3 border border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 bg-white"
               />
               {searchTerm && (
                 <button
@@ -681,7 +681,7 @@ const AdminOrders = () => {
                 }}
                 isClearable={true}
                 placeholderText="Select date range"
-                className="w-full sm:w-auto px-4 py-2 border border-green-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white"
+                className="w-full sm:w-auto px-4 py-2 border border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 bg-white"
               />
               <select
                 value={filterStatus}
@@ -689,7 +689,7 @@ const AdminOrders = () => {
                   setFilterStatus(e.target.value);
                   setCurrentPage(1);
                 }}
-                className="w-full sm:w-auto px-4 py-2 border border-green-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white"
+                className="w-full sm:w-auto px-4 py-2 border border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 bg-white"
               >
                 <option value="">All Statuses</option>
                 {STATUS_OPTIONS.map(status => (
@@ -702,7 +702,7 @@ const AdminOrders = () => {
               <div className="flex flex-wrap gap-2">
                 <button
                   onClick={resetFilters}
-                  className="px-4 py-2 text-sm text-green-600 hover:text-green-800 hover:bg-green-100 flex items-center space-x-2 rounded-lg transition-colors border border-green-300"
+                  className="px-4 py-2 text-sm text-amber-600 hover:text-amber-800 hover:bg-amber-100 flex items-center space-x-2 rounded-lg transition-colors border border-amber-300"
                 >
                   <RefreshCcw className="w-4 h-4" />
                   <span>Reset</span>
@@ -710,7 +710,7 @@ const AdminOrders = () => {
                 <button
                   onClick={handleExportOrders}
                   disabled={exportLoading}
-                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  className="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   {exportLoading ? (
                     <Loader className="w-4 h-4 animate-spin" />
@@ -726,7 +726,7 @@ const AdminOrders = () => {
           {/* Mobile filter toggle */}
           <button
             onClick={() => setShowFilters(!showFilters)}
-            className="sm:hidden mt-4 w-full py-2 text-center text-green-600 hover:bg-green-100 rounded-lg transition-colors border border-green-300"
+            className="sm:hidden mt-4 w-full py-2 text-center text-amber-600 hover:bg-amber-100 rounded-lg transition-colors border border-amber-300"
           >
             {showFilters ? (
               <div className="flex items-center justify-center space-x-2">
@@ -744,9 +744,9 @@ const AdminOrders = () => {
 
         {/* Bulk Actions */}
         {selectedOrders.size > 0 && (
-          <div className="mb-6 p-4 bg-green-100 rounded-lg border border-green-200">
+          <div className="mb-6 p-4 bg-amber-100 rounded-lg border border-amber-200">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-              <div className="text-sm text-green-800">
+              <div className="text-sm text-amber-800">
                 {selectedOrders.size} order{selectedOrders.size > 1 ? 's' : ''} selected
               </div>
               <div className="flex flex-wrap gap-2">
@@ -755,7 +755,7 @@ const AdminOrders = () => {
                     key={status}
                     onClick={() => handleBulkStatusUpdate(status)}
                     disabled={bulkActionLoading}
-                    className="px-3 py-1 text-xs bg-white text-green-700 rounded-lg hover:bg-green-50 border border-green-300 disabled:opacity-50 transition-colors"
+                    className="px-3 py-1 text-xs bg-white text-amber-700 rounded-lg hover:bg-amber-50 border border-amber-300 disabled:opacity-50 transition-colors"
                   >
                     {bulkActionLoading ? (
                       <Loader className="w-3 h-3 animate-spin" />
@@ -778,15 +778,15 @@ const AdminOrders = () => {
         {/* Order Statistics */}
         {orderStats && (
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-            <div className="bg-white p-4 rounded-lg shadow-md border border-green-100 relative">
+            <div className="bg-white p-4 rounded-lg shadow-md border border-amber-100 relative">
               {statsLoading && (
                 <div className="absolute inset-0 bg-white/50 flex items-center justify-center rounded-lg">
-                  <Loader className="w-4 h-4 animate-spin text-green-600" />
+                  <Loader className="w-4 h-4 animate-spin text-amber-600" />
                 </div>
               )}
               <div className="flex items-center space-x-3">
-                <div className="p-2 bg-green-100 rounded-lg">
-                  <Package className="w-6 h-6 text-green-600" />
+                <div className="p-2 bg-amber-100 rounded-lg">
+                  <Package className="w-6 h-6 text-amber-600" />
                 </div>
                 <div>
                   <h3 className="text-sm text-gray-500">Total Orders</h3>
@@ -795,15 +795,15 @@ const AdminOrders = () => {
               </div>
             </div>
             
-            <div className="bg-white p-4 rounded-lg shadow-md border border-green-100 relative">
+            <div className="bg-white p-4 rounded-lg shadow-md border border-amber-100 relative">
               {statsLoading && (
                 <div className="absolute inset-0 bg-white/50 flex items-center justify-center rounded-lg">
-                  <Loader className="w-4 h-4 animate-spin text-green-600" />
+                  <Loader className="w-4 h-4 animate-spin text-amber-600" />
                 </div>
               )}
               <div className="flex items-center space-x-3">
-                <div className="p-2 bg-green-100 rounded-lg">
-                  <DollarSign className="w-6 h-6 text-green-600" />
+                <div className="p-2 bg-amber-100 rounded-lg">
+                  <DollarSign className="w-6 h-6 text-amber-600" />
                 </div>
                 <div>
                   <h3 className="text-sm text-gray-500">Total Revenue</h3>
@@ -812,15 +812,15 @@ const AdminOrders = () => {
               </div>
             </div>
             
-            <div className="bg-white p-4 rounded-lg shadow-md border border-green-100 relative">
+            <div className="bg-white p-4 rounded-lg shadow-md border border-amber-100 relative">
               {statsLoading && (
                 <div className="absolute inset-0 bg-white/50 flex items-center justify-center rounded-lg">
-                  <Loader className="w-4 h-4 animate-spin text-green-600" />
+                  <Loader className="w-4 h-4 animate-spin text-amber-600" />
                 </div>
               )}
               <div className="flex items-center space-x-3">
-                <div className="p-2 bg-green-100 rounded-lg">
-                  <TrendingUp className="w-6 h-6 text-green-600" />
+                <div className="p-2 bg-amber-100 rounded-lg">
+                  <TrendingUp className="w-6 h-6 text-amber-600" />
                 </div>
                 <div>
                   <h3 className="text-sm text-gray-500">Avg. Order Value</h3>
@@ -829,15 +829,15 @@ const AdminOrders = () => {
               </div>
             </div>
             
-            <div className="bg-white p-4 rounded-lg shadow-md border border-green-100 relative col-span-2 lg:col-span-1">
+            <div className="bg-white p-4 rounded-lg shadow-md border border-amber-100 relative col-span-2 lg:col-span-1">
               {statsLoading && (
                 <div className="absolute inset-0 bg-white/50 flex items-center justify-center rounded-lg">
-                  <Loader className="w-4 h-4 animate-spin text-green-600" />
+                  <Loader className="w-4 h-4 animate-spin text-amber-600" />
                 </div>
               )}
               <div className="flex items-start space-x-3">
-                <div className="p-2 bg-green-100 rounded-lg">
-                  <Users className="w-6 h-6 text-green-600" />
+                <div className="p-2 bg-amber-100 rounded-lg">
+                  <Users className="w-6 h-6 text-amber-600" />
                 </div>
                 <div className="flex-1">
                   <h3 className="text-sm text-gray-500 mb-2">Status Breakdown</h3>
@@ -856,10 +856,10 @@ const AdminOrders = () => {
         )}
 
         {/* Orders Display */}
-        <div className="bg-white rounded-lg shadow-md border border-green-100 overflow-hidden">
-          <div className="p-4 bg-green-50 border-b border-green-100">
+        <div className="bg-white rounded-lg shadow-md border border-amber-100 overflow-hidden">
+          <div className="p-4 bg-amber-50 border-b border-amber-100">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-              <h2 className="text-lg font-semibold text-green-900">
+              <h2 className="text-lg font-semibold text-amber-900">
                 Orders ({orders.length})
               </h2>
               <div className="flex items-center space-x-2">
@@ -871,7 +871,7 @@ const AdminOrders = () => {
                     setSortField(field);
                     setSortOrder(order);
                   }}
-                  className="px-3 py-1 text-sm border border-green-300 rounded-lg focus:ring-2 focus:ring-green-500 bg-white"
+                  className="px-3 py-1 text-sm border border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500 bg-white"
                 >
                   <option value="createdAt-desc">Newest First</option>
                   <option value="createdAt-asc">Oldest First</option>
@@ -888,7 +888,7 @@ const AdminOrders = () => {
             {loading && orders.length > 0 && (
               <div className="absolute inset-0 bg-white/50 flex items-center justify-center z-10">
                 <div className="bg-white p-4 rounded-lg shadow-lg flex items-center space-x-3">
-                  <Loader className="w-6 h-6 animate-spin text-green-600" />
+                  <Loader className="w-6 h-6 animate-spin text-amber-600" />
                   <span className="text-gray-600">Updating orders...</span>
                 </div>
               </div>
@@ -901,7 +901,7 @@ const AdminOrders = () => {
                 <p className="text-gray-500 mb-4">Try adjusting your filters or search terms</p>
                 <button
                   onClick={resetFilters}
-                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                  className="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors"
                 >
                   Clear All Filters
                 </button>

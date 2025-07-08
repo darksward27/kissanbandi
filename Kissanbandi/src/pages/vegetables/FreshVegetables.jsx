@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Heart, Star, ShoppingCart, Sparkles, Lock
+  Heart, Star, ShoppingCart, Sparkles, Lock, Package, TrendingUp
 } from 'lucide-react';
 import { useCart } from "../checkout/CartContext";
 import { useNavigate } from 'react-router-dom';
@@ -8,7 +8,7 @@ import { useAuth } from '../checkout/AuthProvider';
 import { toast } from 'react-hot-toast';
 import { usersApi, productsApi } from '../../services/api';
 
-const FreshVegetables = () => {
+const BogatProducts = () => {
   const [products, setProducts] = useState([]);
   const [wishlist, setWishlist] = useState(new Set());
   const [loading, setLoading] = useState(true);
@@ -44,26 +44,46 @@ const FreshVegetables = () => {
       const data = await productsApi.getAllProducts();
       let allProducts = Array.isArray(data) ? data : [];
 
-      // Filter for fresh vegetables
+      // Filter for bogat products - looking for "bogat" in various fields
       allProducts = allProducts.filter(product => {
-        // Check if product has subcategory field and matches "fresh vegetables"
-        const hasFreshSubcategory = product?.subcategory?.toLowerCase().includes('fresh');
-        const isVegetable = product?.category?.toLowerCase() === 'vegetables';
+        const productName = product?.name?.toLowerCase() || '';
+        const productCategory = product?.category?.toLowerCase() || '';
+        const productSubcategory = product?.subcategory?.toLowerCase() || '';
+        const productDescription = product?.description?.toLowerCase() || '';
+        const productBrand = product?.brand?.toLowerCase() || '';
+        const productTags = product?.tags?.join(' ').toLowerCase() || '';
+        
+        // Check if "bogat" appears in any relevant field
+        const isBogatProduct = 
+          productName.includes('bogat') ||
+          productCategory.includes('bogat') ||
+          productSubcategory.includes('bogat') ||
+          productDescription.includes('bogat') ||
+          productBrand.includes('bogat') ||
+          productTags.includes('bogat');
+        
         const isActive = product?.status === 'active';
         
         console.log('Product:', product.name, {
-          subcategory: product?.subcategory,
-          category: product?.category,
+          name: productName,
+          category: productCategory,
+          subcategory: productSubcategory,
+          brand: productBrand,
           status: product?.status,
-          hasFreshSubcategory,
-          isVegetable,
+          isBogatProduct,
           isActive
         });
         
-        return hasFreshSubcategory && isVegetable && isActive;
+        return isBogatProduct && isActive;
       });
 
-      console.log('Filtered fresh vegetables:', allProducts.length);
+      // If no products found with "bogat" filter, show all active products as fallback
+      if (allProducts.length === 0) {
+        console.log('No bogat products found, showing all active products');
+        allProducts = Array.isArray(data) ? data.filter(product => product?.status === 'active') : [];
+      }
+
+      console.log('Filtered bogat products:', allProducts.length);
       setProducts(allProducts);
     } catch (err) {
       setError(err.message);
@@ -164,7 +184,7 @@ const FreshVegetables = () => {
             <div className="relative">
               <div className="animate-spin rounded-full h-16 w-16 border-4 border-amber-200"></div>
               <div className="animate-spin rounded-full h-16 w-16 border-4 border-amber-600 border-t-transparent absolute top-0 left-0"></div>
-              <Sparkles className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-amber-700 w-6 h-6 animate-pulse" />
+              <Package className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-amber-700 w-6 h-6 animate-pulse" />
             </div>
           </div>
         </div>
@@ -222,23 +242,28 @@ const FreshVegetables = () => {
           <div className="relative">
             <div className="absolute -top-4 -left-4 w-20 h-20 bg-amber-300 rounded-full opacity-20 animate-pulse"></div>
             <div className="absolute -top-2 -right-2 w-16 h-16 bg-orange-300 rounded-full opacity-30 animate-pulse delay-300"></div>
-            <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-amber-700 to-orange-700 bg-clip-text text-transparent relative z-10">
-              Bogat Products
-            </h1>
-            <p className="text-gray-600 mt-8 text-lg relative z-10">
-              Premium Quality Products delivered to your doorstep
-            </p>
+            <div className="flex items-center space-x-3 relative z-10">
+              <Package className="w-12 h-12 text-amber-700" />
+              <div>
+                <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-amber-700 to-orange-700 bg-clip-text text-transparent">
+                  Bogat Products
+                </h1>
+                <p className="text-gray-600 text-lg mt-2">
+                  Premium Quality Bogat Products delivered to your doorstep
+                </p>
+              </div>
+            </div>
           </div>
           <div className="flex items-center mt-6 md:mt-0 bg-white px-6 py-3 rounded-full shadow-lg border border-amber-200">
-            <Sparkles className="w-5 h-5 text-amber-600 mr-2 animate-pulse" />
+            <TrendingUp className="w-5 h-5 text-amber-600 mr-2 animate-pulse" />
             <span className="text-gray-700 font-medium">
-              Showing {products.length} premium products
+              {products.length} Bogat Products Available
             </span>
           </div>
         </div>
 
         {/* Products Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-8">
           {products.map((product) => {
             const productStatus = getProductStatus(product);
             const isUnavailable = productStatus.type !== 'available';
@@ -282,48 +307,54 @@ const FreshVegetables = () => {
                     <div className="absolute top-4 left-4 bg-gradient-to-r from-gray-500 to-gray-600 text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg">
                       🚫 Unavailable
                     </div>
-                  ) : productStatus.type === 'out-of-stock' ? (
+                  ) : productStatus.type === 'out-of-stock' && (
                     <div className="absolute top-4 left-4 bg-gradient-to-r from-red-500 to-red-600 text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg">
                       ❌ Out of Stock
-                    </div>
-                  ) : (
-                    <div className="absolute top-4 left-4 bg-gradient-to-r from-amber-600 to-orange-600 text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg animate-pulse">
-                      ✨ Premium
                     </div>
                   )}
                 </div>
                 
                 <div className="p-6 flex flex-col flex-grow">
-                  <h3 className="text-xl font-bold text-gray-800 mb-4 group-hover:text-gray-700 transition-colors duration-300 flex-grow">
+                  <h3 className="text-xl font-bold text-gray-800 mb-2 transition-colors duration-300">
                     {product.name}
                   </h3>
 
+                  {/* Category & Brand */}
+                  <div className="flex items-center mb-3">
+                    {product.category && (
+                      <span className="text-sm text-gray-500 bg-gray-100 px-2 py-1 rounded-md mr-2">
+                        {product.category}
+                      </span>
+                    )}
+                    {product.brand && (
+                      <span className="text-sm text-amber-600 bg-amber-50 px-2 py-1 rounded-md">
+                        {product.brand}
+                      </span>
+                    )}
+                  </div>
+
                   {/* Rating */}
-                  {product.rating && (
-                    <div className="flex items-center mb-4">
-                      <div className="flex items-center">
-                        <Star className="w-4 h-4 text-yellow-400 fill-current" />
-                        <span className="ml-1 text-gray-600 text-sm">{product.rating}</span>
-                      </div>
-                      {product.reviews && (
-                        <>
-                          <span className="mx-2 text-gray-400">•</span>
-                          <span className="text-gray-600 text-sm">{product.reviews} reviews</span>
-                        </>
-                      )}
-                    </div>
+                  
+
+                  {/* Description */}
+                  {product.description && (
+                    <p className="text-gray-600 text-sm mb-4 line-clamp-2 flex-grow">
+                      {product.description}
+                    </p>
                   )}
 
-                  <div className="flex justify-between items-end">
+                  <div className="flex justify-between items-end mt-auto">
                     <div className="flex flex-col">
                       <div className={`text-2xl font-bold bg-gradient-to-r from-amber-700 to-orange-700 bg-clip-text text-transparent ${
                         isUnavailable ? 'opacity-50' : ''
                       }`}>
                         ₹{product.price}
                       </div>
-                      <span className="text-sm text-gray-600 font-normal">
-                        /{product.unit}
-                      </span>
+                      {product.unit && (
+                        <span className="text-sm text-gray-600 font-normal">
+                          /{product.unit}
+                        </span>
+                      )}
                       {productStatus.type === 'available' && product.stock && (
                         <span className="text-xs text-amber-700 font-medium mt-1">
                           {product.stock} in stock
@@ -377,14 +408,20 @@ const FreshVegetables = () => {
           <div className="text-center py-16">
             <div className="bg-white rounded-2xl shadow-xl p-12 max-w-md mx-auto border border-amber-200">
               <div className="w-24 h-24 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                <Sparkles className="w-12 h-12 text-amber-600" />
+                <Package className="w-12 h-12 text-amber-600" />
               </div>
               <h3 className="text-xl font-bold text-gray-800 mb-2">
-                No fresh vegetables available
+                No Bogat Products Found
               </h3>
-              <p className="text-gray-600">
-                Check back later for fresh vegetables from our farm.
+              <p className="text-gray-600 mb-4">
+                We couldn't find any Bogat products at the moment.
               </p>
+              <button 
+                onClick={handleRetry}
+                className="bg-gradient-to-r from-amber-600 to-orange-700 text-white px-6 py-3 rounded-xl hover:from-amber-700 hover:to-orange-800 transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl"
+              >
+                Refresh Products
+              </button>
             </div>
           </div>
         )}
@@ -393,4 +430,4 @@ const FreshVegetables = () => {
   );
 };
 
-export default FreshVegetables;
+export default BogatProducts;

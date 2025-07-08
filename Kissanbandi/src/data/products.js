@@ -1,17 +1,11 @@
 // Product Categories with subcategories
 export const categories = [
+  
   {
-    name: "Fruits",
-    subcategories: ["Seasonal Fruits", "Exotic Fruits", "Organic Fruits", "Citrus Fruits"]
+    name: "Bogat Products",
+    subcategories: ["Products"]
   },
-  {
-    name: "Vegetables",
-    subcategories: ["Fresh Vegetables", "Organic Vegetables", "Root Vegetables", "Leafy Greens","Seasonal Vegetables"]
-  },
-  {
-    name: "Herbs",
-    subcategories: ["Fresh Herbs", "Dried Herbs", "Medicinal Herbs", "Organic Herbs"]
-  }
+
 ];
 
 // Dummy Products Data
