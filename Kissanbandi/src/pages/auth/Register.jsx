@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
-import { User, Mail, Lock, Phone, MapPin, CreditCard, Building2, ArrowLeft, Loader } from 'lucide-react';
+import { User, Mail, Lock, Phone, MapPin, CreditCard, Building2, ArrowLeft, Loader, ChevronDown } from 'lucide-react';
 import api from '../../services/api';
 import { Eye, EyeOff } from 'lucide-react';
 
@@ -42,6 +42,40 @@ const Register = () => {
   
   const handleChange = (e) => {
     const { name, value } = e.target;
+    
+    // Special handling for name field - only allow letters and spaces
+    if (name === 'name') {
+      // Remove any characters that are not letters or spaces
+      const filteredValue = value.replace(/[^a-zA-Z\s]/g, '');
+      setFormData(prev => ({
+        ...prev,
+        [name]: filteredValue
+      }));
+      return;
+    }
+    
+    // Special handling for phone number fields - only allow numbers, +, -, and spaces
+    if (name === 'phone' || name === 'alternatePhone') {
+      // Remove any characters that are not numbers, +, -, or spaces
+      const filteredValue = value.replace(/[^0-9+\-\s]/g, '');
+      setFormData(prev => ({
+        ...prev,
+        [name]: filteredValue
+      }));
+      return;
+    }
+    
+    // Special handling for email field - don't allow numbers at the start
+    if (name === 'email') {
+      // If the value starts with a number, remove it
+      const filteredValue = value.replace(/^[0-9]+/, '');
+      setFormData(prev => ({
+        ...prev,
+        [name]: filteredValue
+      }));
+      return;
+    }
+    
     if (name.includes('.')) {
       const [parent, child] = name.split('.');
       setFormData(prev => ({
@@ -229,10 +263,12 @@ const Register = () => {
                       name="name"
                       type="text"
                       required
-                      className="appearance-none block w-full px-3 py-2 border border-amber-200 rounded-md shadow-sm placeholder-black focus:outline-none focus:ring-amber-500 focus:border-amber-500 sm:text-sm hover:border-amber-300 transition-colors duration-200"
+                      className="appearance-none block w-full px-3 py-2 border border-amber-200 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-amber-500 focus:border-amber-500 sm:text-sm hover:border-amber-300 transition-colors duration-200"
                       placeholder="Enter your full name"
                       value={formData.name}
                       onChange={handleChange}
+                      pattern="^[a-zA-Z\s]+$"
+                      title="Name can only contain letters and spaces"
                     />
                   </div>
                 </div>
@@ -247,10 +283,12 @@ const Register = () => {
                       name="email"
                       type="email"
                       required
-                      className="appearance-none block w-full px-3 py-2 border border-amber-200 rounded-md shadow-sm placeholder-black focus:outline-none focus:ring-amber-500 focus:border-amber-500 sm:text-sm hover:border-amber-300 transition-colors duration-200"
-                      placeholder="Enter your email"
+                      className="appearance-none block w-full px-3 py-2 border border-amber-200 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-amber-500 focus:border-amber-500 sm:text-sm hover:border-amber-300 transition-colors duration-200"
+                      placeholder="Enter your email address"
                       value={formData.email}
                       onChange={handleChange}
+                      pattern="^[a-zA-Z][a-zA-Z0-9._-]*@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
+                      title="Email must start with a letter and be in valid format"
                     />
                   </div>
                 </div>
@@ -266,8 +304,8 @@ const Register = () => {
                         name="password"
                         type={showPassword ? "text" : "password"}
                         required
-                        className="appearance-none block w-full px-3 py-2 border border-amber-200 rounded-md shadow-sm placeholder-black focus:outline-none focus:ring-amber-500 focus:border-amber-500 sm:text-sm hover:border-amber-300 transition-colors duration-200"
-                        placeholder="Create password"
+                        className="appearance-none block w-full px-3 py-2 pr-10 border border-amber-200 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-amber-500 focus:border-amber-500 sm:text-sm hover:border-amber-300 transition-colors duration-200"
+                        placeholder="Enter your password"
                         value={formData.password}
                         onChange={handleChange}
                       />
@@ -290,8 +328,8 @@ const Register = () => {
                         name="confirmPassword"
                         type={showConfirmPassword ? "text" : "password"}
                         required
-                        className="appearance-none block w-full px-3 py-2 border border-amber-200 rounded-md shadow-sm placeholder-black focus:outline-none focus:ring-amber-500 focus:border-amber-500 sm:text-sm hover:border-amber-300 transition-colors duration-200"
-                        placeholder="Confirm password"
+                        className="appearance-none block w-full px-3 py-2 pr-10 border border-amber-200 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-amber-500 focus:border-amber-500 sm:text-sm hover:border-amber-300 transition-colors duration-200"
+                        placeholder="Confirm your password"
                         value={formData.confirmPassword}
                         onChange={handleChange}
                       />
@@ -321,10 +359,12 @@ const Register = () => {
                         name="phone"
                         type="tel"
                         required
-                        className="appearance-none block w-full px-3 py-2 border border-amber-200 rounded-md shadow-sm placeholder-black focus:outline-none focus:ring-amber-500 focus:border-amber-500 sm:text-sm hover:border-amber-300 transition-colors duration-200"
-                        placeholder="+91 9876543210"
+                        className="appearance-none block w-full px-3 py-2 border border-amber-200 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-amber-500 focus:border-amber-500 sm:text-sm hover:border-amber-300 transition-colors duration-200"
+                        placeholder="Enter your phone number"
                         value={formData.phone}
                         onChange={handleChange}
+                        pattern="^[0-9+\-\s]+$"
+                        title="Phone number can only contain numbers, +, -, and spaces"
                       />
                     </div>
                   </div>
@@ -337,10 +377,12 @@ const Register = () => {
                         id="alternate-phone"
                         name="alternatePhone"
                         type="tel"
-                        className="appearance-none block w-full px-3 py-2 border border-amber-200 rounded-md shadow-sm placeholder-black focus:outline-none focus:ring-amber-500 focus:border-amber-500 sm:text-sm hover:border-amber-300 transition-colors duration-200"
-                        placeholder="+91 9876543210"
+                        className="appearance-none block w-full px-3 py-2 border border-amber-200 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-amber-500 focus:border-amber-500 sm:text-sm hover:border-amber-300 transition-colors duration-200"
+                        placeholder="Enter your alternate phone number"
                         value={formData.alternatePhone}
                         onChange={handleChange}
+                        pattern="^[0-9+\-\s]+$"
+                        title="Phone number can only contain numbers, +, -, and spaces"
                       />
                     </div>
                   </div>
@@ -361,8 +403,8 @@ const Register = () => {
                         name="gst"
                         type="text"
                         required={isBusinessAccount}
-                        className="appearance-none block w-full px-3 py-2 border border-amber-200 rounded-md shadow-sm placeholder-black focus:outline-none focus:ring-amber-500 focus:border-amber-500 sm:text-sm hover:border-amber-300 transition-colors duration-200"
-                        placeholder="Enter GST number"
+                        className="appearance-none block w-full px-3 py-2 border border-amber-200 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-amber-500 focus:border-amber-500 sm:text-sm hover:border-amber-300 transition-colors duration-200"
+                        placeholder="Enter your GST number"
                         value={formData.gst}
                         onChange={handleChange}
                       />
@@ -384,8 +426,8 @@ const Register = () => {
                         id="street"
                         name="address.street"
                         type="text"
-                        className="appearance-none block w-full px-3 py-2 border border-amber-200 rounded-md shadow-sm placeholder-black focus:outline-none focus:ring-amber-500 focus:border-amber-500 sm:text-sm hover:border-amber-300 transition-colors duration-200"
-                        placeholder="Enter street address"
+                        className="appearance-none block w-full px-3 py-2 border border-amber-200 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-amber-500 focus:border-amber-500 sm:text-sm hover:border-amber-300 transition-colors duration-200"
+                        placeholder="Enter your street address"
                         value={formData.address.street}
                         onChange={handleChange}
                       />
@@ -401,8 +443,8 @@ const Register = () => {
                         id="locality"
                         name="address.locality"
                         type="text"
-                        className="appearance-none block w-full px-3 py-2 border border-amber-200 rounded-md shadow-sm placeholder-black focus:outline-none focus:ring-amber-500 focus:border-amber-500 sm:text-sm hover:border-amber-300 transition-colors duration-200"
-                        placeholder="Enter locality or area"
+                        className="appearance-none block w-full px-3 py-2 border border-amber-200 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-amber-500 focus:border-amber-500 sm:text-sm hover:border-amber-300 transition-colors duration-200"
+                        placeholder="Enter your locality or area"
                         value={formData.address.locality}
                         onChange={handleChange}
                       />
@@ -419,8 +461,8 @@ const Register = () => {
                           id="city"
                           name="address.city"
                           type="text"
-                          className="appearance-none block w-full px-3 py-2 border border-amber-200 rounded-md shadow-sm placeholder-black focus:outline-none focus:ring-amber-500 focus:border-amber-500 sm:text-sm hover:border-amber-300 transition-colors duration-200"
-                          placeholder="Enter city"
+                          className="appearance-none block w-full px-3 py-2 border border-amber-200 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-amber-500 focus:border-amber-500 sm:text-sm hover:border-amber-300 transition-colors duration-200"
+                          placeholder="Enter your city"
                           value={formData.address.city}
                           onChange={handleChange}
                         />
@@ -436,8 +478,8 @@ const Register = () => {
                           id="pincode"
                           name="address.pincode"
                           type="text"
-                          className="appearance-none block w-full px-3 py-2 border border-amber-200 rounded-md shadow-sm placeholder-black focus:outline-none focus:ring-amber-500 focus:border-amber-500 sm:text-sm hover:border-amber-300 transition-colors duration-200"
-                          placeholder="6-digit pincode"
+                          className="appearance-none block w-full px-3 py-2 border border-amber-200 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-amber-500 focus:border-amber-500 sm:text-sm hover:border-amber-300 transition-colors duration-200"
+                          placeholder="Enter your pincode"
                           value={formData.address.pincode}
                           onChange={handleChange}
                           pattern="^\d{6}$"
@@ -451,19 +493,22 @@ const Register = () => {
                     <label htmlFor="state" className="block text-sm font-medium text-gray-700">
                       State
                     </label>
-                    <div className="mt-1">
+                    <div className="mt-1 relative">
                       <select
                         id="state"
                         name="address.state"
-                        className="appearance-none block w-full px-3 py-2 border border-amber-200 rounded-md shadow-sm placeholder-black focus:outline-none focus:ring-amber-500 focus:border-amber-500 sm:text-sm hover:border-amber-300 transition-colors duration-200"
+                        className="appearance-none block w-full px-3 py-2 pr-10 border border-amber-200 rounded-md shadow-sm bg-white text-gray-900 focus:outline-none focus:ring-amber-500 focus:border-amber-500 sm:text-sm hover:border-amber-300 transition-colors duration-200"
                         value={formData.address.state}
                         onChange={handleChange}
                       >
-                        <option value="">Select State</option>
+                        <option value="" className="text-gray-400">Select your state</option>
                         {INDIAN_STATES.map(state => (
                           <option key={state} value={state}>{state}</option>
                         ))}
                       </select>
+                      <div className="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none">
+                        <ChevronDown className="h-4 w-4 text-amber-600" />
+                      </div>
                     </div>
                   </div>
                 </div>

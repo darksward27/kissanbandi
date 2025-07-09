@@ -1,9 +1,8 @@
-import React, { useState, useEffect, useRef } from "react";
-import { Menu, X, ShoppingCart, Search, User, ChevronDown, LogOut, Home, Package, Heart, BookOpen } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { Menu, X, ShoppingCart, User, LogOut, Home, Package, Heart, BookOpen } from "lucide-react";
 import { useCart } from "../pages/checkout/CartContext";
 import { useAuth } from "../pages/checkout/AuthProvider";
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import { allProducts } from "../data/products";
 import logoImage from '/src/assets/Sri_Bogat_logo.png';
 
 const Navbar = () => {
@@ -12,25 +11,10 @@ const Navbar = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [isOpen, setIsOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
   const [isScrolled, setIsScrolled] = useState(false);
-  const [showSuggestions, setShowSuggestions] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
-  const searchInputRef = useRef(null);
-  const searchContainerRef = useRef(null);
 
   const cartCount = state.items.reduce((total, item) => total + item.quantity, 0);
-
-  // Fixed search suggestions logic
-  const suggestions = searchQuery.trim() && searchQuery.length > 0
-    ? allProducts
-        .filter(product => 
-          product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          product.category?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          product.description?.toLowerCase().includes(searchQuery.toLowerCase())
-        )
-        .slice(0, 6)
-    : [];
 
   useEffect(() => {
     const handleScroll = () => {
@@ -47,10 +31,6 @@ const Navbar = () => {
 
   useEffect(() => {
     const handleClickOutside = (event) => {
-      // Fixed click outside detection for search
-      if (searchContainerRef.current && !searchContainerRef.current.contains(event.target)) {
-        setShowSuggestions(false);
-      }
       if (!event.target.closest('.profile-menu')) {
         setShowProfileMenu(false);
       }
@@ -63,37 +43,7 @@ const Navbar = () => {
   // Close mobile menu when route changes
   useEffect(() => {
     setIsOpen(false);
-    setShowSuggestions(false);
   }, [location]);
-
-  const handleSearch = (e) => {
-    e.preventDefault();
-    if (searchQuery.trim()) {
-      navigate(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
-      setSearchQuery('');
-      setShowSuggestions(false);
-      setIsOpen(false);
-    }
-  };
-
-  const handleSuggestionClick = (product) => {
-    navigate(`/search?q=${encodeURIComponent(product.name)}`);
-    setSearchQuery('');
-    setShowSuggestions(false);
-    setIsOpen(false);
-  };
-
-  const handleSearchInputChange = (e) => {
-    const value = e.target.value;
-    setSearchQuery(value);
-    setShowSuggestions(value.trim().length > 0);
-  };
-
-  const handleSearchFocus = () => {
-    if (searchQuery.trim().length > 0) {
-      setShowSuggestions(true);
-    }
-  };
 
   const quickLinks = [
     { name: 'Home', icon: Home, path: '/' },
@@ -103,60 +53,6 @@ const Navbar = () => {
       { name: 'Wishlist', icon: Heart, path: '/wishlist' },
     ] : [])
   ];
-
-  const SearchInput = ({ isMobile = false }) => (
-    <div 
-      ref={searchContainerRef}
-      className="relative w-full search-container animate-fadeIn" 
-      onClick={(e) => e.stopPropagation()}
-    >
-      <form onSubmit={handleSearch}>
-        <input
-          ref={searchInputRef}
-          type="text"
-          placeholder="Search for fresh produce..."
-          value={searchQuery}
-          onChange={handleSearchInputChange}
-          onFocus={handleSearchFocus}
-          className={`w-full px-6 py-3 rounded-full border-2 border-amber-200 bg-gradient-to-r from-amber-50 to-orange-50 focus:outline-none focus:border-orange-400 focus:shadow-lg focus:shadow-orange-200/50 transition-all duration-300 hover:border-orange-300 hover:shadow-md hover:shadow-orange-100/30 placeholder-amber-700/70 hover:scale-[1.02] focus:scale-[1.02] ${
-            isMobile ? 'text-sm' : ''
-          }`}
-        />
-        <button 
-          type="submit" 
-          className="absolute right-4 top-1/2 transform -translate-y-1/2 text-orange-600 hover:text-amber-800 hover:scale-110 transition-all duration-200 p-1 rounded-full hover:bg-orange-100 animate-pulse hover:animate-none"
-        >
-          <Search className="w-5 h-5" />
-        </button>
-      </form>
-      
-      {showSuggestions && suggestions.length > 0 && (
-        <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-2xl z-50 border border-amber-200 overflow-hidden animate-slideInDown">
-          {suggestions.map((product, index) => (
-            <button
-              key={product.id}
-              onClick={() => handleSuggestionClick(product)}
-              className="w-full px-6 py-3 text-left hover:bg-gradient-to-r hover:from-amber-50 hover:to-orange-50 text-gray-700 hover:text-amber-800 flex items-center space-x-3 transition-all duration-200 border-b border-amber-100 last:border-b-0 group hover:scale-[1.02] transform"
-              style={{ 
-                animationDelay: `${index * 100}ms`,
-                animation: `slideInLeft 0.3s ease-out ${index * 100}ms both`
-              }}
-            >
-              <div className="w-8 h-8 bg-gradient-to-br from-amber-100 to-orange-100 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform duration-200 group-hover:rotate-12">
-                <Search className="w-4 h-4 text-orange-600" />
-              </div>
-              <div className="flex-1">
-                <span className="font-medium block">{product.name}</span>
-                {product.category && (
-                  <span className="text-xs text-gray-500">{product.category}</span>
-                )}
-              </div>
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
 
   const handleLogout = () => {
     logout();
@@ -174,53 +70,51 @@ const Navbar = () => {
           <div className={`flex justify-between items-center transition-all duration-300 ${
             isScrolled ? 'h-14 md:h-16' : 'h-16 md:h-20'
           }`}>
-            {/* Logo without box and brown color - bigger logo, smaller text */}
-            <Link to="/" className="hover:opacity-90 transition-all duration-300 hover:scale-105 animate-fadeInLeft">
-              <div className="flex items-center space-x-2 md:space-x-3">
-                {/* Logo Image - Made bigger */}
-                <img 
-                   src={logoImage}
-                  alt="Bogat Logo" 
-                  className={`transition-all duration-300 object-contain ${
-                    isScrolled ? 'h-10 w-10 md:h-12 md:w-12' : 'h-12 w-12 md:h-16 md:w-16'
-                  }`}
-                />
-                {/* Logo Text - Made smaller and removed brown color */}
-                <div className={`font-bold tracking-wider transition-all duration-300 text-transparent bg-clip-text bg-gradient-to-r from-[#4B2E2B] to-[#dd9941] ${
-                  isScrolled ? 'text-lg md:text-xl' : 'text-xl md:text-2xl'
-                }`}>
-                  BOGAT
+            {/* Left side - Logo and Navigation */}
+            <div className="flex items-center space-x-8">
+              {/* Logo without box and brown color - bigger logo, smaller text */}
+              <Link to="/" className="hover:opacity-90 transition-all duration-300 hover:scale-105 animate-fadeInLeft">
+                <div className="flex items-center space-x-2 md:space-x-3">
+                  {/* Logo Image - Made bigger */}
+                  <img 
+                     src={logoImage}
+                    alt="Bogat Logo" 
+                    className={`transition-all duration-300 object-contain ${
+                      isScrolled ? 'h-10 w-10 md:h-12 md:w-12' : 'h-12 w-12 md:h-16 md:w-16'
+                    }`}
+                  />
+                  {/* Logo Text - Made smaller and removed brown color */}
+                  <div className={`font-bold tracking-wider transition-all duration-300 text-transparent bg-clip-text bg-gradient-to-r from-[#4B2E2B] to-[#dd9941] ${
+                    isScrolled ? 'text-lg md:text-xl' : 'text-xl md:text-2xl'
+                  }`}>
+                    BOGAT
+                  </div>
                 </div>
-              </div>
-            </Link>
-
-            {/* Desktop Navigation */}
-            <div className="hidden md:flex items-center space-x-8 animate-fadeIn">
-              <Link 
-                to="/products"
-                className="flex items-center space-x-2 font-medium px-4 py-2 rounded-full transition-all duration-300 hover:shadow-md hover:shadow-orange-200/30 hover:scale-105 border-2 border-transparent hover:border-orange-200 text-gray-700 hover:text-amber-800 hover:bg-gradient-to-r hover:from-amber-50 hover:to-orange-50"
-              >
-                <span className="relative">
-                  Our Products
-                  <span className="absolute bottom-0 left-0 h-0.5 bg-gradient-to-r from-orange-500 to-amber-600 transition-all duration-300 w-0 hover:w-full"></span>
-                </span>
               </Link>
-              
-              <Link 
-                to="/blogs"
-                className="flex items-center space-x-2 font-medium px-4 py-2 rounded-full transition-all duration-300 hover:shadow-md hover:shadow-orange-200/30 hover:scale-105 border-2 border-transparent hover:border-orange-200 text-gray-700 hover:text-amber-800 hover:bg-gradient-to-r hover:from-amber-50 hover:to-orange-50"
-              >
+
+              {/* Desktop Navigation - Moved to left */}
+              <div className="hidden md:flex items-center space-x-6 animate-fadeIn">
+                <Link 
+                  to="/products"
+                  className="flex items-center space-x-2 font-medium px-4 py-2 rounded-full transition-all duration-300 hover:shadow-md hover:shadow-orange-200/30 hover:scale-105 border-2 border-transparent hover:border-orange-200 text-gray-700 hover:text-amber-800 hover:bg-gradient-to-r hover:from-amber-50 hover:to-orange-50"
+                >
+                  <span className="relative">
+                    Our Products
+                    <span className="absolute bottom-0 left-0 h-0.5 bg-gradient-to-r from-orange-500 to-amber-600 transition-all duration-300 w-0 hover:w-full"></span>
+                  </span>
+                </Link>
                 
-                <span className="relative">
-                  Blog
-                  <span className="absolute bottom-0 left-0 h-0.5 bg-gradient-to-r from-orange-500 to-amber-600 transition-all duration-300 w-0 hover:w-full"></span>
-                </span>
-              </Link>
-            </div>
-
-            {/* Desktop Search bar */}
-            <div className="hidden md:flex items-center flex-1 max-w-xl mx-8 animate-fadeIn" style={{animationDelay: '400ms'}}>
-              <SearchInput />
+                <Link 
+                  to="/blogs"
+                  className="flex items-center space-x-2 font-medium px-4 py-2 rounded-full transition-all duration-300 hover:shadow-md hover:shadow-orange-200/30 hover:scale-105 border-2 border-transparent hover:border-orange-200 text-gray-700 hover:text-amber-800 hover:bg-gradient-to-r hover:from-amber-50 hover:to-orange-50"
+                >
+                  
+                  <span className="relative">
+                    Blog
+                    <span className="absolute bottom-0 left-0 h-0.5 bg-gradient-to-r from-orange-500 to-amber-600 transition-all duration-300 w-0 hover:w-full"></span>
+                  </span>
+                </Link>
+              </div>
             </div>
 
             {/* Right side icons */}
@@ -322,11 +216,6 @@ const Navbar = () => {
               </button>
             </div>
           </div>
-        </div>
-
-        {/* Mobile Search - always visible on mobile */}
-        <div className="md:hidden px-4 pb-3">
-          <SearchInput isMobile={true} />
         </div>
 
         {/* Enhanced Mobile menu with brown theme */}

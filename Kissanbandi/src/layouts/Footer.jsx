@@ -126,13 +126,11 @@ const Footer = () => {
                 'Premium Coffee',
                 'Authentic Spices',
                 'Heritage Collection',
-                'Delivery Zones',
-                'Special Offers',
-                'Our Story'
+                
               ].map((link) => (
                 <li key={link}>
                   <a 
-                    href="#" 
+                    href="/products" 
                     className="text-white/70 hover:text-white transition-colors duration-300 hover:translate-x-1 transform inline-block"
                     style={{ 
                       borderBottom: '1px solid transparent' 
@@ -209,7 +207,7 @@ const Footer = () => {
             </div>
             <div className="flex flex-wrap items-center justify-center gap-4">
               <a 
-                href="#" 
+                href="policy" 
                 className="text-white/70 hover:text-white text-sm transition-colors duration-300"
                 style={{ 
                   borderBottom: '1px solid transparent' 
@@ -225,7 +223,7 @@ const Footer = () => {
               </a>
               <span style={{ color: '#f59b52' }}>•</span>
               <a 
-                href="#" 
+                href="policy" 
                 className="text-white/70 hover:text-white text-sm transition-colors duration-300"
                 style={{ 
                   borderBottom: '1px solid transparent' 
@@ -241,7 +239,7 @@ const Footer = () => {
               </a>
               <span style={{ color: '#f59b52' }}>•</span>
               <a 
-                href="#" 
+                href="policy" 
                 className="text-white/70 hover:text-white text-sm transition-colors duration-300"
                 style={{ 
                   borderBottom: '1px solid transparent' 
@@ -257,7 +255,7 @@ const Footer = () => {
               </a>
               <span style={{ color: '#f59b52' }}>•</span>
               <a 
-                href="#" 
+                href="policy" 
                 className="text-white/70 hover:text-white text-sm transition-colors duration-300"
                 style={{ 
                   borderBottom: '1px solid transparent' 

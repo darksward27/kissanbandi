@@ -32,6 +32,7 @@ import RootVegetables from '../pages/vegetables/RootVegetables';
 import SeasonalVegetables from '../pages/vegetables/SeasonalVegetables';
 import AllProductsPage from '../pages/home/allProducts';
 import FruitsVeg from '../pages/vegetables/FruitsVeg';
+import RefundPolicy from '../pages/orderRefundPolicy/RefundPolicy';
 
 const AppRoutes = () => {
   return (
@@ -45,6 +46,7 @@ const AppRoutes = () => {
         <Route path="verify-email/:token" element={<EmailVerification />} />
         <Route path="admin/login" element={<AdminLogin />} />
         <Route path="search" element={<SearchResults />} />
+        <Route path="policy" element={<RefundPolicy />} />
 
    {/* 📝 Blog Routes */}
         <Route path="blogs" element={<BlogsPage />} />

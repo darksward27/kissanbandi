@@ -41,54 +41,74 @@ const BogatProducts = () => {
     try {
       setLoading(true);
       setError(null);
+      
+      console.log('Fetching products from /api/products...');
+      
+      // Fetch products from database via API
       const data = await productsApi.getAllProducts();
-      let allProducts = Array.isArray(data) ? data : [];
-
-      // Filter for bogat products - looking for "bogat" in various fields
-      allProducts = allProducts.filter(product => {
-        const productName = product?.name?.toLowerCase() || '';
-        const productCategory = product?.category?.toLowerCase() || '';
-        const productSubcategory = product?.subcategory?.toLowerCase() || '';
-        const productDescription = product?.description?.toLowerCase() || '';
-        const productBrand = product?.brand?.toLowerCase() || '';
-        const productTags = product?.tags?.join(' ').toLowerCase() || '';
-        
-        // Check if "bogat" appears in any relevant field
-        const isBogatProduct = 
-          productName.includes('bogat') ||
-          productCategory.includes('bogat') ||
-          productSubcategory.includes('bogat') ||
-          productDescription.includes('bogat') ||
-          productBrand.includes('bogat') ||
-          productTags.includes('bogat');
-        
-        const isActive = product?.status === 'active';
-        
-        console.log('Product:', product.name, {
-          name: productName,
-          category: productCategory,
-          subcategory: productSubcategory,
-          brand: productBrand,
-          status: product?.status,
-          isBogatProduct,
-          isActive
-        });
-        
-        return isBogatProduct && isActive;
-      });
-
-      // If no products found with "bogat" filter, show all active products as fallback
-      if (allProducts.length === 0) {
-        console.log('No bogat products found, showing all active products');
-        allProducts = Array.isArray(data) ? data.filter(product => product?.status === 'active') : [];
+      console.log('Raw API response:', data);
+      
+      // Handle different response structures
+      let allProducts = [];
+      
+      if (Array.isArray(data)) {
+        // Direct array of products
+        allProducts = data;
+      } else if (data && data.products && Array.isArray(data.products)) {
+        // Response with products property
+        allProducts = data.products;
+      } else if (data && data.data && Array.isArray(data.data)) {
+        // Response with data property
+        allProducts = data.data;
+      } else if (data && data.success && data.data && Array.isArray(data.data)) {
+        // Response with success flag and data
+        allProducts = data.data;
+      } else if (data && typeof data === 'object') {
+        // If it's an object but not in expected format, try to extract products
+        const possibleArrays = Object.values(data).filter(Array.isArray);
+        if (possibleArrays.length > 0) {
+          allProducts = possibleArrays[0];
+        }
       }
 
-      console.log('Filtered bogat products:', allProducts.length);
-      setProducts(allProducts);
+      console.log('Extracted products array:', allProducts);
+      console.log('Number of products found:', allProducts.length);
+
+      // Filter for active products only
+      const activeProducts = allProducts.filter(product => {
+        // Ensure product has required fields
+        const hasRequiredFields = product && 
+                                 (product._id || product.id) && 
+                                 product.name;
+        
+        // Check if product is active (default to active if no status field)
+        const isActive = !product.status || product.status === 'active';
+        
+        if (hasRequiredFields && isActive) {
+          console.log('Valid product found:', {
+            id: product._id || product.id,
+            name: product.name,
+            price: product.price,
+            status: product.status,
+            stock: product.stock
+          });
+        }
+        
+        return hasRequiredFields && isActive;
+      });
+
+      console.log('Filtered active products:', activeProducts.length);
+      setProducts(activeProducts);
+      
+      if (activeProducts.length === 0) {
+        console.warn('No active products found. Check your database and API endpoint.');
+      }
+      
     } catch (err) {
-      setError(err.message);
+      console.error('Error loading products:', err);
+      setError(err.message || 'Failed to load products');
       setProducts([]);
-      setTimeout(() => toast.error('Failed to load products'), 0);
+      setTimeout(() => toast.error('Failed to load products from database'), 0);
     } finally {
       setLoading(false);
     }
@@ -187,6 +207,7 @@ const BogatProducts = () => {
               <Package className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-amber-700 w-6 h-6 animate-pulse" />
             </div>
           </div>
+          <p className="text-center text-amber-700 mt-4 font-medium">Loading products from database...</p>
         </div>
       </div>
     );
@@ -202,6 +223,9 @@ const BogatProducts = () => {
                 <span className="text-2xl">⚠️</span>
               </div>
               <p className="text-lg font-semibold">{error}</p>
+              <p className="text-sm text-gray-600 mt-2">
+                Failed to fetch products from /api/products
+              </p>
             </div>
             <button 
               onClick={handleRetry}
@@ -246,10 +270,10 @@ const BogatProducts = () => {
               <Package className="w-12 h-12 text-amber-700" />
               <div>
                 <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-amber-700 to-orange-700 bg-clip-text text-transparent">
-                  Bogat Products
+                  Our Products
                 </h1>
                 <p className="text-gray-600 text-lg mt-2">
-                  Premium Quality Bogat Products delivered to your doorstep
+                  Premium Quality Products delivered to your doorstep
                 </p>
               </div>
             </div>
@@ -257,13 +281,13 @@ const BogatProducts = () => {
           <div className="flex items-center mt-6 md:mt-0 bg-white px-6 py-3 rounded-full shadow-lg border border-amber-200">
             <TrendingUp className="w-5 h-5 text-amber-600 mr-2 animate-pulse" />
             <span className="text-gray-700 font-medium">
-              {products.length} Bogat Products Available
+              {products.length} Products Available
             </span>
           </div>
         </div>
 
         {/* Products Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
           {products.map((product) => {
             const productStatus = getProductStatus(product);
             const isUnavailable = productStatus.type !== 'available';
@@ -278,11 +302,14 @@ const BogatProducts = () => {
                 <div className="relative overflow-hidden">
                   <div className="absolute inset-0 bg-gradient-to-t from-gray-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                   <img
-                    src={product.image}
+                    src={product.image || '/api/placeholder/300/200'}
                     alt={product.name}
-                    className={`w-full h-48 object-contain transform group-hover:scale-110 transition-transform duration-500 p-4 ${
+                    className={`w-full h-48 object-cover transform group-hover:scale-110 transition-transform duration-500 ${
                       isUnavailable ? 'filter grayscale' : ''
                     }`}
+                    onError={(e) => {
+                      e.target.src = '/api/placeholder/300/200';
+                    }}
                   />
                   
                   <button 
@@ -315,14 +342,14 @@ const BogatProducts = () => {
                 </div>
                 
                 <div className="p-6 flex flex-col flex-grow">
-                  <h3 className="text-xl font-bold text-gray-800 mb-2 transition-colors duration-300">
+                  <h3 className="text-xl font-bold text-gray-800 mb-2 transition-colors duration-300 line-clamp-2">
                     {product.name}
                   </h3>
 
                   {/* Category & Brand */}
-                  <div className="flex items-center mb-3">
+                  <div className="flex items-center mb-3 flex-wrap gap-2">
                     {product.category && (
-                      <span className="text-sm text-gray-500 bg-gray-100 px-2 py-1 rounded-md mr-2">
+                      <span className="text-sm text-gray-500 bg-gray-100 px-2 py-1 rounded-md">
                         {product.category}
                       </span>
                     )}
@@ -333,12 +360,9 @@ const BogatProducts = () => {
                     )}
                   </div>
 
-                  {/* Rating */}
-                  
-
                   {/* Description */}
                   {product.description && (
-                    <p className="text-gray-600 text-sm mb-4 line-clamp-2 flex-grow">
+                    <p className="text-gray-600 text-sm mb-4 line-clamp-3 flex-grow">
                       {product.description}
                     </p>
                   )}
@@ -348,7 +372,7 @@ const BogatProducts = () => {
                       <div className={`text-2xl font-bold bg-gradient-to-r from-amber-700 to-orange-700 bg-clip-text text-transparent ${
                         isUnavailable ? 'opacity-50' : ''
                       }`}>
-                        ₹{product.price}
+                        ₹{product.price || '0'}
                       </div>
                       {product.unit && (
                         <span className="text-sm text-gray-600 font-normal">
@@ -396,7 +420,7 @@ const BogatProducts = () => {
                     ? 'bg-gradient-to-r from-gray-400 to-gray-500' 
                     : productStatus.type === 'out-of-stock'
                     ? 'bg-gradient-to-r from-red-400 to-red-500'
-                    : 'bg-gradient-to-r from-gray-400 to-gray-500'
+                    : 'bg-gradient-to-r from-amber-400 to-orange-500'
                 }`}></div>
               </div>
             );
@@ -411,10 +435,10 @@ const BogatProducts = () => {
                 <Package className="w-12 h-12 text-amber-600" />
               </div>
               <h3 className="text-xl font-bold text-gray-800 mb-2">
-                No Bogat Products Found
+                No Products Found
               </h3>
               <p className="text-gray-600 mb-4">
-                We couldn't find any Bogat products at the moment.
+                No products are available in the database at the moment.
               </p>
               <button 
                 onClick={handleRetry}
