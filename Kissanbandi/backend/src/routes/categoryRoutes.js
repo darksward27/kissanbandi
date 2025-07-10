@@ -15,7 +15,7 @@ router.post('/', categoryController.createCategory);
 router.put('/:id', categoryController.updateCategory);
 
 // Delete category
-router.delete('/:id', categoryController.deleteCategory);a
+router.delete('/:id', categoryController.deleteCategory);
 
 // Add subcategory to category
 router.post('/:id/subcategory', categoryController.addSubcategory);
