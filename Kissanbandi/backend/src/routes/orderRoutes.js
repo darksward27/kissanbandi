@@ -2,13 +2,13 @@ const express = require('express');
 const router = express.Router();
 const orderController = require('../controllers/orderController');
 const { auth, admin } = require('../middleware/auth');
-
+;
 // Protected routes (no params)
 router.post('/', auth, orderController.createOrder);
 router.get('/my-orders', auth, orderController.getUserOrders);
 
 //edit shiiping address route
-router.patch('/:id/address', authenticate, orderController.editOrderAddress);
+router.patch('/:id/address', auth, orderController.editOrderAddress);
 
 
 // Admin routes (no params)
