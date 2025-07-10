@@ -829,3 +829,50 @@ exports.getTransactionStats = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 }; 
+
+//edit shipping address
+// Edit order shipping address
+exports.editOrderAddress = async (req, res) => {
+  try {
+    const { shippingAddress } = req.body;
+    const orderId = req.params.id;
+
+    // Validate shipping address
+    if (!shippingAddress || typeof shippingAddress !== 'object') {
+      return res.status(400).json({ error: 'Valid shipping address is required' });
+    }
+
+    // Find the order
+    const order = await Order.findById(orderId);
+    if (!order) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+
+    // Check if user is authorized to edit this order
+    if (req.user.role !== 'admin' && order.user.toString() !== req.user.userId) {
+      return res.status(403).json({ error: 'Not authorized to edit this order' });
+    }
+
+    // Only allow address editing for pending or processing orders
+    if (!['pending', 'processing'].includes(order.status)) {
+      return res.status(400).json({ error: 'Address cannot be edited for this order status' });
+    }
+
+    // Update the shipping address
+    const updatedOrder = await Order.findByIdAndUpdate(
+      orderId,
+      { shippingAddress },
+      { new: true, runValidators: true }
+    )
+      .populate('user', 'name email')
+      .populate('items.product', 'name price image');
+
+    res.json({
+      success: true,
+      order: updatedOrder,
+      message: 'Shipping address updated successfully'
+    });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+};

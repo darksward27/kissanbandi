@@ -7,6 +7,10 @@ const { auth, admin } = require('../middleware/auth');
 router.post('/', auth, orderController.createOrder);
 router.get('/my-orders', auth, orderController.getUserOrders);
 
+//edit shiiping address route
+router.patch('/:id/address', authenticate, orderController.editOrderAddress);
+
+
 // Admin routes (no params)
 router.get('/', [auth, admin], orderController.getAllOrders);
 router.get('/stats', [auth, admin], orderController.getOrderStats);

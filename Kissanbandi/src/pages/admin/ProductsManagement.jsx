@@ -1,17 +1,20 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Search, Plus, Pencil, Trash2, X, Filter, Grid, List, Eye, Package, TrendingUp, AlertCircle, CheckCircle, Slash,Circle } from 'lucide-react';
-import { categories } from '../../data/products';
+import { Search, Plus, Pencil, Trash2, X, Filter, Grid, List, Eye, Package, TrendingUp, AlertCircle, CheckCircle, Slash, Circle, FolderPlus } from 'lucide-react';
 import ProductForm from '../../components/ProductForm';
+import CategoryManagementModal from './CategoryManagement';
 import { toast } from 'react-hot-toast';
 import { productsApi } from '../../services/api';
 
 const ProductsManagement = () => {
   const [products, setProducts] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [categoriesLoading, setCategoriesLoading] = useState(false);
   const [error, setError] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
+  const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [viewMode, setViewMode] = useState('table'); // 'table' or 'grid'
   const [filterCategory, setFilterCategory] = useState('all');
   const [sortBy, setSortBy] = useState('name');
@@ -19,23 +22,22 @@ const ProductsManagement = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [statusFilter, setStatusFilter] = useState('all');
 
-useEffect(() => {
-  products.forEach((p) => {
-    if (p.stock === 0 && p.status !== 'inactive') {
-      handleToggleProductStatus(p._id, 'inactive', {
-        confirm: false,
-        toast: false,
-        reload: false,
-      });
-    }
-  });
-}, [products]);
-
+  useEffect(() => {
+    products.forEach((p) => {
+      if (p.stock === 0 && p.status !== 'inactive') {
+        handleToggleProductStatus(p._id, 'inactive', {
+          confirm: false,
+          toast: false,
+          reload: false,
+        });
+      }
+    });
+  }, [products]);
 
   useEffect(() => {
     loadProducts();
+    loadCategories();
   }, []);
-
 
   const loadProducts = async () => {
     try {
@@ -80,6 +82,40 @@ useEffect(() => {
     }
   };
 
+  const loadCategories = async () => {
+    try {
+      setCategoriesLoading(true);
+      console.log('Fetching categories...');
+      
+      const response = await fetch('/api/categories');
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const categoriesData = await response.json();
+      console.log('Categories received:', categoriesData);
+      
+      // Ensure we're setting an array
+      if (!Array.isArray(categoriesData)) {
+        console.warn('Categories data is not an array:', categoriesData);
+        setCategories([]);
+        return;
+      }
+      
+      setCategories(categoriesData);
+      
+    } catch (err) {
+      console.error('Error loading categories:', {
+        error: err,
+        message: err.message
+      });
+      toast.error('Failed to load categories');
+      setCategories([]); // Set empty array as fallback
+    } finally {
+      setCategoriesLoading(false);
+    }
+  };
 
   // Filter and sort products
   const filteredProducts = useMemo(() => {
@@ -106,11 +142,11 @@ useEffect(() => {
       );
     }
 
-if (statusFilter !== 'all') {
-  filtered = filtered.filter(product =>
-    (product.status || 'active').toLowerCase() === statusFilter.toLowerCase()
-  );
-}
+    if (statusFilter !== 'all') {
+      filtered = filtered.filter(product =>
+        (product.status || 'active').toLowerCase() === statusFilter.toLowerCase()
+      );
+    }
     
     // Sort products
     filtered.sort((a, b) => {
@@ -169,56 +205,55 @@ if (statusFilter !== 'all') {
     }
   };
 
-const handleToggleProductStatus = async (
-  productId,
-  newStatus,
-  options = { confirm: true, toast: true, reload: true }
-) => {
-  if (!productId) return toast.error('Invalid product ID');
+  const handleToggleProductStatus = async (
+    productId,
+    newStatus,
+    options = { confirm: true, toast: true, reload: true }
+  ) => {
+    if (!productId) return toast.error('Invalid product ID');
 
-  const action = newStatus === 'active' ? 'activate' : 'deactivate';
+    const action = newStatus === 'active' ? 'activate' : 'deactivate';
 
-  if (!options.confirm || window.confirm(`Are you sure you want to ${action} this product?`)) {
-    try {
-      const updated = await productsApi.updateProduct(productId, { status: newStatus });
+    if (!options.confirm || window.confirm(`Are you sure you want to ${action} this product?`)) {
+      try {
+        const updated = await productsApi.updateProduct(productId, { status: newStatus });
 
-      if (options.toast) {
-        toast.success(`Product marked as ${newStatus}`);
-      }
+        if (options.toast) {
+          toast.success(`Product marked as ${newStatus}`);
+        }
 
-      if (options.reload) {
-        await loadProducts();
-      } else {
-        // 🔁 Update product locally
-        setProducts((prev) =>
-          prev.map((p) => (p._id === productId ? { ...p, status: updated.status } : p))
-        );
-      }
-    } catch (err) {
-      console.error(`Error changing product status:`, err);
-      if (options.toast !== false) {
-        toast.error(err.response?.data?.error || `Failed to ${action} product`);
+        if (options.reload) {
+          await loadProducts();
+        } else {
+          // 🔁 Update product locally
+          setProducts((prev) =>
+            prev.map((p) => (p._id === productId ? { ...p, status: updated.status } : p))
+          );
+        }
+      } catch (err) {
+        console.error(`Error changing product status:`, err);
+        if (options.toast !== false) {
+          toast.error(err.response?.data?.error || `Failed to ${action} product`);
+        }
       }
     }
-  }
-};
+  };
 
-const handleDeleteProduct = async (productId) => {
-  if (!productId) return toast.error('Invalid product ID');
+  const handleDeleteProduct = async (productId) => {
+    if (!productId) return toast.error('Invalid product ID');
 
-  const confirm = window.confirm('Are you sure you want to delete this product?');
-  if (!confirm) return;
+    const confirm = window.confirm('Are you sure you want to delete this product?');
+    if (!confirm) return;
 
-  try {
-    await productsApi.deleteProduct(productId);
-    toast.success('Product deleted successfully');
-    await loadProducts(); // Refresh the product list
-  } catch (err) {
-    console.error('Failed to delete product:', err);
-    toast.error(err.response?.data?.message || 'Failed to delete product');
-  }
-};
-
+    try {
+      await productsApi.deleteProduct(productId);
+      toast.success('Product deleted successfully');
+      await loadProducts(); // Refresh the product list
+    } catch (err) {
+      console.error('Failed to delete product:', err);
+      toast.error(err.response?.data?.message || 'Failed to delete product');
+    }
+  };
 
   const getStockStatus = (stock) => {
     if (stock === 0) return { status: 'out', color: 'text-red-600 bg-red-100', icon: AlertCircle };
@@ -230,6 +265,11 @@ const handleDeleteProduct = async (productId) => {
     const cats = [...new Set(products.map(p => p.category).filter(Boolean))];
     return cats;
   }, [products]);
+
+  // Handler for when categories are updated in the modal
+  const handleCategoriesUpdated = () => {
+    loadCategories();
+  };
 
   if (loading) {
     return (
@@ -275,13 +315,22 @@ const handleDeleteProduct = async (productId) => {
             </h1>
             <p className="text-gray-600 mt-2">Manage your product inventory with ease</p>
           </div>
-          <button
-            onClick={() => setShowAddModal(true)}
-            className="flex items-center gap-2 bg-gradient-to-r from-amber-500 to-orange-600 text-white px-6 py-3 rounded-xl hover:from-amber-600 hover:to-orange-700 transform hover:scale-105 transition-all duration-200 shadow-lg hover:shadow-xl"
-          >
-            <Plus className="w-5 h-5" />
-            Add Product
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setShowCategoryModal(true)}
+              className="flex items-center gap-2 bg-gradient-to-r from-green-500 to-emerald-600 text-white px-6 py-3 rounded-xl hover:from-green-600 hover:to-emerald-700 transform hover:scale-105 transition-all duration-200 shadow-lg hover:shadow-xl"
+            >
+              <FolderPlus className="w-5 h-5" />
+              Manage Categories
+            </button>
+            <button
+              onClick={() => setShowAddModal(true)}
+              className="flex items-center gap-2 bg-gradient-to-r from-amber-500 to-orange-600 text-white px-6 py-3 rounded-xl hover:from-amber-600 hover:to-orange-700 transform hover:scale-105 transition-all duration-200 shadow-lg hover:shadow-xl"
+            >
+              <Plus className="w-5 h-5" />
+              Add Product
+            </button>
+          </div>
         </div>
 
         {/* Stats Overview */}
@@ -371,15 +420,15 @@ const handleDeleteProduct = async (productId) => {
                 ))}
               </select>
               {/* Status Filter */}
-<select
-  value={statusFilter}
-  onChange={(e) => setStatusFilter(e.target.value)}
-  className="px-4 py-2 border border-amber-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 bg-white"
->
-  <option value="all">All Status</option>
-  <option value="active">Active</option>
-  <option value="inactive">Inactive</option>
-</select>
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="px-4 py-2 border border-amber-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 bg-white"
+              >
+                <option value="all">All Status</option>
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+              </select>
 
               {/* Sort */}
               <select
@@ -441,8 +490,8 @@ const handleDeleteProduct = async (productId) => {
                       Stock Status
                     </th>
                     <th className="px-6 py-4 text-left text-xs font-bold text-amber-700 uppercase tracking-wider">
-  Status
-</th>
+                      Status
+                    </th>
                     <th className="px-12 py-4 text-left text-xs font-bold text-amber-700 uppercase tracking-wider">
                       Actions
                     </th>
@@ -489,10 +538,10 @@ const handleDeleteProduct = async (productId) => {
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-  <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${product.status === 'inactive' ? 'bg-yellow-100 text-yellow-700' : 'bg-amber-100 text-amber-700'}`}>
-    {product.status}
-  </span>
-</td>
+                          <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${product.status === 'inactive' ? 'bg-yellow-100 text-yellow-700' : 'bg-amber-100 text-amber-700'}`}>
+                            {product.status}
+                          </span>
+                        </td>
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                           <div className="flex items-center gap-2">
                             <button
@@ -507,24 +556,23 @@ const handleDeleteProduct = async (productId) => {
                             >
                               <Trash2 className="w-4 h-4" />
                             </button>
-{product.status === 'active' ? (
-  <button
-    onClick={() => handleToggleProductStatus(product._id, 'inactive')}
-    className="p-2 text-yellow-600 hover:text-yellow-900 hover:bg-yellow-100 rounded-lg transition-all duration-200"
-    title="Mark as Inactive"
-  >
-    <CheckCircle className="w-4 h-4 text-amber-100 fill-amber-600" />
-  </button>
-) : (
-  <button
-    onClick={() => handleToggleProductStatus(product._id, 'active')}
-    className="p-2 text-amber-600 hover:text-amber-900 hover:bg-amber-100 rounded-lg transition-all duration-200"
-    title="Mark as Active"
-  >
-    <Circle className="w-4 h-4 text-red-400 fill-red-600" />
-  </button>
-)}
-
+                            {product.status === 'active' ? (
+                              <button
+                                onClick={() => handleToggleProductStatus(product._id, 'inactive')}
+                                className="p-2 text-yellow-600 hover:text-yellow-900 hover:bg-yellow-100 rounded-lg transition-all duration-200"
+                                title="Mark as Inactive"
+                              >
+                                <CheckCircle className="w-4 h-4 text-amber-100 fill-amber-600" />
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => handleToggleProductStatus(product._id, 'active')}
+                                className="p-2 text-amber-600 hover:text-amber-900 hover:bg-amber-100 rounded-lg transition-all duration-200"
+                                title="Mark as Active"
+                              >
+                                <Circle className="w-4 h-4 text-red-400 fill-red-600" />
+                              </button>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -585,23 +633,23 @@ const handleDeleteProduct = async (productId) => {
                           <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
-{product.status === 'active' ? (
-  <button
-    onClick={() => handleToggleProductStatus(product._id, 'inactive')}
-    className="p-2 text-yellow-600 hover:text-yellow-900 hover:bg-yellow-100 rounded-lg transition-all duration-200"
-    title="Mark as Inactive"
-  >
-    <CheckCircle className="w-4 h-4 text-amber-100 fill-amber-600" />
-  </button>
-) : (
-  <button
-    onClick={() => handleToggleProductStatus(product._id, 'active')}
-    className="p-2 text-amber-600 hover:text-amber-900 hover:bg-amber-100 rounded-lg transition-all duration-200"
-    title="Mark as Active"
-  >
-    <Circle className="w-4 h-4 text-red-400 fill-red-600" />
-  </button>
-)}
+                      {product.status === 'active' ? (
+                        <button
+                          onClick={() => handleToggleProductStatus(product._id, 'inactive')}
+                          className="p-2 text-yellow-600 hover:text-yellow-900 hover:bg-yellow-100 rounded-lg transition-all duration-200"
+                          title="Mark as Inactive"
+                        >
+                          <CheckCircle className="w-4 h-4 text-amber-100 fill-amber-600" />
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => handleToggleProductStatus(product._id, 'active')}
+                          className="p-2 text-amber-600 hover:text-amber-900 hover:bg-amber-100 rounded-lg transition-all duration-200"
+                          title="Mark as Active"
+                        >
+                          <Circle className="w-4 h-4 text-red-400 fill-red-600" />
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -641,9 +689,19 @@ const handleDeleteProduct = async (productId) => {
                 initialData={editingProduct}
                 onSubmit={editingProduct ? handleEditProduct : handleAddProduct}
                 categories={categories}
+                categoriesLoading={categoriesLoading}
               />
             </div>
           </div>
+        )}
+
+        {/* Category Management Modal */}
+        {showCategoryModal && (
+          <CategoryManagementModal
+            isOpen={showCategoryModal}
+            onClose={() => setShowCategoryModal(false)}
+            onCategoriesUpdated={handleCategoriesUpdated}
+          />
         )}
       </div>
 

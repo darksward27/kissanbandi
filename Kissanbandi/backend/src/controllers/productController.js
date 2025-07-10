@@ -1,5 +1,6 @@
 const Product = require('../models/Product');
 
+
 // Get all products with filtering, sorting, and pagination
 exports.getProducts = async (req, res) => {
   try {

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useCart } from '../checkout/CartContext';
 import { useAuth } from '../checkout/AuthProvider';
 import { useNavigate } from 'react-router-dom';
-import { ChevronRight, Trash2, MapPin, ShoppingBag, CreditCard, Truck, CheckCircle } from 'lucide-react';
+import { ChevronRight, Trash2, MapPin, ShoppingBag, CreditCard, Truck, CheckCircle, Edit3, Plus } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { ordersApi } from '../../services/api';
 
@@ -13,6 +13,14 @@ const CheckoutPage = () => {
   const [paymentMethod, setPaymentMethod] = useState('razorpay');
   const [isProcessing, setIsProcessing] = useState(false);
   const [itemsLoaded, setItemsLoaded] = useState(false);
+  const [useRegisteredAddress, setUseRegisteredAddress] = useState(true);
+  const [customAddress, setCustomAddress] = useState({
+    address: '',
+    city: '',
+    state: '',
+    pincode: '',
+    phone: ''
+  });
 
   useEffect(() => {
     // Load Razorpay script
@@ -32,6 +40,17 @@ const CheckoutPage = () => {
       toast.error('Your cart is empty', { id: 'cart-empty' });
     }
 
+    // Initialize custom address with user data if available
+    if (user && user.address) {
+      setCustomAddress({
+        address: formatAddress(user.address),
+        city: user.city || '',
+        state: user.state || '',
+        pincode: user.pincode || '',
+        phone: user.phone || ''
+      });
+    }
+
     // Cleanup function
     return () => {
       document.documentElement.style.scrollBehavior = 'auto';
@@ -39,40 +58,39 @@ const CheckoutPage = () => {
         document.body.removeChild(script);
       }
     };
-  }, [state.items.length]);
+  }, [state.items.length, user]);
 
-const updateQuantity = (item, quantity) => {
-  if (quantity < 1) return;
+  const updateQuantity = (item, quantity) => {
+    if (quantity < 1) return;
 
-  const maxQty = item.stock ?? Infinity; // Fallback in case stock is undefined
+    const maxQty = item.stock ?? Infinity;
 
-  if (quantity > maxQty) {
-    toast.error(`Only ${maxQty} in stock`);
-    return;
-  }
-
-  dispatch({
-    type: 'UPDATE_QUANTITY',
-    payload: {
-      id: item.id || item._id,
-      size: item.size,
-      color: item.color,
-      quantity
+    if (quantity > maxQty) {
+      toast.error(`Only ${maxQty} in stock`);
+      return;
     }
-  });
-};
 
+    dispatch({
+      type: 'UPDATE_QUANTITY',
+      payload: {
+        id: item.id || item._id,
+        size: item.size,
+        color: item.color,
+        quantity
+      }
+    });
+  };
 
   const removeItem = (item) => {
-  dispatch({
-    type: 'REMOVE_FROM_CART',
-    payload: {
-      id: item.id || item._id,
-      size: item.size,
-      color: item.color
-    }
-  });
-  toast.success('Item removed from cart',{ id: 'cart-empty' });
+    dispatch({
+      type: 'REMOVE_FROM_CART',
+      payload: {
+        id: item.id || item._id,
+        size: item.size,
+        color: item.color
+      }
+    });
+    toast.success('Item removed from cart', { id: 'cart-empty' });
   };
 
   const calculateSubtotal = () => {
@@ -83,7 +101,6 @@ const updateQuantity = (item, quantity) => {
   const shipping = subtotal > 500 ? 0 : 50;
   const total = subtotal + shipping;
 
-  // Add this function to format address
   const formatAddress = (addressObj) => {
     if (typeof addressObj === 'string') return addressObj;
     if (!addressObj) return '';
@@ -98,18 +115,52 @@ const updateQuantity = (item, quantity) => {
     return parts.join(', ');
   };
 
+  const handleCustomAddressChange = (field, value) => {
+    setCustomAddress(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  const getShippingAddress = () => {
+    if (useRegisteredAddress && user?.address) {
+      return {
+        address: formatAddress(user.address),
+        city: user.city || '',
+        state: user.state || '',
+        pincode: user.pincode || '',
+        phone: user.phone || ''
+      };
+    } else {
+      return customAddress;
+    }
+  };
+
+  const validateAddress = () => {
+    const address = getShippingAddress();
+    
+    if (!address.address || !address.city || !address.state || !address.pincode) {
+      toast.error('Please fill in all address fields');
+      return false;
+    }
+    
+    if (address.pincode.length !== 6) {
+      toast.error('Please enter a valid 6-digit pincode');
+      return false;
+    }
+    
+    return true;
+  };
+
   const handleProceedToPayment = async () => {
     try {
       if (!user) {
         navigate('/login');
-        toast.error('Please login to continue',{ id: 'cart-empty' });
+        toast.error('Please login to continue', { id: 'cart-empty' });
         return;
       }
 
-      if (!user.address) {
-        toast.dismiss('cart-empty');
-        toast.error('Please update your address in profile to proceed');
-        navigate('/profile');
+      if (!validateAddress()) {
         return;
       }
 
@@ -126,7 +177,7 @@ const updateQuantity = (item, quantity) => {
           return;
         }
 
-        console.log('Using Razorpay Key:', razorpayKey); // Debug log
+        console.log('Using Razorpay Key:', razorpayKey);
 
         try {
           // Create Razorpay order
@@ -134,7 +185,7 @@ const updateQuantity = (item, quantity) => {
             amount: total 
           }, user.token);
 
-          console.log('Order Response:', orderResponse); // Debug log
+          console.log('Order Response:', orderResponse);
 
           if (!orderResponse.orderId) {
             throw new Error('Failed to create order');
@@ -158,7 +209,7 @@ const updateQuantity = (item, quantity) => {
             order_id: orderResponse.orderId,
             handler: async function(response) {
               try {
-                console.log('Payment Response:', response); // Debug log
+                console.log('Payment Response:', response);
                 
                 // Verify payment
                 const verificationResponse = await ordersApi.verifyPayment({
@@ -171,13 +222,7 @@ const updateQuantity = (item, quantity) => {
                       quantity: item.quantity,
                       price: item.price
                     })),
-                    shippingAddress: {
-                      address: formatAddress(user.address),
-                      city: user.city || '',
-                      state: user.state || '',
-                      pincode: user.pincode || '',
-                      phone: user.phone || ''
-                    },
+                    shippingAddress: getShippingAddress(),
                     shipping: subtotal > 500 ? 0 : 50
                   }
                 }, user.token);
@@ -225,7 +270,7 @@ const updateQuantity = (item, quantity) => {
           razorpay.open();
         } catch (orderError) {
           console.error('Order creation error:', orderError);
-          toast.error('Failed to initiate payment. Please try again.',{ id: 'cart-empty' });
+          toast.error('Failed to initiate payment. Please try again.', { id: 'cart-empty' });
           setIsProcessing(false);
         }
       } else {
@@ -242,25 +287,17 @@ const updateQuantity = (item, quantity) => {
     try {
       const response = await ordersApi.createOrder({
         items: state.items.map(item => ({
-          
           product: item._id || item.id,
           quantity: item.quantity,
           price: item.price
         })),
-        
-        shippingAddress: {
-          address: formatAddress(user.address),
-          city: user.city || '',
-          state: user.state || '',
-          pincode: user.pincode || '',
-          phone: user.phone || ''
-        },
+        shippingAddress: getShippingAddress(),
         paymentMethod: 'cod',
         shipping: subtotal > 500 ? 0 : 50
       }, user.token);
 
       if (response._id) {
-        toast.success('Order placed successfully!',{ id: 'cart-empty' });
+        toast.success('Order placed successfully!', { id: 'cart-empty' });
         dispatch({ type: 'CLEAR_CART' });
         navigate('/orders');
       } else {
@@ -351,7 +388,7 @@ const updateQuantity = (item, quantity) => {
                         <h3 className="font-bold text-gray-800 text-lg group-hover:text-amber-700 transition-colors">
                           {item.name}
                         </h3>
-                                                <div className="bg-gradient-to-r from-amber-700 to-orange-700 bg-clip-text text-transparent font-bold text-lg">
+                        <div className="bg-gradient-to-r from-amber-700 to-orange-700 bg-clip-text text-transparent font-bold text-lg">
                           ₹{item.price}/{item.unit}
                         </div>
                       </div>
@@ -374,7 +411,6 @@ const updateQuantity = (item, quantity) => {
                           >
                             +
                           </button>
-
                         </div>
                         
                         <button
@@ -421,6 +457,143 @@ const updateQuantity = (item, quantity) => {
                 </div>
               </div>
 
+              {/* Shipping Address */}
+              <div className="mb-8">
+                <h3 className="font-bold text-gray-800 mb-4 flex items-center">
+                  <MapPin className="w-5 h-5 text-amber-600 mr-2" />
+                  Shipping Address
+                </h3>
+                
+                <div className="space-y-3">
+                  {/* Registered Address Option */}
+                  {user?.address && (
+                    <label className="group flex items-start space-x-3 p-4 rounded-xl border-2 border-amber-200 hover:border-amber-300 cursor-pointer transition-all duration-200 hover:bg-amber-50/50">
+                      <input
+                        type="radio"
+                        name="address"
+                        value="registered"
+                        checked={useRegisteredAddress}
+                        onChange={() => setUseRegisteredAddress(true)}
+                        className="text-amber-600 focus:ring-amber-500 w-5 h-5 mt-1"
+                      />
+                      <div className="flex-1">
+                        <div className="flex items-center mb-2">
+                          <MapPin className="w-4 h-4 text-amber-600 mr-2" />
+                          <span className="font-medium text-gray-700 group-hover:text-amber-700">
+                            Registered Address
+                          </span>
+                        </div>
+                        <div className="text-sm text-gray-600 leading-relaxed">
+                          {formatAddress(user.address)}
+                          {user.city && `, ${user.city}`}
+                          {user.state && `, ${user.state}`}
+                          {user.pincode && ` - ${user.pincode}`}
+                        </div>
+                      </div>
+                    </label>
+                  )}
+
+                  {/* Custom Address Option */}
+                  <label className="group flex items-start space-x-3 p-4 rounded-xl border-2 border-amber-200 hover:border-amber-300 cursor-pointer transition-all duration-200 hover:bg-amber-50/50">
+                    <input
+                      type="radio"
+                      name="address"
+                      value="custom"
+                      checked={!useRegisteredAddress}
+                      onChange={() => setUseRegisteredAddress(false)}
+                      className="text-amber-600 focus:ring-amber-500 w-5 h-5 mt-1"
+                    />
+                    <div className="flex-1">
+                      <div className="flex items-center mb-2">
+                        <Plus className="w-4 h-4 text-amber-600 mr-2" />
+                        <span className="font-medium text-gray-700 group-hover:text-amber-700">
+                          Add New Address
+                        </span>
+                      </div>
+                    </div>
+                  </label>
+
+                  {/* Custom Address Form */}
+                  {!useRegisteredAddress && (
+                    <div className="space-y-4 p-4 bg-amber-50/50 rounded-xl border border-amber-200">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Address *
+                        </label>
+                        <textarea
+                          value={customAddress.address}
+                          onChange={(e) => handleCustomAddressChange('address', e.target.value)}
+                          placeholder="Enter your full address"
+                          className="w-full px-3 py-2 border border-amber-200 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-colors"
+                          rows="3"
+                          required
+                        />
+                      </div>
+                      
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            City *
+                          </label>
+                          <input
+                            type="text"
+                            value={customAddress.city}
+                            onChange={(e) => handleCustomAddressChange('city', e.target.value)}
+                            placeholder="City"
+                            className="w-full px-3 py-2 border border-amber-200 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-colors"
+                            required
+                          />
+                        </div>
+                        
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            State *
+                          </label>
+                          <input
+                            type="text"
+                            value={customAddress.state}
+                            onChange={(e) => handleCustomAddressChange('state', e.target.value)}
+                            placeholder="State"
+                            className="w-full px-3 py-2 border border-amber-200 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-colors"
+                            required
+                          />
+                        </div>
+                      </div>
+                      
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Pincode *
+                          </label>
+                          <input
+                            type="text"
+                            value={customAddress.pincode}
+                            onChange={(e) => handleCustomAddressChange('pincode', e.target.value)}
+                            placeholder="6-digit pincode"
+                            maxLength="6"
+                            className="w-full px-3 py-2 border border-amber-200 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-colors"
+                            required
+                          />
+                        </div>
+                        
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Phone
+                          </label>
+                          <input
+                            type="tel"
+                            value={customAddress.phone}
+                            onChange={(e) => handleCustomAddressChange('phone', e.target.value)}
+                            placeholder="Phone number"
+                            className="w-full px-3 py-2 border border-amber-200 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-colors"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
               {/* Payment Methods */}
               <div className="mb-8">
                 <h3 className="font-bold text-gray-800 mb-4 flex items-center">
@@ -444,7 +617,6 @@ const updateQuantity = (item, quantity) => {
                       </span>
                     </div>
                   </label>
-                 
                 </div>
               </div>
 
