@@ -153,8 +153,8 @@ const updateQuantity = (item, quantity) => {
             key: razorpayKey,
             amount: total * 100,
             currency: "INR",
-            name: "KissanBandi",
-            description: "Purchase of fresh produce",
+            name: "Bogat",
+            description: "Purchase of premium products",
             order_id: orderResponse.orderId,
             handler: async function(response) {
               try {
@@ -204,7 +204,7 @@ const updateQuantity = (item, quantity) => {
               contact: user.phone || ''
             },
             theme: {
-              color: "#16a34a"
+              color: "#b45309"
             },
             modal: {
               ondismiss: function() {
@@ -277,14 +277,14 @@ const updateQuantity = (item, quantity) => {
   // Show empty cart state if no items
   if (state.items.length === 0) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50">
+      <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50">
         <div className="container mx-auto px-4 py-8 pt-32">
           <div className="max-w-md mx-auto text-center">
-            <div className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-xl border border-green-100 p-8 transform hover:scale-105 transition-all duration-500">
-              <div className="text-green-300 mb-6 animate-bounce">
+            <div className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-xl border border-amber-200 p-8 transform hover:scale-105 transition-all duration-500">
+              <div className="text-amber-300 mb-6 animate-bounce">
                 <ShoppingBag className="w-24 h-24 mx-auto" />
               </div>
-              <h2 className="text-3xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent mb-4">
+              <h2 className="text-3xl font-bold bg-gradient-to-r from-amber-700 to-orange-700 bg-clip-text text-transparent mb-4">
                 Your cart is empty
               </h2>
               <p className="text-gray-600 mb-8 leading-relaxed">
@@ -293,7 +293,7 @@ const updateQuantity = (item, quantity) => {
               </p>
               <button
                 onClick={() => navigate('/')}
-                className="group bg-gradient-to-r from-green-600 to-emerald-600 text-white px-8 py-4 rounded-2xl font-medium hover:from-green-700 hover:to-emerald-700 transition-all duration-300 inline-flex items-center transform hover:scale-105 hover:shadow-lg"
+                className="group bg-gradient-to-r from-amber-600 to-orange-700 text-white px-8 py-4 rounded-2xl font-medium hover:from-amber-700 hover:to-orange-800 transition-all duration-300 inline-flex items-center transform hover:scale-105 hover:shadow-lg"
               >
                 <ShoppingBag className="w-5 h-5 mr-2 group-hover:animate-pulse" />
                 Continue Shopping
@@ -308,24 +308,24 @@ const updateQuantity = (item, quantity) => {
   
   // Regular checkout view with items
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50">
+    <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50">
       <div className="container mx-auto px-4 py-8 pt-32">
         <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent mb-2">
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-amber-700 to-orange-700 bg-clip-text text-transparent mb-2">
             Checkout
           </h1>
-          <div className="w-24 h-1 bg-gradient-to-r from-green-600 to-emerald-600 mx-auto rounded-full"></div>
+          <div className="w-24 h-1 bg-gradient-to-r from-amber-600 to-orange-700 mx-auto rounded-full"></div>
         </div>
         
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Cart Items */}
           <div className="lg:col-span-2">
-            <div className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-xl border border-green-100 p-8 hover:shadow-2xl transition-all duration-500">
+            <div className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-xl border border-amber-200 p-8 hover:shadow-2xl transition-all duration-500">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-2xl font-bold text-gray-800">
                   Cart Items
                 </h2>
-                <div className="bg-gradient-to-r from-green-100 to-emerald-100 text-green-700 px-4 py-2 rounded-full text-sm font-semibold">
+                <div className="bg-gradient-to-r from-amber-100 to-orange-100 text-amber-700 px-4 py-2 rounded-full text-sm font-semibold">
                   {state.items.length} {state.items.length === 1 ? 'item' : 'items'}
                 </div>
               </div>
@@ -334,7 +334,7 @@ const updateQuantity = (item, quantity) => {
                 {state.items.map((item, index) => (
                   <div 
                     key={item._id} 
-                    className={`group bg-gradient-to-r from-white to-green-50/50 rounded-2xl p-6 border border-green-100 hover:border-green-200 hover:shadow-lg transition-all duration-300 transform hover:scale-[1.02] ${itemsLoaded ? 'animate-fade-in-up' : 'opacity-0'}`}
+                    className={`group bg-gradient-to-r from-white to-amber-50/50 rounded-2xl p-6 border border-amber-200 hover:border-amber-300 hover:shadow-lg transition-all duration-300 transform hover:scale-[1.02] ${itemsLoaded ? 'animate-fade-in-up' : 'opacity-0'}`}
                     style={{ animationDelay: `${index * 100}ms` }}
                   >
                     <div className="flex items-center">
@@ -348,29 +348,28 @@ const updateQuantity = (item, quantity) => {
                       </div>
                       
                       <div className="ml-6 flex-1">
-                        <h3 className="font-bold text-gray-800 text-lg group-hover:text-green-700 transition-colors">
+                        <h3 className="font-bold text-gray-800 text-lg group-hover:text-amber-700 transition-colors">
                           {item.name}
                         </h3>
-                        <p className="text-green-600 text-sm font-medium mb-1">{item.category}</p>
-                        <div className="bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent font-bold text-lg">
+                                                <div className="bg-gradient-to-r from-amber-700 to-orange-700 bg-clip-text text-transparent font-bold text-lg">
                           ₹{item.price}/{item.unit}
                         </div>
                       </div>
 
                       <div className="flex items-center space-x-6">
-                        <div className="flex items-center bg-white rounded-xl border-2 border-green-100 shadow-sm hover:shadow-md transition-all duration-200">
+                        <div className="flex items-center bg-white rounded-xl border-2 border-amber-200 shadow-sm hover:shadow-md transition-all duration-200">
                           <button
                             onClick={() => updateQuantity(item, item.quantity - 1)}
-                            className="px-4 py-2 text-green-600 hover:bg-green-50 rounded-l-xl transition-colors duration-200 font-bold text-lg"
+                            className="px-4 py-2 text-amber-600 hover:bg-amber-50 rounded-l-xl transition-colors duration-200 font-bold text-lg"
                           >
                             −
                           </button>
-                          <span className="px-4 py-2 border-x-2 border-green-100 font-bold text-gray-700 min-w-[3rem] text-center">
+                          <span className="px-4 py-2 border-x-2 border-amber-200 font-bold text-gray-700 min-w-[3rem] text-center">
                             {item.quantity}
                           </span>
                           <button
                             onClick={() => updateQuantity(item, item.quantity + 1)}
-                            className="px-4 py-2 text-green-600 hover:bg-green-50 rounded-r-xl transition-colors duration-200 font-bold text-lg"
+                            className="px-4 py-2 text-amber-600 hover:bg-amber-50 rounded-r-xl transition-colors duration-200 font-bold text-lg"
                             disabled={item.quantity >= item.stock}
                           >
                             +
@@ -394,9 +393,9 @@ const updateQuantity = (item, quantity) => {
 
           {/* Order Summary */}
           <div className="lg:col-span-1">
-            <div className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-xl border border-green-100 p-8 sticky top-24 hover:shadow-2xl transition-all duration-500">
+            <div className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-xl border border-amber-200 p-8 sticky top-24 hover:shadow-2xl transition-all duration-500">
               <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center">
-                <CheckCircle className="w-6 h-6 text-green-600 mr-2" />
+                <CheckCircle className="w-6 h-6 text-amber-600 mr-2" />
                 Order Summary
               </h2>
               
@@ -410,13 +409,13 @@ const updateQuantity = (item, quantity) => {
                     <Truck className="w-4 h-4 mr-1" />
                     Shipping
                   </span>
-                  <span className={`font-semibold ${shipping === 0 ? 'text-green-600' : ''}`}>
+                  <span className={`font-semibold ${shipping === 0 ? 'text-amber-600' : ''}`}>
                     {shipping === 0 ? 'Free' : `₹${shipping}`}
                   </span>
                 </div>
-                <div className="border-t-2 border-green-100 pt-4 flex justify-between font-bold text-xl">
+                <div className="border-t-2 border-amber-200 pt-4 flex justify-between font-bold text-xl">
                   <span className="text-gray-800">Total</span>
-                  <span className="bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">
+                  <span className="bg-gradient-to-r from-amber-700 to-orange-700 bg-clip-text text-transparent">
                     ₹{total.toFixed(2)}
                   </span>
                 </div>
@@ -425,49 +424,34 @@ const updateQuantity = (item, quantity) => {
               {/* Payment Methods */}
               <div className="mb-8">
                 <h3 className="font-bold text-gray-800 mb-4 flex items-center">
-                  <CreditCard className="w-5 h-5 text-green-600 mr-2" />
+                  <CreditCard className="w-5 h-5 text-amber-600 mr-2" />
                   Payment Method
                 </h3>
                 <div className="space-y-3">
-                  <label className="group flex items-center space-x-3 p-4 rounded-xl border-2 border-green-100 hover:border-green-300 cursor-pointer transition-all duration-200 hover:bg-green-50/50">
+                  <label className="group flex items-center space-x-3 p-4 rounded-xl border-2 border-amber-200 hover:border-amber-300 cursor-pointer transition-all duration-200 hover:bg-amber-50/50">
                     <input
                       type="radio"
                       name="payment"
                       value="razorpay"
                       checked={paymentMethod === 'razorpay'}
                       onChange={(e) => setPaymentMethod(e.target.value)}
-                      className="text-green-600 focus:ring-green-500 w-5 h-5"
+                      className="text-amber-600 focus:ring-amber-500 w-5 h-5"
                     />
                     <div className="flex items-center">
-                      <CreditCard className="w-5 h-5 text-green-600 mr-2" />
-                      <span className="font-medium text-gray-700 group-hover:text-green-700">
+                      <CreditCard className="w-5 h-5 text-amber-600 mr-2" />
+                      <span className="font-medium text-gray-700 group-hover:text-amber-700">
                         Online Payment (RazorPay)
                       </span>
                     </div>
                   </label>
-                  <label className="group flex items-center space-x-3 p-4 rounded-xl border-2 border-green-100 hover:border-green-300 cursor-pointer transition-all duration-200 hover:bg-green-50/50">
-                    <input
-                      type="radio"
-                      name="payment"
-                      value="cod"
-                      checked={paymentMethod === 'cod'}
-                      onChange={(e) => setPaymentMethod(e.target.value)}
-                      className="text-green-600 focus:ring-green-500 w-5 h-5"
-                    />
-                    <div className="flex items-center">
-                      <MapPin className="w-5 h-5 text-green-600 mr-2" />
-                      <span className="font-medium text-gray-700 group-hover:text-green-700">
-                        Cash on Delivery
-                      </span>
-                    </div>
-                  </label>
+                 
                 </div>
               </div>
 
               <button 
                 onClick={handleProceedToPayment}
                 disabled={isProcessing}
-                className="group w-full bg-gradient-to-r from-green-600 to-emerald-600 text-white py-4 rounded-2xl font-bold hover:from-green-700 hover:to-emerald-700 transition-all duration-300 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed transform hover:scale-105 hover:shadow-xl flex items-center justify-center text-lg"
+                className="group w-full bg-gradient-to-r from-amber-600 to-orange-700 text-white py-4 rounded-2xl font-bold hover:from-amber-700 hover:to-orange-800 transition-all duration-300 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed transform hover:scale-105 hover:shadow-xl flex items-center justify-center text-lg"
               >
                 {isProcessing ? (
                   <>
@@ -483,7 +467,7 @@ const updateQuantity = (item, quantity) => {
               </button>
 
               <div className="mt-6 text-center">
-                <div className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-green-100 to-emerald-100 text-green-700 text-sm font-medium rounded-full">
+                <div className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-amber-100 to-orange-100 text-amber-700 text-sm font-medium rounded-full">
                   <Truck className="w-4 h-4 mr-2" />
                   Free delivery on orders above ₹500
                 </div>

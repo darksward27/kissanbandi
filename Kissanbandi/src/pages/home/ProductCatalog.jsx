@@ -1,518 +1,241 @@
-import React, { useState, useMemo, useEffect } from 'react';
-import { Filter, Search, ChevronDown, Star, Heart, ShoppingCart, Sparkles, Lock } from 'lucide-react';
-import { useCart } from '../checkout/CartContext';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { toast } from 'react-hot-toast';
-import { categories } from '../../data/products';
-import { usersApi, productsApi } from '../../services/api';
-import { useAuth } from '../checkout/AuthProvider'; // Add this import
+import {
+  Heart,
+  ShoppingCart,
+  Star,
+  Coffee,
+  Leaf,
+  Award,
+  ChevronRight,
+  Sparkles,
+} from 'lucide-react';
 
-const ProductCatalog = ({ showAll = false }) => {
-  const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+// ✅ Import images instead of using direct string paths
+import sample1 from '../../assets/sample1.jpeg';
+import sample2 from '../../assets/sample2.jpeg';
+import sample3 from '../../assets/sample3.jpeg';
+import bgHero from '../../assets/bogat1.jpg'; // background image
+
+const BOGATProductsShowcase = () => {
+  const [selectedProduct, setSelectedProduct] = useState(0);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [wishlist, setWishlist] = useState(new Set());
-
-  // Auth context
-  const auth = useAuth();
-  const isAuthenticated = auth?.user && !auth?.loading;
-
-  useEffect(() => {
-    document.documentElement.style.scrollBehavior = 'smooth';
-    window.scrollTo({ top: 0 });
-    loadProducts();
-    
-    // Only load wishlist if user is authenticated
-    if (isAuthenticated) {
-      loadWishlist();
-    }
-
-    return () => {
-      document.documentElement.style.scrollBehavior = 'auto';
-    };
-  }, [isAuthenticated]);
-
-  const loadProducts = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const data = await productsApi.getAllProducts();
-      console.log('Fetched from API:', data);
-      setProducts(Array.isArray(data) ? data : []);
-    } catch (err) {
-      setError(err.message);
-      setProducts([]);
-      setTimeout(() => {
-        toast.error('Failed to load products');
-      }, 0);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const loadWishlist = async () => {
-    try {
-      const wishlistItems = await usersApi.getWishlist();
-      const ids = wishlistItems.map(item => item._id || item.id);
-      setWishlist(new Set(ids));
-    } catch (err) {
-      console.error('Failed to fetch wishlist:', err);
-    }
-  };
-
-  const { dispatch } = useCart();
+  const [cartAnimation, setCartAnimation] = useState('');
+  const [currentImageIndex, setCurrentImageIndex] = useState([0, 0, 0]);
   const navigate = useNavigate();
-  const [selectedCategory, setSelectedCategory] = useState('all');
-  const [sortBy, setSortBy] = useState('featured');
-  const [searchQuery, setSearchQuery] = useState('');
 
-  // Check product availability
-  const getProductStatus = (product) => {
-    if (product?.status === 'inactive') {
-      return { type: 'unavailable', message: 'Product is unavailable' };
-    }
-    if (product?.stock === 0) {
-      return { type: 'out-of-stock', message: 'Out of stock' };
-    }
-    return { type: 'available', message: 'Available' };
-  };
-
-  const isProductUnavailable = (product) => {
-    const status = getProductStatus(product);
-    return status.type !== 'available';
-  };
-
-  // Filter and sort products
-  const filteredProducts = useMemo(() => {
-    if (!Array.isArray(products)) return [];
-    
-    let filtered = [...products];
-
-    if (selectedCategory !== 'all') {
-      filtered = filtered.filter(product => 
-        product?.category?.toLowerCase() === selectedCategory.toLowerCase()
-      );
-    }
-
-    if (searchQuery) {
-      filtered = filtered.filter(product => 
-        product?.name?.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-    }
-
-    return filtered.sort((a, b) => {
-      if (!a || !b) return 0;
-      
-      switch (sortBy) {
-        case 'price-low':
-          return (a.price || 0) - (b.price || 0);
-        case 'price-high':
-          return (b.price || 0) - (a.price || 0);
-        case 'rating':
-          return (b.rating || 0) - (a.rating || 0);
-        default:
-          return 0;
-      }
-    });
-    return filtered.slice(0, 12);
-  }, [selectedCategory, searchQuery, sortBy, products]);
-
-  const categoryOptions = [
-    { value: 'all', label: 'All Categories' },
-    ...categories.map(cat => ({
-      value: cat.name.toLowerCase(),
-      label: cat.name
-    }))
+  const products = [
+    {
+      id: 1,
+      name: 'South Indian Filter Coffee Powder',
+      brand: 'BOGAT',
+      weight: '450gm',
+      price: 299,
+      originalPrice: 399,
+      rating: 4.8,
+      reviews: 1247,
+      category: 'Coffee',
+      images: [sample1],
+      badge: '🍁 Traditional Blend',
+      features: [
+        '70% Coffee, 30% Chicory ratio',
+        'Single-Origin from Chikkamagaluru',
+        'Shadow-Grown under native trees',
+        'Handpicked & Sun-Dried',
+        'Roasted in Small Batches',
+      ],
+      description:
+        'Balanced taste with low bitterness and slightly earthy notes. Perfect for filter decoction - strong, smooth, and deeply satisfying.',
+      highlights: [
+        '🌿 Single-Origin',
+        '👐 Handpicked',
+        '🔥 Small Batch Roasted',
+        '☕ Perfect for Filter',
+      ],
+    },
+    {
+      id: 2,
+      name: 'Black Pepper Powder',
+      brand: 'BOGAT',
+      weight: '200gm',
+      price: 159,
+      originalPrice: 199,
+      rating: 4.9,
+      reviews: 856,
+      category: 'Spices',
+      images: [sample2],
+      badge: '⚡ King of Spices',
+      features: [
+        'Rich in Piperine for wellness',
+        '100% Natural & Pure',
+        'No preservatives or additives',
+        'Ethically sourced from India',
+        'Sun-dried to preserve potency',
+      ],
+      description:
+        'Bold, aromatic black pepper powder packed with natural goodness. Enhances digestion and boosts nutrient absorption.',
+      highlights: ['👑 King of Spices', '💪 Rich in Piperine', '🌿 100% Natural', '🚫 No Additives'],
+    },
+    {
+      id: 3,
+      name: 'Whole Cardamom (Elaichi)',
+      brand: 'BOGAT',
+      weight: '100gm',
+      price: 249,
+      originalPrice: 319,
+      rating: 4.7,
+      reviews: 623,
+      category: 'Spices',
+      images: [sample3],
+      badge: '👑 Queen of Spices',
+      features: [
+        '100% Pure & Natural pods',
+        'Premium hand-selected quality',
+        'Rich essential oil content',
+        'Aids digestion naturally',
+        'Ethically sourced from India',
+      ],
+      description:
+        'Sweet, bold aroma that elevates teas, sweets, biryanis, and curries. Traditionally used for wellness and breath freshening.',
+      highlights: ['👸 Queen of Spices', '🌿 Health-Boosting', '✨ Aromatic', '🫖 Perfect for Tea'],
+    },
   ];
 
-  // Modified handleAddToCart with login check
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentImageIndex((prev) =>
+        prev.map((index, i) => (index + 1) % products[i].images.length)
+      );
+    }, 4000);
+    return () => clearInterval(interval);
+  }, []);
+
   const handleAddToCart = (product) => {
-    if (!product) return;
-    
-    // Check if user is authenticated
     if (!isAuthenticated) {
-      toast.error('Please login to add items to cart');
-      navigate('/login');
+      alert('Please login to add items to cart');
       return;
     }
-    
-    // Check product availability
-    const productStatus = getProductStatus(product);
-    if (productStatus.type !== 'available') {
-      toast.error(`Sorry, ${productStatus.message.toLowerCase()}!`);
-      return;
-    }
-    
-    dispatch({ 
-      type: 'ADD_TO_CART', 
-      payload: product 
-    });
-    setTimeout(() => toast.success(`Added ${product.name} to cart!`), 0);
+    setCartAnimation('animate-bounce');
+    setTimeout(() => setCartAnimation(''), 600);
   };
 
-  // Modified toggleWishlist with login check
-  const toggleWishlist = async (productId) => {
-    if (!productId) return;
-
-    // Check if user is authenticated
+  const toggleWishlist = (productId) => {
     if (!isAuthenticated) {
-      toast.error('Please login to add items to wishlist');
-      navigate('/login');
+      alert('Please login to add items to wishlist');
       return;
     }
-
-    try {
-      const newWishlist = new Set(wishlist);
-
-      if (newWishlist.has(productId)) {
-        await usersApi.removeFromWishlist(productId);
-        newWishlist.delete(productId);
-        toast.success('Removed from wishlist');
-      } else {
-        await usersApi.addToWishlist(productId);
-        newWishlist.add(productId);
-        toast.success('Added to wishlist');
-      }
-
-      setWishlist(newWishlist);
-    } catch (error) {
-      console.error('Wishlist error:', error);
-      toast.error('Failed to update wishlist');
-    }
+    const newWishlist = new Set(wishlist);
+    if (newWishlist.has(productId)) newWishlist.delete(productId);
+    else newWishlist.add(productId);
+    setWishlist(newWishlist);
   };
 
-  const handleRetry = () => {
-    loadProducts();
+  const handleCardClick = (index, e) => {
+    if (e.target.closest('button')) return;
+    setSelectedProduct(index);
+    setTimeout(() => navigate('/products'), 200);
   };
-
-  // Show login prompt for restricted actions
-  const showLoginPrompt = () => {
-    toast.error('Please login to continue');
-    navigate('/login');
-  };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50">
-        <div className="container mx-auto px-4 py-8">
-          <div className="flex justify-center items-center h-64">
-            <div className="relative">
-              <div className="animate-spin rounded-full h-16 w-16 border-4 border-green-200"></div>
-              <div className="animate-spin rounded-full h-16 w-16 border-4 border-green-500 border-t-transparent absolute top-0 left-0"></div>
-              <Sparkles className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-green-600 w-6 h-6 animate-pulse" />
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50">
-        <div className="container mx-auto px-4 py-8">
-          <div className="text-center bg-white rounded-2xl shadow-lg p-8 max-w-md mx-auto transform hover:scale-105 transition-transform duration-300">
-            <div className="text-red-500 mb-4">
-              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <span className="text-2xl">⚠️</span>
-              </div>
-              <p className="text-lg font-semibold">{error}</p>
-            </div>
-            <button 
-              onClick={handleRetry}
-              className="bg-gradient-to-r from-green-500 to-emerald-600 text-white px-6 py-3 rounded-xl hover:from-green-600 hover:to-emerald-700 transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl"
-            >
-              Try Again
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50">
-      <div className="container mx-auto px-4 py-8">
-        {/* Login Status Banner */}
-        {!isAuthenticated && (
-          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-2xl p-4 mb-8 text-center">
-            <div className="flex items-center justify-center space-x-2">
-              <Lock className="w-5 h-5 text-blue-600" />
-              <span className="text-blue-800 font-medium">
-                🔒 Please 
-                <button 
-                  onClick={() => navigate('/login')}
-                  className="text-blue-600 hover:text-blue-800 font-semibold underline mx-1"
-                >
-                  login
-                </button>
-                to add items to cart and wishlist
-              </span>
-            </div>
-          </div>
-        )}
+    <div className="min-h-screen bg-gradient-to-br from-[#F5EFE6] via-[#EBDACD] to-[#D8C3A5]">
+      <div className="container mx-auto px-4 py-12">
+        <h2 className="text-4xl font-bold text-center bg-gradient-to-r from-[#23150c] to-[#dda64e] bg-clip-text text-transparent mb-12">
+          Complete BOGAT Collection
+        </h2>
 
-        {/* Animated Header Section */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-12">
-          <div className="relative">
-            <div className="absolute -top-4 -left-4 w-20 h-20 bg-green-300 rounded-full opacity-20 animate-pulse"></div>
-            <div className="absolute -top-2 -right-2 w-16 h-16 bg-emerald-300 rounded-full opacity-30 animate-pulse delay-300"></div>
-            <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent relative z-10 animate-fade-in">
-              Our Products
-            </h1>
-            <p className="text-gray-600 mt-3 text-lg relative z-10 animate-fade-in delay-200">
-              🌱 Fresh from the farm to your table
-            </p>
-          </div>
-          <div className="flex items-center mt-6 md:mt-0 bg-white px-6 py-3 rounded-full shadow-lg border border-green-100 animate-slide-in">
-            <Sparkles className="w-5 h-5 text-green-500 mr-2 animate-pulse" />
-            <span className="text-gray-700 font-medium">
-              Showing {filteredProducts.length} fresh products
-            </span>
-          </div>
-        </div>
-
-        {/* Enhanced Search and Filter Bar */}
-        <div className="bg-white rounded-2xl shadow-xl p-6 mb-12 border border-green-100 backdrop-blur-sm bg-white/80 animate-slide-up">
-          <div className="flex flex-col md:flex-row gap-6">
-            {/* Enhanced Search */}
-            <div className="flex-1 relative group">
-              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-green-400 w-5 h-5 group-focus-within:text-green-600 transition-colors duration-300" />
-              <input
-                type="text"
-                placeholder="Search for fresh products..."
-                className="w-full pl-12 pr-4 py-3 border-2 border-green-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-400 focus:border-green-400 transition-all duration-300 hover:border-green-200 bg-green-50/30"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-              <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-green-400/0 to-emerald-400/0 group-focus-within:from-green-400/5 group-focus-within:to-emerald-400/5 transition-all duration-300 pointer-events-none"></div>
-            </div>
-
-            {/* Enhanced Category Filter */}
-            <div className="relative group">
-              <select
-                className="appearance-none bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-100 rounded-xl px-6 py-3 pr-12 focus:outline-none focus:ring-2 focus:ring-green-400 focus:border-green-400 transition-all duration-300 hover:border-green-200 font-medium"
-                value={selectedCategory}
-                onChange={(e) => setSelectedCategory(e.target.value)}
-              >
-                {categoryOptions.map(category => (
-                  <option key={`cat-${category.value}`} value={category.value}>
-                    {category.label}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown className="absolute right-4 top-1/2 transform -translate-y-1/2 text-green-500 w-5 h-5 pointer-events-none group-hover:text-green-600 transition-colors duration-300" />
-            </div>
-
-            {/* Enhanced Sort */}
-            <div className="relative group">
-              <select
-                className="appearance-none bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-100 rounded-xl px-6 py-3 pr-12 focus:outline-none focus:ring-2 focus:ring-green-400 focus:border-green-400 transition-all duration-300 hover:border-green-200 font-medium"
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
-              >
-                <option value="featured">✨ Featured</option>
-                <option value="price-low">💰 Price: Low to High</option>
-                <option value="price-high">💎 Price: High to Low</option>
-                <option value="rating">⭐ Top Rated</option>
-              </select>
-              <ChevronDown className="absolute right-4 top-1/2 transform -translate-y-1/2 text-green-500 w-5 h-5 pointer-events-none group-hover:text-green-600 transition-colors duration-300" />
-            </div>
-          </div>
-        </div>
-
-        {/* Enhanced Product Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
-          {filteredProducts.map((product, index) => {
-            const productStatus = getProductStatus(product);
-            const isUnavailable = productStatus.type !== 'available';
-            
-            return (
-              <div 
-                key={product._id || product.id} 
-                className={`bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-2xl transition-all duration-500 group border border-green-100 hover:border-green-200 transform hover:-translate-y-2 animate-fade-in-up flex flex-col h-full ${
-                  isUnavailable ? 'opacity-75' : ''
-                }`}
-                style={{ animationDelay: `${index * 100}ms` }}
-              >
-                <div className="relative overflow-hidden">
-                  <div className="absolute inset-0 bg-gradient-to-t from-green-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                  <img
-                    src={product.image}
-                    alt={product.name}
-                    className={`w-full h-48 object-contain transform group-hover:scale-110 transition-transform duration-500 p-4 ${
-                      isUnavailable ? 'filter grayscale' : ''
-                    }`}
-                  />
-                  <button 
-                    onClick={() => isAuthenticated ? toggleWishlist(product._id || product.id) : showLoginPrompt()}
-                    className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm rounded-full p-2.5 shadow-lg hover:bg-white hover:scale-110 transition-all duration-300 border border-green-100"
-                  >
-                    {!isAuthenticated ? (
-                      <Lock className="w-5 h-5 text-gray-400" />
-                    ) : (
-                      <Heart 
-                        className={`w-5 h-5 transition-all duration-300 ${
-                          wishlist.has(product._id || product.id) 
-                            ? 'text-red-500 fill-current animate-pulse' 
-                            : 'text-gray-600 hover:text-red-400'
-                        }`} 
-                      />
-                    )}
-                  </button>
-                  
-                  {/* Status Badge */}
-                  {productStatus.type === 'unavailable' ? (
-                    <div className="absolute top-4 left-4 bg-gradient-to-r from-gray-500 to-gray-600 text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg">
-                      🚫 Unavailable
-                    </div>
-                  ) : productStatus.type === 'out-of-stock' ? (
-                    <div className="absolute top-4 left-4 bg-gradient-to-r from-red-500 to-red-600 text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg">
-                      ❌ Out of Stock
-                    </div>
-                  ) : (
-                    <div className="absolute top-4 left-4 bg-gradient-to-r from-green-500 to-emerald-500 text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg animate-pulse">
-                      🌿 Fresh
-                    </div>
-                  )}
-                </div>
-                
-                <div className="p-6 flex flex-col flex-grow">
-                  <div className="text-sm text-green-600 font-bold mb-3 capitalize bg-green-50 px-3 py-1 rounded-full inline-block">
-                    {product.category}
-                  </div>
-                  <h3 className="text-xl font-bold text-gray-800 mb-4 group-hover:text-green-700 transition-colors duration-300 flex-grow">
-                    {product.name}
-                  </h3>
-
-                  <div className="flex justify-between items-end">
-                    <div className="flex flex-col">
-                      <div className={`text-2xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent ${
-                        isUnavailable ? 'opacity-50' : ''
-                      }`}>
-                        ₹{product.price}
-                      </div>
-                      <span className="text-sm text-gray-600 font-normal">
-                        /{product.unit}
-                      </span>
-                      {productStatus.type === 'available' && product.stock && (
-                        <span className="text-xs text-green-600 font-medium mt-1">
-                          {product.stock} in stock
-                        </span>
-                      )}
-                    </div>
-                    
-                    {productStatus.type === 'unavailable' ? (
-                      <div className="text-gray-500 font-semibold text-sm px-4 py-2 bg-gray-50 rounded-xl border border-gray-200">
-                        Product is unavailable
-                      </div>
-                    ) : productStatus.type === 'out-of-stock' ? (
-                      <div className="text-red-500 font-semibold text-sm px-4 py-2 bg-red-50 rounded-xl border border-red-200">
-                        Sorry, Out of Stock
-                      </div>
-                    ) : !isAuthenticated ? (
-                      <button 
-                        onClick={showLoginPrompt}
-                        className="bg-gradient-to-r from-gray-400 to-gray-500 text-white px-4 py-2 rounded-xl hover:from-gray-500 hover:to-gray-600 transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl flex items-center group/btn font-medium text-sm whitespace-nowrap"
-                      >
-                        <Lock className="w-4 h-4 mr-1" />
-                        Login to Add
-                      </button>
-                    ) : (
-                      <button 
-                        onClick={() => handleAddToCart(product)}
-                        className="bg-gradient-to-r from-green-500 to-emerald-600 text-white px-4 py-2 rounded-xl hover:from-green-600 hover:to-emerald-700 transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl flex items-center group/btn font-medium text-sm whitespace-nowrap"
-                      >
-                        <ShoppingCart className="w-4 h-4 mr-1 group-hover/btn:animate-bounce" />
-                        Add to Cart
-                      </button>
-                    )}
-                  </div>
-                </div>
-
-                {/* Animated border effect */}
-                <div className={`absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-20 transition-opacity duration-300 pointer-events-none ${
-                  productStatus.type === 'unavailable' 
-                    ? 'bg-gradient-to-r from-gray-400 to-gray-500' 
-                    : productStatus.type === 'out-of-stock'
-                    ? 'bg-gradient-to-r from-red-400 to-red-500'
-                    : 'bg-gradient-to-r from-green-400 to-emerald-400'
-                }`}></div>
-              </div>
-            );
-          })}
-        </div>
-        
-        {!showAll && (
-          <div className="text-center mt-10">
-            <button
-              onClick={() => navigate('/products')}
-              className="bg-gradient-to-r from-green-500 to-emerald-600 text-white px-6 py-3 rounded-xl hover:from-green-600 hover:to-emerald-700 transition-all duration-300 shadow-lg"
+        <div className="grid md:grid-cols-3 gap-8">
+          {products.map((product, index) => (
+            <div
+              key={product.id}
+              onClick={(e) => handleCardClick(index, e)}
+              className={`rounded-2xl shadow-lg overflow-hidden border transition-all duration-500 cursor-pointer group relative ${
+                selectedProduct === index
+                  ? 'border-orange-400 shadow-2xl transform scale-105'
+                  : 'border-orange-200 hover:border-orange-400 hover:shadow-xl hover:transform hover:scale-105'
+              }`}
+              style={{ height: '300px' }}
             >
-              See All Products
-            </button>
-          </div>
-        )}
-
-        {/* Enhanced Empty State */}
-        {filteredProducts.length === 0 && (
-          <div className="text-center py-16">
-            <div className="bg-white rounded-2xl shadow-xl p-12 max-w-md mx-auto border border-green-100">
-              <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                <Search className="w-12 h-12 text-green-500" />
+              <div className="relative w-full h-full overflow-hidden">
+                <img
+                  src={product.images[0]}
+                  alt={product.name}
+                  className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-500"
+                />
+                <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                  <div className="bg-white/90 backdrop-blur-sm rounded-full p-2 shadow-lg">
+                    <ChevronRight className="w-4 h-4 text-orange-600" />
+                  </div>
+                </div>
+                <div className="absolute inset-x-0 bottom-0 translate-y-full group-hover:translate-y-0 transition-transform duration-500 ease-out">
+                  <div
+                    className="px-6 py-4 text-white"
+                    style={{
+                      background: `linear-gradient(180deg, transparent 0%, rgba(130, 48, 0, 0.9) 100%)`,
+                    }}
+                  >
+                    <h4 className="text-xl font-bold text-center">{product.name}</h4>
+                    <p className="text-center text-sm mt-1 opacity-90">Click to explore</p>
+                  </div>
+                </div>
+                <div className="absolute bottom-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                  <div className="bg-white/90 backdrop-blur-sm rounded-full px-2 py-1 flex items-center space-x-1 shadow-lg">
+                    <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
+                    <span className="text-xs font-semibold text-gray-800">{product.rating}</span>
+                  </div>
+                </div>
               </div>
-              <h3 className="text-xl font-bold text-gray-800 mb-2">No products found</h3>
-              <p className="text-gray-600">
-                Try adjusting your search or filter criteria to find fresh products.
-              </p>
             </div>
-          </div>
-        )}
+          ))}
+        </div>
       </div>
 
-      <style>{`
-        @keyframes fade-in {
-          from { opacity: 0; transform: translateY(20px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        
-        @keyframes slide-in {
-          from { opacity: 0; transform: translateX(20px); }
-          to { opacity: 1; transform: translateX(0); }
-        }
-        
-        @keyframes slide-up {
-          from { opacity: 0; transform: translateY(30px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        
-        @keyframes fade-in-up {
-          from { opacity: 0; transform: translateY(40px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        
-        .animate-fade-in {
-          animation: fade-in 0.8s ease-out;
-        }
-        
-        .animate-slide-in {
-          animation: slide-in 0.6s ease-out;
-        }
-        
-        .animate-slide-up {
-          animation: slide-up 0.7s ease-out;
-        }
-        
-        .animate-fade-in-up {
-          animation: fade-in-up 0.8s ease-out forwards;
-          opacity: 0;
-        }
-        
-        .delay-200 { animation-delay: 0.2s; }
-        .delay-300 { animation-delay: 0.3s; }
-      `}</style>
+      {/* Authentic Flavours Section */}
+      <div className="relative overflow-hidden">
+        <div
+          className="absolute inset-0"
+          style={{
+            backgroundImage: `url(${bgHero})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            backgroundRepeat: 'no-repeat',
+          }}
+        >
+          <div className="absolute inset-0 bg-black/50"></div>
+        </div>
+
+        <div className="relative container mx-auto px-4 py-16 z-10">
+          <div className="text-center max-w-4xl mx-auto">
+            <div className="inline-flex items-center space-x-2 bg-white/10 backdrop-blur-sm rounded-full px-6 py-2 mb-6">
+              <Sparkles className="w-5 h-5 text-yellow-300" />
+              <span className="text-sm font-semibold text-white">Premium BOGAT Collection</span>
+            </div>
+            <h1 className="text-5xl md:text-7xl font-bold mb-6 text-white drop-shadow-2xl">
+              Authentic Indian
+              <span className="block text-yellow-300 drop-shadow-2xl">Flavors</span>
+            </h1>
+            <p className="text-xl md:text-2xl text-white/90 mb-8 leading-relaxed drop-shadow-lg">
+              From our family farms to your kitchen - experience the pure essence of traditional Indian spices and coffee
+            </p>
+            <div className="flex flex-wrap justify-center gap-6 text-sm">
+              <div className="flex items-center space-x-2 bg-white/15 backdrop-blur-sm rounded-full px-4 py-2 border border-white/20">
+                <Leaf className="w-4 h-4 text-green-300" />
+                <span className="text-white font-medium">100% Natural</span>
+              </div>
+              <div className="flex items-center space-x-2 bg-white/15 backdrop-blur-sm rounded-full px-4 py-2 border border-white/20">
+                <Award className="w-4 h-4 text-yellow-300" />
+                <span className="text-white font-medium">Premium Quality</span>
+              </div>
+              <div className="flex items-center space-x-2 bg-white/15 backdrop-blur-sm rounded-full px-4 py-2 border border-white/20">
+                <Coffee className="w-4 h-4 text-amber-300" />
+                <span className="text-white font-medium">Traditional Methods</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };
 
-export default ProductCatalog;
+export default BOGATProductsShowcase;

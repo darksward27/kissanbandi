@@ -19,6 +19,10 @@ import Profile from '../pages/profile/Profile';
 import Orders from '../pages/orders/Orders';
 import Wishlist from '../pages/wishlist/Wishlist';
 
+// Blog imports
+import BlogsPage from '../pages/BlogsPage';
+import BlogDetail from '../pages/BlogDetail';
+
 import SeasonalFruits from '../pages/fruits/seasonal';
 import ExoticFruits from '../pages/fruits/ExoticFruits';
 import FreshVegetables from '../pages/vegetables/FreshVegetables';
@@ -28,6 +32,7 @@ import RootVegetables from '../pages/vegetables/RootVegetables';
 import SeasonalVegetables from '../pages/vegetables/SeasonalVegetables';
 import AllProductsPage from '../pages/home/allProducts';
 import FruitsVeg from '../pages/vegetables/FruitsVeg';
+import RefundPolicy from '../pages/orderRefundPolicy/RefundPolicy';
 
 const AppRoutes = () => {
   return (
@@ -41,6 +46,11 @@ const AppRoutes = () => {
         <Route path="verify-email/:token" element={<EmailVerification />} />
         <Route path="admin/login" element={<AdminLogin />} />
         <Route path="search" element={<SearchResults />} />
+        <Route path="policy" element={<RefundPolicy />} />
+
+   {/* 📝 Blog Routes */}
+        <Route path="blogs" element={<BlogsPage />} />
+        <Route path="blog/:id" element={<BlogDetail />} />
 
         {/* 🥦 Fruits & Vegetables routes */}
         <Route path="category/fruits/seasonal-fruits" element={<SeasonalFruits />} />
@@ -48,7 +58,7 @@ const AppRoutes = () => {
         <Route path="category/fruits/organic-fruits" element={<OrganicFruits />} />
         
         <Route path="category/vegetables/organic-vegetables" element={<OrganicVegetables />} />
-        <Route path="category/vegetables/fresh-vegetables" element={<FreshVegetables />} />        
+        <Route path="/products" element={<FreshVegetables />} />        
         <Route path="category/vegetables/seasonal-vegetables" element={<SeasonalVegetables />} />
         <Route path="category/vegetables/root-vegetables" element={<RootVegetables/>} />
         <Route path="category/vegetables/fruits-veg" element={<FruitsVeg />} />

@@ -5,7 +5,7 @@ import ProductsManagement from '../pages/admin/ProductsManagement';
 import Orders from '../pages/admin/AdminOrders';
 import Customers from '../pages/admin/Customers';
 import Analytics from '../pages/admin/Analytics';
-
+import AdminBlogs from '../pages/admin/AdminBlogs'
 const AdminRoutes = () => {
   return (
     <Routes>
@@ -14,6 +14,7 @@ const AdminRoutes = () => {
       <Route path="/orders" element={<Orders />} />
       <Route path="/customers" element={<Customers />} />
       <Route path="/analytics" element={<Analytics />} />
+      <Route path="/blogs" element={<AdminBlogs/>}/>
     </Routes>
   );
 };

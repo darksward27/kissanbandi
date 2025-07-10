@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Heart, Star, ShoppingCart, Sparkles, Lock
+  Heart, Star, ShoppingCart, Sparkles, Lock, Package, TrendingUp
 } from 'lucide-react';
 import { useCart } from "../checkout/CartContext";
 import { useNavigate } from 'react-router-dom';
@@ -8,7 +8,7 @@ import { useAuth } from '../checkout/AuthProvider';
 import { toast } from 'react-hot-toast';
 import { usersApi, productsApi } from '../../services/api';
 
-const FreshVegetables = () => {
+const BogatProducts = () => {
   const [products, setProducts] = useState([]);
   const [wishlist, setWishlist] = useState(new Set());
   const [loading, setLoading] = useState(true);
@@ -41,34 +41,74 @@ const FreshVegetables = () => {
     try {
       setLoading(true);
       setError(null);
+      
+      console.log('Fetching products from /api/products...');
+      
+      // Fetch products from database via API
       const data = await productsApi.getAllProducts();
-      let allProducts = Array.isArray(data) ? data : [];
+      console.log('Raw API response:', data);
+      
+      // Handle different response structures
+      let allProducts = [];
+      
+      if (Array.isArray(data)) {
+        // Direct array of products
+        allProducts = data;
+      } else if (data && data.products && Array.isArray(data.products)) {
+        // Response with products property
+        allProducts = data.products;
+      } else if (data && data.data && Array.isArray(data.data)) {
+        // Response with data property
+        allProducts = data.data;
+      } else if (data && data.success && data.data && Array.isArray(data.data)) {
+        // Response with success flag and data
+        allProducts = data.data;
+      } else if (data && typeof data === 'object') {
+        // If it's an object but not in expected format, try to extract products
+        const possibleArrays = Object.values(data).filter(Array.isArray);
+        if (possibleArrays.length > 0) {
+          allProducts = possibleArrays[0];
+        }
+      }
 
-      // Filter for fresh vegetables
-      allProducts = allProducts.filter(product => {
-        // Check if product has subcategory field and matches "fresh vegetables"
-        const hasFreshSubcategory = product?.subcategory?.toLowerCase().includes('fresh');
-        const isVegetable = product?.category?.toLowerCase() === 'vegetables';
-        const isActive = product?.status === 'active';
+      console.log('Extracted products array:', allProducts);
+      console.log('Number of products found:', allProducts.length);
+
+      // Filter for active products only
+      const activeProducts = allProducts.filter(product => {
+        // Ensure product has required fields
+        const hasRequiredFields = product && 
+                                 (product._id || product.id) && 
+                                 product.name;
         
-        console.log('Product:', product.name, {
-          subcategory: product?.subcategory,
-          category: product?.category,
-          status: product?.status,
-          hasFreshSubcategory,
-          isVegetable,
-          isActive
-        });
+        // Check if product is active (default to active if no status field)
+        const isActive = !product.status || product.status === 'active';
         
-        return hasFreshSubcategory && isVegetable && isActive;
+        if (hasRequiredFields && isActive) {
+          console.log('Valid product found:', {
+            id: product._id || product.id,
+            name: product.name,
+            price: product.price,
+            status: product.status,
+            stock: product.stock
+          });
+        }
+        
+        return hasRequiredFields && isActive;
       });
 
-      console.log('Filtered fresh vegetables:', allProducts.length);
-      setProducts(allProducts);
+      console.log('Filtered active products:', activeProducts.length);
+      setProducts(activeProducts);
+      
+      if (activeProducts.length === 0) {
+        console.warn('No active products found. Check your database and API endpoint.');
+      }
+      
     } catch (err) {
-      setError(err.message);
+      console.error('Error loading products:', err);
+      setError(err.message || 'Failed to load products');
       setProducts([]);
-      setTimeout(() => toast.error('Failed to load products'), 0);
+      setTimeout(() => toast.error('Failed to load products from database'), 0);
     } finally {
       setLoading(false);
     }
@@ -158,15 +198,16 @@ const FreshVegetables = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50">
+      <div className="min-h-screen bg-gradient-to-br from-amber-200 via-orange-50 to-yellow-50">
         <div className="container mx-auto px-4 py-8">
           <div className="flex justify-center items-center h-64">
             <div className="relative">
-              <div className="animate-spin rounded-full h-16 w-16 border-4 border-green-200"></div>
-              <div className="animate-spin rounded-full h-16 w-16 border-4 border-green-500 border-t-transparent absolute top-0 left-0"></div>
-              <Sparkles className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-green-600 w-6 h-6 animate-pulse" />
+              <div className="animate-spin rounded-full h-16 w-16 border-4 border-amber-200"></div>
+              <div className="animate-spin rounded-full h-16 w-16 border-4 border-amber-600 border-t-transparent absolute top-0 left-0"></div>
+              <Package className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-amber-700 w-6 h-6 animate-pulse" />
             </div>
           </div>
+          <p className="text-center text-amber-700 mt-4 font-medium">Loading products from database...</p>
         </div>
       </div>
     );
@@ -174,7 +215,7 @@ const FreshVegetables = () => {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50">
+      <div className="min-h-screen bg-gradient-to-br from-amber-200 via-orange-50 to-yellow-50">
         <div className="container mx-auto px-4 py-8">
           <div className="text-center bg-white rounded-2xl shadow-lg p-8 max-w-md mx-auto transform hover:scale-105 transition-transform duration-300">
             <div className="text-red-500 mb-4">
@@ -182,10 +223,13 @@ const FreshVegetables = () => {
                 <span className="text-2xl">⚠️</span>
               </div>
               <p className="text-lg font-semibold">{error}</p>
+              <p className="text-sm text-gray-600 mt-2">
+                Failed to fetch products from /api/products
+              </p>
             </div>
             <button 
               onClick={handleRetry}
-              className="bg-gradient-to-r from-green-500 to-emerald-600 text-white px-6 py-3 rounded-xl hover:from-green-600 hover:to-emerald-700 transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl"
+              className="bg-gradient-to-r from-amber-600 to-orange-700 text-white px-6 py-3 rounded-xl hover:from-amber-700 hover:to-orange-800 transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl"
             >
               Try Again
             </button>
@@ -196,7 +240,7 @@ const FreshVegetables = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50">
+    <div className="min-h-screen bg-gradient-to-br from-amber-200 via-orange-50 to-yellow-50">
       <div className="container mx-auto px-4 py-8">
         {/* Login Status Banner */}
         {!isAuthenticated && (
@@ -220,25 +264,30 @@ const FreshVegetables = () => {
         {/* Header */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-12">
           <div className="relative">
-            <div className="absolute -top-4 -left-4 w-20 h-20 bg-green-300 rounded-full opacity-20 animate-pulse"></div>
-            <div className="absolute -top-2 -right-2 w-16 h-16 bg-emerald-300 rounded-full opacity-30 animate-pulse delay-300"></div>
-            <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent relative z-10">
-              Fresh Vegetables
-            </h1>
-            <p className="text-gray-600 mt-3 text-lg relative z-10">
-              🥕 Farm-fresh vegetables delivered to your doorstep
-            </p>
+            <div className="absolute -top-4 -left-4 w-20 h-20 bg-amber-300 rounded-full opacity-20 animate-pulse"></div>
+            <div className="absolute -top-2 -right-2 w-16 h-16 bg-orange-300 rounded-full opacity-30 animate-pulse delay-300"></div>
+            <div className="flex items-center space-x-3 relative z-10">
+              <Package className="w-12 h-12 text-amber-700" />
+              <div>
+                <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-amber-700 to-orange-700 bg-clip-text text-transparent">
+                  Our Products
+                </h1>
+                <p className="text-gray-600 text-lg mt-2">
+                  Premium Quality Products delivered to your doorstep
+                </p>
+              </div>
+            </div>
           </div>
-          <div className="flex items-center mt-6 md:mt-0 bg-white px-6 py-3 rounded-full shadow-lg border border-green-100">
-            <Sparkles className="w-5 h-5 text-green-500 mr-2 animate-pulse" />
+          <div className="flex items-center mt-6 md:mt-0 bg-white px-6 py-3 rounded-full shadow-lg border border-amber-200">
+            <TrendingUp className="w-5 h-5 text-amber-600 mr-2 animate-pulse" />
             <span className="text-gray-700 font-medium">
-              Showing {products.length} fresh products
+              {products.length} Products Available
             </span>
           </div>
         </div>
 
         {/* Products Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
           {products.map((product) => {
             const productStatus = getProductStatus(product);
             const isUnavailable = productStatus.type !== 'available';
@@ -246,23 +295,26 @@ const FreshVegetables = () => {
             return (
               <div 
                 key={product._id || product.id} 
-                className={`bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-2xl transition-all duration-500 group border border-green-100 hover:border-green-200 transform hover:-translate-y-2 flex flex-col h-full ${
+                className={`bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-2xl transition-all duration-500 group border border-gray-200 hover:border-gray-300 transform hover:-translate-y-2 flex flex-col h-full ${
                   isUnavailable ? 'opacity-75' : ''
                 }`}
               >
                 <div className="relative overflow-hidden">
-                  <div className="absolute inset-0 bg-gradient-to-t from-green-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                  <div className="absolute inset-0 bg-gradient-to-t from-gray-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                   <img
-                    src={product.image}
+                    src={product.image || '/api/placeholder/300/200'}
                     alt={product.name}
-                    className={`w-full h-48 object-contain transform group-hover:scale-110 transition-transform duration-500 p-4 ${
+                    className={`w-full h-48 object-cover transform group-hover:scale-110 transition-transform duration-500 ${
                       isUnavailable ? 'filter grayscale' : ''
                     }`}
+                    onError={(e) => {
+                      e.target.src = '/api/placeholder/300/200';
+                    }}
                   />
                   
                   <button 
                     onClick={() => isAuthenticated ? toggleWishlist(product._id || product.id) : showLoginPrompt()}
-                    className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm rounded-full p-2.5 shadow-lg hover:bg-white hover:scale-110 transition-all duration-300 border border-green-100"
+                    className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm rounded-full p-2.5 shadow-lg hover:bg-white hover:scale-110 transition-all duration-300 border border-gray-200"
                   >
                     {!isAuthenticated ? (
                       <Lock className="w-5 h-5 text-gray-400" />
@@ -282,53 +334,53 @@ const FreshVegetables = () => {
                     <div className="absolute top-4 left-4 bg-gradient-to-r from-gray-500 to-gray-600 text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg">
                       🚫 Unavailable
                     </div>
-                  ) : productStatus.type === 'out-of-stock' ? (
+                  ) : productStatus.type === 'out-of-stock' && (
                     <div className="absolute top-4 left-4 bg-gradient-to-r from-red-500 to-red-600 text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg">
                       ❌ Out of Stock
-                    </div>
-                  ) : (
-                    <div className="absolute top-4 left-4 bg-gradient-to-r from-green-500 to-emerald-500 text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg animate-pulse">
-                      🥕 Fresh
                     </div>
                   )}
                 </div>
                 
                 <div className="p-6 flex flex-col flex-grow">
-                  <div className="text-sm text-green-600 font-bold mb-3 capitalize bg-green-50 px-3 py-1 rounded-full inline-block">
-                    {product.subcategory || product.category}
-                  </div>
-                  <h3 className="text-xl font-bold text-gray-800 mb-4 group-hover:text-green-700 transition-colors duration-300 flex-grow">
+                  <h3 className="text-xl font-bold text-gray-800 mb-2 transition-colors duration-300 line-clamp-2">
                     {product.name}
                   </h3>
 
-                  {/* Rating */}
-                  {product.rating && (
-                    <div className="flex items-center mb-4">
-                      <div className="flex items-center">
-                        <Star className="w-4 h-4 text-yellow-400 fill-current" />
-                        <span className="ml-1 text-gray-600 text-sm">{product.rating}</span>
-                      </div>
-                      {product.reviews && (
-                        <>
-                          <span className="mx-2 text-gray-400">•</span>
-                          <span className="text-gray-600 text-sm">{product.reviews} reviews</span>
-                        </>
-                      )}
-                    </div>
+                  {/* Category & Brand */}
+                  <div className="flex items-center mb-3 flex-wrap gap-2">
+                    {product.category && (
+                      <span className="text-sm text-gray-500 bg-gray-100 px-2 py-1 rounded-md">
+                        {product.category}
+                      </span>
+                    )}
+                    {product.brand && (
+                      <span className="text-sm text-amber-600 bg-amber-50 px-2 py-1 rounded-md">
+                        {product.brand}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Description */}
+                  {product.description && (
+                    <p className="text-gray-600 text-sm mb-4 line-clamp-3 flex-grow">
+                      {product.description}
+                    </p>
                   )}
 
-                  <div className="flex justify-between items-end">
+                  <div className="flex justify-between items-end mt-auto">
                     <div className="flex flex-col">
-                      <div className={`text-2xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent ${
+                      <div className={`text-2xl font-bold bg-gradient-to-r from-amber-700 to-orange-700 bg-clip-text text-transparent ${
                         isUnavailable ? 'opacity-50' : ''
                       }`}>
-                        ₹{product.price}
+                        ₹{product.price || '0'}
                       </div>
-                      <span className="text-sm text-gray-600 font-normal">
-                        /{product.unit}
-                      </span>
+                      {product.unit && (
+                        <span className="text-sm text-gray-600 font-normal">
+                          /{product.unit}
+                        </span>
+                      )}
                       {productStatus.type === 'available' && product.stock && (
-                        <span className="text-xs text-green-600 font-medium mt-1">
+                        <span className="text-xs text-amber-700 font-medium mt-1">
                           {product.stock} in stock
                         </span>
                       )}
@@ -353,7 +405,7 @@ const FreshVegetables = () => {
                     ) : (
                       <button 
                         onClick={() => handleAddToCart(product)}
-                        className="bg-gradient-to-r from-green-500 to-emerald-600 text-white px-4 py-2 rounded-xl hover:from-green-600 hover:to-emerald-700 transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl flex items-center group/btn font-medium text-sm whitespace-nowrap"
+                        className="bg-gradient-to-r from-amber-600 to-orange-700 text-white px-4 py-2 rounded-xl hover:from-amber-700 hover:to-orange-800 transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl flex items-center group/btn font-medium text-sm whitespace-nowrap"
                       >
                         <ShoppingCart className="w-4 h-4 mr-1 group-hover/btn:animate-bounce" />
                         Add to Cart
@@ -368,7 +420,7 @@ const FreshVegetables = () => {
                     ? 'bg-gradient-to-r from-gray-400 to-gray-500' 
                     : productStatus.type === 'out-of-stock'
                     ? 'bg-gradient-to-r from-red-400 to-red-500'
-                    : 'bg-gradient-to-r from-green-400 to-emerald-400'
+                    : 'bg-gradient-to-r from-amber-400 to-orange-500'
                 }`}></div>
               </div>
             );
@@ -378,16 +430,22 @@ const FreshVegetables = () => {
         {/* Empty State */}
         {products.length === 0 && !loading && (
           <div className="text-center py-16">
-            <div className="bg-white rounded-2xl shadow-xl p-12 max-w-md mx-auto border border-green-100">
-              <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                <Sparkles className="w-12 h-12 text-green-500" />
+            <div className="bg-white rounded-2xl shadow-xl p-12 max-w-md mx-auto border border-amber-200">
+              <div className="w-24 h-24 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                <Package className="w-12 h-12 text-amber-600" />
               </div>
               <h3 className="text-xl font-bold text-gray-800 mb-2">
-                No fresh vegetables available
+                No Products Found
               </h3>
-              <p className="text-gray-600">
-                Check back later for fresh vegetables from our farm.
+              <p className="text-gray-600 mb-4">
+                No products are available in the database at the moment.
               </p>
+              <button 
+                onClick={handleRetry}
+                className="bg-gradient-to-r from-amber-600 to-orange-700 text-white px-6 py-3 rounded-xl hover:from-amber-700 hover:to-orange-800 transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl"
+              >
+                Refresh Products
+              </button>
             </div>
           </div>
         )}
@@ -396,4 +454,4 @@ const FreshVegetables = () => {
   );
 };
 
-export default FreshVegetables;
+export default BogatProducts;

@@ -9,7 +9,7 @@ const STATUS_COLORS = {
     pending: 'bg-gradient-to-r from-yellow-100 to-amber-100 text-yellow-800 border-yellow-200',
     processing: 'bg-gradient-to-r from-blue-100 to-indigo-100 text-blue-800 border-blue-200',
     shipped: 'bg-gradient-to-r from-purple-100 to-violet-100 text-purple-800 border-purple-200',
-    delivered: 'bg-gradient-to-r from-green-100 to-emerald-100 text-green-800 border-green-200',
+    delivered: 'bg-gradient-to-r from-amber-100 to-orange-100 text-amber-800 border-amber-200',
     cancelled: 'bg-gradient-to-r from-red-100 to-rose-100 text-red-800 border-red-200',
     default: 'bg-gradient-to-r from-gray-100 to-slate-100 text-gray-800 border-gray-200'
 };
@@ -138,13 +138,13 @@ const Orders = () => {
 
     if (loading) {
         return (
-            <div className="min-h-screen bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50">
+            <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50">
                 <div className="container mx-auto px-4 py-8 pt-32">
                     <div className="flex flex-col items-center justify-center py-20">
-                        <div className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-xl border border-green-100 p-12 text-center">
+                        <div className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-xl border border-amber-200 p-12 text-center">
                             <div className="relative">
-                                <Loader className="w-12 h-12 animate-spin text-green-600 mx-auto mb-6" />
-                                <div className="absolute inset-0 w-12 h-12 border-4 border-green-200 rounded-full animate-pulse mx-auto"></div>
+                                <Loader className="w-12 h-12 animate-spin text-amber-600 mx-auto mb-6" />
+                                <div className="absolute inset-0 w-12 h-12 border-4 border-amber-200 rounded-full animate-pulse mx-auto"></div>
                             </div>
                             <h3 className="text-xl font-bold text-gray-800 mb-2">Loading Orders</h3>
                             <p className="text-gray-600">Please wait while we fetch your orders...</p>
@@ -157,7 +157,7 @@ const Orders = () => {
 
     if (error) {
         return (
-            <div className="min-h-screen bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50">
+            <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50">
                 <div className="container mx-auto px-4 py-8 pt-32">
                     <div className="max-w-5xl mx-auto">
                         <div className="bg-gradient-to-r from-red-50 to-rose-50 backdrop-blur-sm rounded-3xl shadow-xl border border-red-200 p-8">
@@ -185,18 +185,18 @@ const Orders = () => {
     }
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50">
+        <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50">
             <div className="container mx-auto px-4 py-8 pt-32">
                 <div className="max-w-5xl mx-auto">
-                    <div className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-xl border border-green-100 p-8 hover:shadow-2xl transition-all duration-500">
+                    <div className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-xl border border-amber-200 p-8 hover:shadow-2xl transition-all duration-500">
                         {/* Header Section */}
                         <div className="flex flex-col lg:flex-row lg:items-center justify-between mb-8 space-y-4 lg:space-y-0">
                             <div className="text-center lg:text-left">
-                                <h1 className="text-4xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent mb-2">
+                                <h1 className="text-4xl font-bold bg-gradient-to-r from-amber-700 to-orange-700 bg-clip-text text-transparent mb-2">
                                     My Orders
                                 </h1>
                                 <p className="text-gray-600 text-lg">View and track your orders</p>
-                                <div className="w-24 h-1 bg-gradient-to-r from-green-600 to-emerald-600 rounded-full mt-2 mx-auto lg:mx-0"></div>
+                                <div className="w-24 h-1 bg-gradient-to-r from-amber-600 to-orange-700 rounded-full mt-2 mx-auto lg:mx-0"></div>
                             </div>
                             
                             {/* Controls */}
@@ -207,16 +207,16 @@ const Orders = () => {
                                         placeholder="Search orders..."
                                         value={searchQuery}
                                         onChange={(e) => setSearchQuery(e.target.value)}
-                                        className="pl-12 pr-4 py-3 border-2 border-green-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white/80 backdrop-blur-sm transition-all duration-300 hover:border-green-200"
+                                        className="pl-12 pr-4 py-3 border-2 border-amber-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 bg-white/80 backdrop-blur-sm transition-all duration-300 hover:border-amber-300"
                                     />
-                                    <Search className="w-5 h-5 text-green-400 absolute left-4 top-4 group-focus-within:text-green-600 transition-colors" />
+                                    <Search className="w-5 h-5 text-amber-400 absolute left-4 top-4 group-focus-within:text-amber-600 transition-colors" />
                                 </div>
                                 
                                 <div className="relative">
                                     <select
                                         value={filter}
                                         onChange={(e) => setFilter(e.target.value)}
-                                        className="appearance-none pl-10 pr-8 py-3 border-2 border-green-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white/80 backdrop-blur-sm transition-all duration-300 hover:border-green-200"
+                                        className="appearance-none pl-10 pr-8 py-3 border-2 border-amber-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 bg-white/80 backdrop-blur-sm transition-all duration-300 hover:border-amber-300"
                                     >
                                         <option value="all">All Orders</option>
                                         <option value="pending">Pending</option>
@@ -225,12 +225,12 @@ const Orders = () => {
                                         <option value="delivered">Delivered</option>
                                         <option value="cancelled">Cancelled</option>
                                     </select>
-                                    <Filter className="w-5 h-5 text-green-400 absolute left-3 top-4 pointer-events-none" />
+                                    <Filter className="w-5 h-5 text-amber-400 absolute left-3 top-4 pointer-events-none" />
                                 </div>
                                 
                                 <button
                                     onClick={handleRefresh}
-                                    className="group p-3 text-green-600 hover:text-white hover:bg-gradient-to-r hover:from-green-600 hover:to-emerald-600 transition-all duration-300 rounded-xl border-2 border-green-100 hover:border-green-600 transform hover:scale-105"
+                                    className="group p-3 text-amber-600 hover:text-white hover:bg-gradient-to-r hover:from-amber-600 hover:to-orange-700 transition-all duration-300 rounded-xl border-2 border-amber-200 hover:border-amber-600 transform hover:scale-105"
                                     title="Refresh orders"
                                 >
                                     <RefreshCw className="w-5 h-5 group-hover:rotate-180 transition-transform duration-500" />
@@ -240,8 +240,8 @@ const Orders = () => {
 
                         {filteredOrders.length === 0 ? (
                             <div className="text-center py-16">
-                                <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-3xl p-12 border border-green-100 max-w-md mx-auto">
-                                    <div className="text-green-300 mb-6">
+                                <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-3xl p-12 border border-amber-200 max-w-md mx-auto">
+                                    <div className="text-amber-300 mb-6">
                                         <Package className="w-20 h-20 mx-auto animate-pulse" />
                                     </div>
                                     <h3 className="text-2xl font-bold text-gray-800 mb-3">No orders found</h3>
@@ -257,17 +257,17 @@ const Orders = () => {
                                 {filteredOrders.map((order, index) => (
                                     <div 
                                         key={order._id} 
-                                        className={`group bg-gradient-to-r from-white to-green-50/30 border-2 border-green-100 rounded-2xl p-6 hover:border-green-300 hover:shadow-xl transition-all duration-500 transform hover:scale-[1.02] ${ordersLoaded ? 'animate-fade-in-up' : 'opacity-0'}`}
+                                        className={`group bg-gradient-to-r from-white to-amber-50/30 border-2 border-amber-200 rounded-2xl p-6 hover:border-amber-300 hover:shadow-xl transition-all duration-500 transform hover:scale-[1.02] ${ordersLoaded ? 'animate-fade-in-up' : 'opacity-0'}`}
                                         style={{ animationDelay: `${index * 100}ms` }}
                                     >
                                         {/* Order Header */}
                                         <div className="flex flex-col lg:flex-row lg:items-center justify-between mb-6">
                                             <div className="space-y-3">
                                                 <div className="flex items-center space-x-3">
-                                                    <div className="p-2 bg-gradient-to-r from-green-100 to-emerald-100 rounded-xl">
-                                                        <Package className="w-6 h-6 text-green-600" />
+                                                    <div className="p-2 bg-gradient-to-r from-amber-100 to-orange-100 rounded-xl">
+                                                        <Package className="w-6 h-6 text-amber-600" />
                                                     </div>
-                                                    <h3 className="text-xl font-bold text-gray-800 group-hover:text-green-700 transition-colors">
+                                                    <h3 className="text-xl font-bold text-gray-800 group-hover:text-amber-700 transition-colors">
                                                         payment {order.paymentStatus}
                                                     </h3>
                                                 </div>
@@ -285,31 +285,31 @@ const Orders = () => {
                                             </div>
                                             
                                             <div className="mt-4 lg:mt-0 text-center lg:text-right">
-                                                <div className="bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">
+                                                <div className="bg-gradient-to-r from-amber-700 to-orange-700 bg-clip-text text-transparent">
                                                     <div className="flex items-center justify-center lg:justify-end text-2xl font-bold">
-                                                        <IndianRupee className="w-6 h-6 mr-1 text-green-600" />
+                                                        <IndianRupee className="w-6 h-6 mr-1 text-amber-600" />
                                                         {order.totalAmount?.toFixed(2) || '0.00'}
                                                     </div>
                                                 </div>
-                                                <div className="text-sm text-gray-600 mt-1 bg-green-50 px-3 py-1 rounded-full inline-block">
+                                                <div className="text-sm text-gray-600 mt-1 bg-amber-50 px-3 py-1 rounded-full inline-block">
                                                     {(order.items || []).length} {(order.items || []).length === 1 ? 'item' : 'items'}
                                                 </div>
                                             </div>
                                         </div>
 
                                         {/* Order Details */}
-                                        <div className="border-t-2 border-green-100 pt-6">
+                                        <div className="border-t-2 border-amber-200 pt-6">
                                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                                                 {/* Items Section */}
                                                 <div className="space-y-4">
                                                     <h4 className="text-lg font-bold text-gray-800 flex items-center">
-                                                        <Package className="w-5 h-5 text-green-600 mr-2" />
+                                                        <Package className="w-5 h-5 text-amber-600 mr-2" />
                                                         Order Items
                                                     </h4>
                                                     <div className="space-y-4">
                                                         {(order.items || []).map((item, itemIndex) => (
                                                             <div key={`${order._id}-item-${itemIndex}`} className="group flex items-center space-x-4 bg-white/60 p-4 rounded-xl hover:bg-white transition-all duration-300 hover:shadow-md">
-                                                                <div className="relative w-16 h-16 bg-gradient-to-br from-green-100 to-emerald-100 rounded-xl overflow-hidden">
+                                                                <div className="relative w-16 h-16 bg-gradient-to-br from-amber-100 to-orange-100 rounded-xl overflow-hidden">
                                                                     <img
                                                                         src={item?.product?.image || FALLBACK_IMAGE}
                                                                         alt={item?.product?.name || 'Product'}
@@ -318,11 +318,11 @@ const Orders = () => {
                                                                     />
                                                                 </div>
                                                                 <div className="flex-1">
-                                                                    <div className="font-bold text-gray-800 group-hover:text-green-700 transition-colors">
+                                                                    <div className="font-bold text-gray-800 group-hover:text-amber-700 transition-colors">
                                                                         {item?.product?.name || 'Product Name Not Available'}
                                                                     </div>
                                                                     <div className="text-sm text-gray-600 mt-1">
-                                                                        <span className="bg-green-100 text-green-700 px-2 py-1 rounded-full text-xs font-medium">
+                                                                        <span className="bg-amber-100 text-amber-700 px-2 py-1 rounded-full text-xs font-medium">
                                                                             {item?.quantity || 0} × ₹{item?.price?.toFixed(2) || '0.00'}
                                                                         </span>
                                                                     </div>
@@ -335,13 +335,13 @@ const Orders = () => {
                                                 {/* Address Section */}
                                                 <div className="space-y-4">
                                                     <h4 className="text-lg font-bold text-gray-800 flex items-center">
-                                                        <MapPin className="w-5 h-5 text-green-600 mr-2" />
+                                                        <MapPin className="w-5 h-5 text-amber-600 mr-2" />
                                                         Delivery Address
                                                     </h4>
                                                     <div className="bg-white/60 p-4 rounded-xl">
                                                         <div className="flex items-start space-x-3">
-                                                            <div className="p-2 bg-gradient-to-r from-green-100 to-emerald-100 rounded-lg flex-shrink-0 mt-1">
-                                                                <MapPin className="w-4 h-4 text-green-600" />
+                                                            <div className="p-2 bg-gradient-to-r from-amber-100 to-orange-100 rounded-lg flex-shrink-0 mt-1">
+                                                                <MapPin className="w-4 h-4 text-amber-600" />
                                                             </div>
                                                             <div className="text-gray-700 leading-relaxed">
                                                                 {formatAddress(order.shippingAddress)}

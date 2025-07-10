@@ -223,7 +223,7 @@ const handleDeleteProduct = async (productId) => {
   const getStockStatus = (stock) => {
     if (stock === 0) return { status: 'out', color: 'text-red-600 bg-red-100', icon: AlertCircle };
     if (stock < 10) return { status: 'low', color: 'text-yellow-600 bg-yellow-100', icon: AlertCircle };
-    return { status: 'good', color: 'text-green-600 bg-green-100', icon: CheckCircle };
+    return { status: 'good', color: 'text-amber-600 bg-amber-100', icon: CheckCircle };
   };
 
   const uniqueCategories = useMemo(() => {
@@ -233,12 +233,12 @@ const handleDeleteProduct = async (productId) => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100 p-6">
+      <div className="min-h-screen bg-gradient-to-br from-amber-50 to-orange-100 p-6">
         <div className="flex justify-center items-center h-64">
           <div className="relative">
-            <div className="animate-spin rounded-full h-16 w-16 border-4 border-green-200 border-t-green-600"></div>
-            <div className="absolute inset-0 animate-pulse rounded-full h-16 w-16 border-4 border-green-300 opacity-20"></div>
-            <Package className="absolute inset-0 m-auto w-6 h-6 text-green-600 animate-bounce" />
+            <div className="animate-spin rounded-full h-16 w-16 border-4 border-amber-200 border-t-amber-600"></div>
+            <div className="absolute inset-0 animate-pulse rounded-full h-16 w-16 border-4 border-amber-300 opacity-20"></div>
+            <Package className="absolute inset-0 m-auto w-6 h-6 text-amber-600 animate-bounce" />
           </div>
         </div>
       </div>
@@ -247,14 +247,14 @@ const handleDeleteProduct = async (productId) => {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100 p-6">
+      <div className="min-h-screen bg-gradient-to-br from-amber-50 to-orange-100 p-6">
         <div className="flex justify-center items-center h-64">
           <div className="bg-white rounded-2xl shadow-lg p-8 max-w-md mx-auto text-center">
             <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
             <p className="text-lg font-medium text-red-600 mb-4">{error}</p>
             <button 
               onClick={loadProducts}
-              className="bg-gradient-to-r from-green-500 to-emerald-600 text-white px-6 py-3 rounded-xl hover:from-green-600 hover:to-emerald-700 transform hover:scale-105 transition-all duration-200 shadow-lg"
+              className="bg-gradient-to-r from-amber-500 to-orange-600 text-white px-6 py-3 rounded-xl hover:from-amber-600 hover:to-orange-700 transform hover:scale-105 transition-all duration-200 shadow-lg"
             >
               Retry
             </button>
@@ -265,19 +265,19 @@ const handleDeleteProduct = async (productId) => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50">
+    <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50">
       <div className="p-6 space-y-8">
         {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
-            <h1 className="text-4xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">
+            <h1 className="text-4xl font-bold bg-gradient-to-r from-amber-600 to-orange-600 bg-clip-text text-transparent">
               Products Management
             </h1>
             <p className="text-gray-600 mt-2">Manage your product inventory with ease</p>
           </div>
           <button
             onClick={() => setShowAddModal(true)}
-            className="flex items-center gap-2 bg-gradient-to-r from-green-500 to-emerald-600 text-white px-6 py-3 rounded-xl hover:from-green-600 hover:to-emerald-700 transform hover:scale-105 transition-all duration-200 shadow-lg hover:shadow-xl"
+            className="flex items-center gap-2 bg-gradient-to-r from-amber-500 to-orange-600 text-white px-6 py-3 rounded-xl hover:from-amber-600 hover:to-orange-700 transform hover:scale-105 transition-all duration-200 shadow-lg hover:shadow-xl"
           >
             <Plus className="w-5 h-5" />
             Add Product
@@ -291,7 +291,7 @@ const handleDeleteProduct = async (productId) => {
               title: 'Total Products', 
               value: products.length, 
               icon: Package, 
-              color: 'from-green-400 to-green-600',
+              color: 'from-amber-400 to-amber-600',
               change: '+12%'
             },
             { 
@@ -305,7 +305,7 @@ const handleDeleteProduct = async (productId) => {
               title: 'Categories', 
               value: uniqueCategories.length, 
               icon: Grid, 
-              color: 'from-emerald-400 to-emerald-600',
+              color: 'from-orange-400 to-orange-600',
               change: '+2%'
             },
             { 
@@ -318,7 +318,7 @@ const handleDeleteProduct = async (productId) => {
           ].map((stat, index) => (
             <div 
               key={index}
-              className="group bg-white rounded-2xl shadow-lg hover:shadow-xl p-6 transform hover:scale-105 transition-all duration-300 animate-fade-in border border-green-100"
+              className="group bg-white rounded-2xl shadow-lg hover:shadow-xl p-6 transform hover:scale-105 transition-all duration-300 animate-fade-in border border-amber-100"
               style={{ animationDelay: `${index * 100}ms` }}
             >
               <div className="flex items-center justify-between">
@@ -326,7 +326,7 @@ const handleDeleteProduct = async (productId) => {
                   <p className="text-gray-500 text-sm font-medium">{stat.title}</p>
                   <p className="text-3xl font-bold mt-2 text-gray-800">{stat.value}</p>
                   <div className="flex items-center mt-2">
-                    <span className={`text-sm font-medium ${stat.change.startsWith('+') ? 'text-green-600' : 'text-red-600'}`}>
+                    <span className={`text-sm font-medium ${stat.change.startsWith('+') ? 'text-amber-600' : 'text-red-600'}`}>
                       {stat.change}
                     </span>
                     <span className="text-gray-400 text-sm ml-1">vs last month</span>
@@ -341,7 +341,7 @@ const handleDeleteProduct = async (productId) => {
         </div>
 
         {/* Controls */}
-        <div className="bg-white rounded-2xl shadow-lg p-6 border border-green-100">
+        <div className="bg-white rounded-2xl shadow-lg p-6 border border-amber-100">
           <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
             {/* Search Bar */}
             <div className="relative flex-1 max-w-md">
@@ -349,7 +349,7 @@ const handleDeleteProduct = async (productId) => {
               <input
                 type="text"
                 placeholder="Search products..."
-                className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200"
+                className="w-full pl-10 pr-4 py-3 border border-amber-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all duration-200"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
@@ -361,18 +361,20 @@ const handleDeleteProduct = async (productId) => {
               <select
                 value={filterCategory}
                 onChange={(e) => setFilterCategory(e.target.value)}
-                className="px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 bg-white"
+                className="px-4 py-2 border border-amber-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 bg-white"
               >
                 <option value="all">All Categories</option>
                 {uniqueCategories.map(category => (
-                  <option key={category} value={category}>{category}</option>
+                  <option key={category} value={category}>
+                    {category === 'vegetables' ? 'Bogat Products' : category}
+                  </option>
                 ))}
               </select>
               {/* Status Filter */}
 <select
   value={statusFilter}
   onChange={(e) => setStatusFilter(e.target.value)}
-  className="px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 bg-white"
+  className="px-4 py-2 border border-amber-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 bg-white"
 >
   <option value="all">All Status</option>
   <option value="active">Active</option>
@@ -383,7 +385,7 @@ const handleDeleteProduct = async (productId) => {
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
-                className="px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 bg-white"
+                className="px-4 py-2 border border-amber-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 bg-white"
               >
                 <option value="name">Sort by Name</option>
                 <option value="price">Sort by Price</option>
@@ -392,13 +394,13 @@ const handleDeleteProduct = async (productId) => {
               </select>
 
               {/* View Toggle */}
-              <div className="flex items-center bg-gray-100 rounded-xl p-1">
+              <div className="flex items-center bg-amber-100 rounded-xl p-1">
                 <button
                   onClick={() => setViewMode('table')}
                   className={`p-2 rounded-lg transition-all duration-200 ${
                     viewMode === 'table' 
-                      ? 'bg-green-500 text-white shadow-md' 
-                      : 'text-gray-600 hover:bg-gray-200'
+                      ? 'bg-amber-500 text-white shadow-md' 
+                      : 'text-gray-600 hover:bg-amber-200'
                   }`}
                 >
                   <List className="w-5 h-5" />
@@ -407,8 +409,8 @@ const handleDeleteProduct = async (productId) => {
                   onClick={() => setViewMode('grid')}
                   className={`p-2 rounded-lg transition-all duration-200 ${
                     viewMode === 'grid' 
-                      ? 'bg-green-500 text-white shadow-md' 
-                      : 'text-gray-600 hover:bg-gray-200'
+                      ? 'bg-amber-500 text-white shadow-md' 
+                      : 'text-gray-600 hover:bg-amber-200'
                   }`}
                 >
                   <Grid className="w-5 h-5" />
@@ -421,33 +423,27 @@ const handleDeleteProduct = async (productId) => {
         {/* Products Display */}
         {viewMode === 'table' ? (
           // Table View
-          <div className="bg-white rounded-2xl shadow-lg overflow-hidden border border-green-100">
+          <div className="bg-white rounded-2xl shadow-lg overflow-hidden border border-amber-100">
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gradient-to-r from-green-50 to-emerald-50">
+                <thead className="bg-gradient-to-r from-amber-50 to-orange-50">
                   <tr>
-                    <th className="px-6 py-4 text-left text-xs font-bold text-green-700 uppercase tracking-wider">
+                    <th className="px-6 py-4 text-left text-xs font-bold text-amber-700 uppercase tracking-wider">
                       Product
                     </th>
-                    <th className="px-6 py-4 text-left text-xs font-bold text-green-700 uppercase tracking-wider">
-                      Category
-                    </th>
-                    <th className="px-6 py-4 text-left text-xs font-bold text-green-700 uppercase tracking-wider">
-                      Subcategory
-                    </th>
-                    <th className="px-6 py-4 text-left text-xs font-bold text-green-700 uppercase tracking-wider">
+                    <th className="px-6 py-4 text-left text-xs font-bold text-amber-700 uppercase tracking-wider">
                       Price
                     </th>
-                    <th className="px-6 py-4 text-left text-xs font-bold text-green-700 uppercase tracking-wider">
+                    <th className="px-6 py-4 text-left text-xs font-bold text-amber-700 uppercase tracking-wider">
                       Unit
                     </th>
-                    <th className="px-6 py-4 text-left text-xs font-bold text-green-700 uppercase tracking-wider">
+                    <th className="px-6 py-4 text-left text-xs font-bold text-amber-700 uppercase tracking-wider">
                       Stock Status
                     </th>
-                    <th className="px-6 py-4 text-left text-xs font-bold text-green-700 uppercase tracking-wider">
+                    <th className="px-6 py-4 text-left text-xs font-bold text-amber-700 uppercase tracking-wider">
   Status
 </th>
-                    <th className="px-12 py-4 text-left text-xs font-bold text-green-700 uppercase tracking-wider">
+                    <th className="px-12 py-4 text-left text-xs font-bold text-amber-700 uppercase tracking-wider">
                       Actions
                     </th>
                   </tr>
@@ -458,7 +454,7 @@ const handleDeleteProduct = async (productId) => {
                     return (
                       <tr 
                         key={product._id || product.id} 
-                        className="hover:bg-green-50 transition-all duration-200 animate-fade-in"
+                        className="hover:bg-amber-50 transition-all duration-200 animate-fade-in"
                         style={{ animationDelay: `${index * 50}ms` }}
                       >
                         <td className="px-6 py-4 whitespace-nowrap">
@@ -479,16 +475,6 @@ const handleDeleteProduct = async (productId) => {
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                            {product.category}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900 capitalize">
-                            {product.subcategory || '-'}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm font-bold text-gray-900">₹{product.price}</div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
@@ -503,7 +489,7 @@ const handleDeleteProduct = async (productId) => {
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-  <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${product.status === 'inactive' ? 'bg-yellow-100 text-yellow-700' : 'bg-green-100 text-green-700'}`}>
+  <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${product.status === 'inactive' ? 'bg-yellow-100 text-yellow-700' : 'bg-amber-100 text-amber-700'}`}>
     {product.status}
   </span>
 </td>
@@ -527,12 +513,12 @@ const handleDeleteProduct = async (productId) => {
     className="p-2 text-yellow-600 hover:text-yellow-900 hover:bg-yellow-100 rounded-lg transition-all duration-200"
     title="Mark as Inactive"
   >
-    <CheckCircle className="w-4 h-4 text-green-100 fill-green-600" />
+    <CheckCircle className="w-4 h-4 text-amber-100 fill-amber-600" />
   </button>
 ) : (
   <button
     onClick={() => handleToggleProductStatus(product._id, 'active')}
-    className="p-2 text-green-600 hover:text-green-900 hover:bg-green-100 rounded-lg transition-all duration-200"
+    className="p-2 text-amber-600 hover:text-amber-900 hover:bg-amber-100 rounded-lg transition-all duration-200"
     title="Mark as Active"
   >
     <Circle className="w-4 h-4 text-red-400 fill-red-600" />
@@ -556,7 +542,7 @@ const handleDeleteProduct = async (productId) => {
               return (
                 <div 
                   key={product._id || product.id}
-                  className="group bg-white rounded-2xl shadow-lg hover:shadow-xl p-6 transform hover:scale-105 transition-all duration-300 animate-fade-in border border-green-100"
+                  className="group bg-white rounded-2xl shadow-lg hover:shadow-xl p-6 transform hover:scale-105 transition-all duration-300 animate-fade-in border border-amber-100"
                   style={{ animationDelay: `${index * 100}ms` }}
                 >
                   <div className="relative mb-4">
@@ -580,7 +566,7 @@ const handleDeleteProduct = async (productId) => {
                     </div>
                     
                     <div className="flex justify-between items-center">
-                      <span className="text-2xl font-bold text-green-600">₹{product.price}</span>
+                      <span className="text-2xl font-bold text-amber-600">₹{product.price}</span>
                       <span className="text-sm text-gray-500">per {product.unit}</span>
                     </div>
                     
@@ -605,12 +591,12 @@ const handleDeleteProduct = async (productId) => {
     className="p-2 text-yellow-600 hover:text-yellow-900 hover:bg-yellow-100 rounded-lg transition-all duration-200"
     title="Mark as Inactive"
   >
-    <CheckCircle className="w-4 h-4 text-green-100 fill-green-600" />
+    <CheckCircle className="w-4 h-4 text-amber-100 fill-amber-600" />
   </button>
 ) : (
   <button
     onClick={() => handleToggleProductStatus(product._id, 'active')}
-    className="p-2 text-green-600 hover:text-green-900 hover:bg-green-100 rounded-lg transition-all duration-200"
+    className="p-2 text-amber-600 hover:text-amber-900 hover:bg-amber-100 rounded-lg transition-all duration-200"
     title="Mark as Active"
   >
     <Circle className="w-4 h-4 text-red-400 fill-red-600" />
@@ -638,7 +624,7 @@ const handleDeleteProduct = async (productId) => {
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-2xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl animate-modal-enter">
               <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">
+                <h2 className="text-2xl font-bold bg-gradient-to-r from-amber-600 to-orange-600 bg-clip-text text-transparent">
                   {editingProduct ? 'Edit Product' : 'Add New Product'}
                 </h2>
                 <button

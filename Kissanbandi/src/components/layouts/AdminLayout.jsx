@@ -6,4 +6,5 @@ const navigation = [
   { name: 'Orders', href: '/admin/orders', icon: ShoppingCart },
   { name: 'Customers', href: '/admin/customers', icon: Users },
   { name: 'Analytics', href: '/admin/analytics', icon: BarChart2 },
+  { name: 'Blogs', href: '/admin/blogs', icon: LayoutDashboard },
 ]; 
