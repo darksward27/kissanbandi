@@ -876,3 +876,170 @@ exports.editOrderAddress = async (req, res) => {
     res.status(400).json({ error: error.message });
   }
 };
+
+
+//get orders by id 
+// FIXED getOrderById function - Replace this in your orderController.js
+
+exports.getOrderById = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+
+    const order = await Order.findById(orderId)
+      .populate('user', 'name email phone address')
+      .populate('items.product', 'name price image category description');
+
+    if (!order) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+
+    // FIXED: Proper ObjectId comparison
+    // Your auth middleware sets req.user.userId as ObjectId, order.user._id is also ObjectId
+    const orderUserId = order.user._id.toString();
+    const requestUserId = req.user.userId.toString();
+    
+    // Check authorization - users can only see their own orders, admins can see all
+    if (req.user.role !== 'admin' && orderUserId !== requestUserId) {
+      return res.status(403).json({ error: 'Not authorized to view this order' });
+    }
+
+    res.json({
+      success: true,
+      order
+    });
+  } catch (error) {
+    console.error('Error fetching order by ID:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// ALTERNATIVE: More robust version with debugging (recommended)
+exports.getOrderByIdRobust = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+
+    console.log('Getting order:', {
+      orderId,
+      requestUserId: req.user.userId,
+      userRole: req.user.role
+    });
+
+    const order = await Order.findById(orderId)
+      .populate('user', 'name email phone address')
+      .populate('items.product', 'name price image category description');
+
+    if (!order) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+
+    // Convert both to strings for comparison
+    const orderUserId = order.user._id.toString();
+    const requestUserId = req.user.userId.toString();
+    const isAdmin = req.user.role === 'admin';
+    
+    console.log('Authorization check:', {
+      orderUserId,
+      requestUserId,
+      isAdmin,
+      match: orderUserId === requestUserId
+    });
+
+    // Check authorization
+    if (!isAdmin && orderUserId !== requestUserId) {
+      console.log('❌ Authorization failed');
+      return res.status(403).json({ error: 'Not authorized to view this order' });
+    }
+
+    console.log('✅ Authorization successful');
+    res.json({
+      success: true,
+      order
+    });
+  } catch (error) {
+    console.error('Error fetching order by ID:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+
+// Download invoice as PDF
+exports.downloadInvoice = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+
+    // Fetch order with populated data
+    const order = await Order.findById(orderId)
+      .populate('user', 'name email phone address')
+      .populate('items.product', 'name price image category description');
+
+    if (!order) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+
+    // Check authorization
+    if (req.user.role !== 'admin' && order.user._id.toString() !== req.user.userId) {
+      return res.status(403).json({ error: 'Not authorized to download this invoice' });
+    }
+
+    // Calculate totals
+    const subtotal = order.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    const shipping = subtotal > 500 ? 0 : 50;
+
+    // Create invoice data
+    const invoiceData = {
+      invoice: {
+        number: `INV-${order._id.slice(-8).toUpperCase()}`,
+        date: new Date(order.createdAt).toLocaleDateString('en-IN'),
+        orderId: order._id,
+        status: order.status || 'pending',
+        paymentStatus: order.paymentStatus || 'pending',
+        paymentMethod: order.paymentMethod || 'N/A'
+      },
+      company: {
+        name: 'BOGAT',
+        tagline: 'Premium Quality Products',
+        email: 'support@bogat.com',
+        website: 'www.bogat.com'
+      },
+      customer: {
+        name: order.user?.name || 'Customer',
+        email: order.user?.email || 'N/A',
+        phone: order.user?.phone || 'N/A'
+      },
+      shippingAddress: {
+        address: order.shippingAddress?.address || 'N/A',
+        city: order.shippingAddress?.city || '',
+        state: order.shippingAddress?.state || '',
+        pincode: order.shippingAddress?.pincode || 'N/A',
+        phone: order.shippingAddress?.phone || 'N/A'
+      },
+      items: order.items.map(item => ({
+        name: item.product?.name || 'Product',
+        description: item.product?.description || '',
+        quantity: item.quantity || 0,
+        unitPrice: item.price || 0,
+        total: (item.price || 0) * (item.quantity || 0)
+      })),
+      totals: {
+        subtotal: subtotal,
+        shipping: shipping,
+        grandTotal: order.totalAmount || 0
+      },
+      razorpayDetails: order.razorpayDetails || null
+    };
+
+    // Send invoice data for PDF generation
+    res.json({
+      success: true,
+      invoiceData,
+      message: 'Invoice data generated successfully'
+    });
+
+  } catch (error) {
+    console.error('Error generating invoice:', error);
+    res.status(500).json({ 
+      error: 'Failed to generate invoice',
+      details: error.message 
+    });
+  }
+};

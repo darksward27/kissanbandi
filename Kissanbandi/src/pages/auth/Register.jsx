@@ -447,6 +447,7 @@ const Register = () => {
                         placeholder="Enter your locality or area"
                         value={formData.address.locality}
                         onChange={handleChange}
+                        required
                       />
                     </div>
                   </div>
@@ -465,6 +466,7 @@ const Register = () => {
                           placeholder="Enter your city"
                           value={formData.address.city}
                           onChange={handleChange}
+                          required
                         />
                       </div>
                     </div>
@@ -484,6 +486,7 @@ const Register = () => {
                           onChange={handleChange}
                           pattern="^\d{6}$"
                           title="Please enter a valid 6-digit pincode"
+                          required
                         />
                       </div>
                     </div>

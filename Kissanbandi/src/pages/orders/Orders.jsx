@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useAuth } from '../checkout/AuthProvider';
 import { toast } from 'react-hot-toast';
-import { Package, Clock, MapPin, IndianRupee, Loader, Search, AlertCircle, RefreshCw, Filter, Calendar, CheckCircle } from 'lucide-react';
+import { Package, Clock, MapPin, IndianRupee, Loader, Search, AlertCircle, RefreshCw, Filter, Calendar, CheckCircle, Download } from 'lucide-react';
 import api from '../../services/api';
 
 // Constants
@@ -25,6 +25,7 @@ const Orders = () => {
     const [filter, setFilter] = useState('all');
     const [refreshKey, setRefreshKey] = useState(0);
     const [ordersLoaded, setOrdersLoaded] = useState(false);
+    const [downloadingInvoice, setDownloadingInvoice] = useState(null);
 
     const loadOrders = useCallback(async () => {
         try {
@@ -106,6 +107,393 @@ const Orders = () => {
         
         return parts.join(', ') || 'Address details not available';
     }, []);
+
+    const generateInvoicePDF = async (orderId) => {
+        try {
+            setDownloadingInvoice(orderId);
+            toast.loading('Generating invoice...', { id: 'pdf-loading' });
+            
+            // Fetch complete order details
+            const response = await api.get(`/orders/${orderId}`);
+            const orderData = response.data.order;
+            
+            if (!orderData) {
+                throw new Error('Order data not found');
+            }
+
+            // Calculate subtotal
+            const subtotal = (orderData.items || []).reduce((sum, item) => sum + (item.price * item.quantity), 0);
+            const shipping = subtotal > 500 ? 0 : 50;
+
+            // Create PDF content
+            const invoiceContent = `
+                <html>
+                <head>
+                    <title>Invoice - ${orderData._id}</title>
+                    <style>
+                        * {
+                            margin: 0;
+                            padding: 0;
+                            box-sizing: border-box;
+                        }
+                        
+                        body {
+                            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                            line-height: 1.6;
+                            color: #333;
+                            background: #f8f9fa;
+                        }
+                        
+                        .invoice-container {
+                            max-width: 800px;
+                            margin: 20px auto;
+                            background: white;
+                            padding: 40px;
+                            border-radius: 12px;
+                            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+                        }
+                        
+                        .invoice-header {
+                            display: flex;
+                            justify-content: space-between;
+                            align-items: center;
+                            margin-bottom: 40px;
+                            padding-bottom: 20px;
+                            border-bottom: 3px solid #f59e0b;
+                        }
+                        
+                        .company-info h1 {
+                            color: #f59e0b;
+                            font-size: 36px;
+                            font-weight: bold;
+                            margin-bottom: 5px;
+                        }
+                        
+                        .company-info p {
+                            color: #666;
+                            font-size: 16px;
+                        }
+                        
+                        .invoice-details {
+                            text-align: right;
+                        }
+                        
+                        .invoice-details h2 {
+                            color: #333;
+                            font-size: 28px;
+                            margin-bottom: 10px;
+                        }
+                        
+                        .invoice-details p {
+                            margin: 5px 0;
+                            font-size: 14px;
+                        }
+                        
+                        .invoice-info {
+                            display: grid;
+                            grid-template-columns: 1fr 1fr;
+                            gap: 40px;
+                            margin-bottom: 40px;
+                        }
+                        
+                        .section-title {
+                            color: #f59e0b;
+                            font-size: 18px;
+                            font-weight: bold;
+                            margin-bottom: 15px;
+                            text-transform: uppercase;
+                            letter-spacing: 1px;
+                        }
+                        
+                        .info-block {
+                            background: #f8f9fa;
+                            padding: 20px;
+                            border-radius: 8px;
+                            border-left: 4px solid #f59e0b;
+                        }
+                        
+                        .info-block p {
+                            margin: 5px 0;
+                            font-size: 14px;
+                        }
+                        
+                        .status-badge {
+                            display: inline-block;
+                            padding: 6px 12px;
+                            border-radius: 20px;
+                            font-size: 12px;
+                            font-weight: bold;
+                            text-transform: uppercase;
+                            letter-spacing: 0.5px;
+                        }
+                        
+                        .status-pending {
+                            background: #fef3c7;
+                            color: #f59e0b;
+                        }
+                        
+                        .status-processing {
+                            background: #dbeafe;
+                            color: #3b82f6;
+                        }
+                        
+                        .status-shipped {
+                            background: #e0e7ff;
+                            color: #7c3aed;
+                        }
+                        
+                        .status-delivered {
+                            background: #d1fae5;
+                            color: #10b981;
+                        }
+                        
+                        .status-cancelled {
+                            background: #fee2e2;
+                            color: #ef4444;
+                        }
+                        
+                        .items-table {
+                            width: 100%;
+                            border-collapse: collapse;
+                            margin-bottom: 30px;
+                            background: white;
+                            border-radius: 8px;
+                            overflow: hidden;
+                            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+                        }
+                        
+                        .items-table th {
+                            background: #f59e0b;
+                            color: white;
+                            padding: 15px;
+                            text-align: left;
+                            font-weight: bold;
+                            font-size: 14px;
+                            text-transform: uppercase;
+                            letter-spacing: 0.5px;
+                        }
+                        
+                        .items-table td {
+                            padding: 15px;
+                            border-bottom: 1px solid #e5e7eb;
+                            font-size: 14px;
+                        }
+                        
+                        .items-table tbody tr:hover {
+                            background: #f9fafb;
+                        }
+                        
+                        .items-table tbody tr:last-child td {
+                            border-bottom: none;
+                        }
+                        
+                        .total-section {
+                            background: #f8f9fa;
+                            padding: 25px;
+                            border-radius: 8px;
+                            margin-top: 30px;
+                            border: 2px solid #f59e0b;
+                        }
+                        
+                        .total-row {
+                            display: flex;
+                            justify-content: space-between;
+                            margin: 10px 0;
+                            font-size: 16px;
+                        }
+                        
+                        .total-row.grand-total {
+                            font-size: 20px;
+                            font-weight: bold;
+                            color: #f59e0b;
+                            padding-top: 15px;
+                            border-top: 2px solid #f59e0b;
+                            margin-top: 15px;
+                        }
+                        
+                        .payment-info {
+                            background: #f0f9ff;
+                            padding: 20px;
+                            border-radius: 8px;
+                            border-left: 4px solid #3b82f6;
+                            margin-top: 30px;
+                        }
+                        
+                        .payment-info h3 {
+                            color: #3b82f6;
+                            margin-bottom: 10px;
+                        }
+                        
+                        .footer {
+                            text-align: center;
+                            margin-top: 40px;
+                            padding-top: 20px;
+                            border-top: 1px solid #e5e7eb;
+                            color: #666;
+                            font-size: 14px;
+                        }
+                        
+                        .thank-you {
+                            background: linear-gradient(135deg, #f59e0b, #f97316);
+                            color: white;
+                            padding: 20px;
+                            border-radius: 8px;
+                            text-align: center;
+                            margin-top: 30px;
+                        }
+                        
+                        @media print {
+                            body {
+                                background: white;
+                            }
+                            
+                            .invoice-container {
+                                margin: 0;
+                                box-shadow: none;
+                                border-radius: 0;
+                            }
+                        }
+                    </style>
+                </head>
+                <body>
+                    <div class="invoice-container">
+                        <!-- Invoice Header -->
+                        <div class="invoice-header">
+                            <div class="company-info">
+                                <h1>BOGAT</h1>
+                                <p>Premium Quality Products</p>
+                            </div>
+                            <div class="invoice-details">
+                                <h2>INVOICE</h2>
+                                <p><strong>Invoice #:</strong> INV-${orderData._id.slice(-8).toUpperCase()}</p>
+                                <p><strong>Date:</strong> ${new Date(orderData.createdAt).toLocaleDateString('en-IN')}</p>
+                                <p><strong>Order ID:</strong> ${orderData._id}</p>
+                            </div>
+                        </div>
+
+                        <!-- Invoice Information -->
+                        <div class="invoice-info">
+                            <div>
+                                <h3 class="section-title">Bill To</h3>
+                                <div class="info-block">
+                                    <p><strong>${orderData.user?.name || 'Customer Name'}</strong></p>
+                                    <p>Email: ${orderData.user?.email || 'N/A'}</p>
+                                    <p>Phone: ${orderData.user?.phone || 'N/A'}</p>
+                                </div>
+                            </div>
+                            <div>
+                                <h3 class="section-title">Ship To</h3>
+                                <div class="info-block">
+                                    <p>${orderData.shippingAddress?.address || 'N/A'}</p>
+                                    <p>${orderData.shippingAddress?.city || ''}, ${orderData.shippingAddress?.state || ''}</p>
+                                    <p>PIN: ${orderData.shippingAddress?.pincode || 'N/A'}</p>
+                                    <p>Phone: ${orderData.shippingAddress?.phone || 'N/A'}</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Order Status -->
+                        <div style="margin-bottom: 30px;">
+                            <h3 class="section-title">Order Status</h3>
+                            <div style="display: flex; gap: 15px; align-items: center;">
+                                <span class="status-badge status-${orderData.status || 'pending'}">${orderData.status || 'Pending'}</span>
+                                <span style="color: #666;">Payment: ${orderData.paymentStatus || 'Pending'}</span>
+                                <span style="color: #666;">Method: ${orderData.paymentMethod || 'N/A'}</span>
+                            </div>
+                        </div>
+
+                        <!-- Items Table -->
+                        <table class="items-table">
+                            <thead>
+                                <tr>
+                                    <th>Item</th>
+                                    <th>Quantity</th>
+                                    <th>Unit Price</th>
+                                    <th>Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${orderData.items?.map(item => `
+                                    <tr>
+                                        <td>
+                                            <strong>${item.product?.name || 'Product Name'}</strong>
+                                            <br>
+                                            <small style="color: #666;">${item.product?.description || ''}</small>
+                                        </td>
+                                        <td>${item.quantity || 0}</td>
+                                        <td>₹${(item.price || 0).toFixed(2)}</td>
+                                        <td>₹${((item.price || 0) * (item.quantity || 0)).toFixed(2)}</td>
+                                    </tr>
+                                `).join('') || '<tr><td colspan="4">No items found</td></tr>'}
+                            </tbody>
+                        </table>
+
+                        <!-- Total Section -->
+                        <div class="total-section">
+                            <div class="total-row">
+                                <span>Subtotal:</span>
+                                <span>₹${subtotal.toFixed(2)}</span>
+                            </div>
+                            <div class="total-row">
+                                <span>Shipping:</span>
+                                <span>₹${shipping.toFixed(2)}</span>
+                            </div>
+                            <div class="total-row grand-total">
+                                <span>GRAND TOTAL:</span>
+                                <span>₹${(orderData.totalAmount || 0).toFixed(2)}</span>
+                            </div>
+                        </div>
+
+                        <!-- Payment Information -->
+                        <div class="payment-info">
+                            <h3>Payment Information</h3>
+                            <p><strong>Payment Method:</strong> ${orderData.paymentMethod || 'N/A'}</p>
+                            <p><strong>Payment Status:</strong> ${orderData.paymentStatus || 'Pending'}</p>
+                            ${orderData.razorpayDetails?.paymentId ? `<p><strong>Transaction ID:</strong> ${orderData.razorpayDetails.paymentId}</p>` : ''}
+                        </div>
+
+                        <!-- Thank You -->
+                        <div class="thank-you">
+                            <h3>Thank You for Your Order!</h3>
+                            <p>We appreciate your business and hope you enjoy your purchase.</p>
+                        </div>
+
+                        <!-- Footer -->
+                        <div class="footer">
+                            <p>This is a computer-generated invoice. No signature required.</p>
+                            <p>For any queries, please contact us at support@bogat.com</p>
+                        </div>
+                    </div>
+                </body>
+                </html>
+            `;
+
+            // Create and download PDF
+            const printWindow = window.open('', '_blank');
+            if (printWindow) {
+                printWindow.document.write(invoiceContent);
+                printWindow.document.close();
+                
+                // Wait for content to load then print
+                printWindow.onload = () => {
+                    setTimeout(() => {
+                        printWindow.print();
+                        printWindow.close();
+                    }, 500);
+                };
+            } else {
+                throw new Error('Unable to open print window. Please allow popups.');
+            }
+            
+            toast.success('Invoice generated successfully!', { id: 'pdf-loading' });
+            
+        } catch (error) {
+            console.error('Error generating invoice:', error);
+            toast.error('Failed to generate invoice. Please try again.', { id: 'pdf-loading' });
+        } finally {
+            setDownloadingInvoice(null);
+        }
+    };
 
     const filteredOrders = useMemo(() => {
         if (!Array.isArray(orders)) return [];
@@ -268,7 +656,7 @@ const Orders = () => {
                                                         <Package className="w-6 h-6 text-amber-600" />
                                                     </div>
                                                     <h3 className="text-xl font-bold text-gray-800 group-hover:text-amber-700 transition-colors">
-                                                        payment {order.paymentStatus}
+                                                        Order #{order._id.slice(-8).toUpperCase()}
                                                     </h3>
                                                 </div>
                                                 
@@ -294,6 +682,18 @@ const Orders = () => {
                                                 <div className="text-sm text-gray-600 mt-1 bg-amber-50 px-3 py-1 rounded-full inline-block">
                                                     {(order.items || []).length} {(order.items || []).length === 1 ? 'item' : 'items'}
                                                 </div>
+                                                <button
+                                                    onClick={() => generateInvoicePDF(order._id)}
+                                                    disabled={downloadingInvoice === order._id}
+                                                    className="group mt-3 bg-gradient-to-r from-amber-600 to-orange-700 text-white px-4 py-2 rounded-xl text-sm font-medium hover:from-amber-700 hover:to-orange-800 transition-all duration-300 transform hover:scale-105 flex items-center justify-center lg:justify-end shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
+                                                >
+                                                    {downloadingInvoice === order._id ? (
+                                                        <Loader className="w-4 h-4 mr-2 animate-spin" />
+                                                    ) : (
+                                                        <Download className="w-4 h-4 mr-2 group-hover:animate-bounce" />
+                                                    )}
+                                                    {downloadingInvoice === order._id ? 'Generating...' : 'Download Invoice'}
+                                                </button>
                                             </div>
                                         </div>
 

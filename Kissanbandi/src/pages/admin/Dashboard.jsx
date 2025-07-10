@@ -404,7 +404,7 @@ const Dashboard = () => {
                     className="w-3 h-3 rounded-full" 
                     style={{ backgroundColor: item.color }}
                   ></div>
-                  <span className="text-sm text-gray-600">Bogat Products</span>
+                  <span className="text-sm text-gray-600">{item.name}</span>
                   <span className="text-sm font-medium text-gray-800">{item.value}</span>
                 </div>
               ))}

@@ -44,9 +44,9 @@ const CheckoutPage = () => {
     if (user && user.address) {
       setCustomAddress({
         address: formatAddress(user.address),
-        city: user.city || '',
-        state: user.state || '',
-        pincode: user.pincode || '',
+        city: user.address.city || user.city || '',
+        state: user.address.state || user.state || '',
+        pincode: user.address.pincode || user.pincode || '',
         phone: user.phone || ''
       });
     }
@@ -124,11 +124,12 @@ const CheckoutPage = () => {
 
   const getShippingAddress = () => {
     if (useRegisteredAddress && user?.address) {
+      // Handle registered address object
       return {
-        address: formatAddress(user.address),
-        city: user.city || '',
-        state: user.state || '',
-        pincode: user.pincode || '',
+        address: formatAddress(user.address), // Convert object to string
+        city: user.address.city || user.city || '',
+        state: user.address.state || user.state || '',
+        pincode: user.address.pincode || user.pincode || '',
         phone: user.phone || ''
       };
     } else {
@@ -139,17 +140,36 @@ const CheckoutPage = () => {
   const validateAddress = () => {
     const address = getShippingAddress();
     
-    if (!address.address || !address.city || !address.state || !address.pincode) {
-      toast.error('Please fill in all address fields');
-      return false;
+    // For registered address, check if we have the formatted address string
+    if (useRegisteredAddress && user?.address) {
+      const hasRequiredFields = user.address.street && user.address.city && 
+                               user.address.state && user.address.pincode;
+      
+      if (!hasRequiredFields) {
+        toast.error('Please complete your registered address in profile settings');
+        return false;
+      }
+      
+      if (user.address.pincode.length !== 6) {
+        toast.error('Please enter a valid 6-digit pincode in your profile');
+        return false;
+      }
+      
+      return true;
+    } else {
+      // For custom address, check the form fields
+      if (!address.address || !address.city || !address.state || !address.pincode) {
+        toast.error('Please fill in all address fields');
+        return false;
+      }
+      
+      if (address.pincode.length !== 6) {
+        toast.error('Please enter a valid 6-digit pincode');
+        return false;
+      }
+      
+      return true;
     }
-    
-    if (address.pincode.length !== 6) {
-      toast.error('Please enter a valid 6-digit pincode');
-      return false;
-    }
-    
-    return true;
   };
 
   const handleProceedToPayment = async () => {
@@ -329,7 +349,7 @@ const CheckoutPage = () => {
                 Start shopping to add items to your cart.
               </p>
               <button
-                onClick={() => navigate('/')}
+                onClick={() => navigate('/products')}
                 className="group bg-gradient-to-r from-amber-600 to-orange-700 text-white px-8 py-4 rounded-2xl font-medium hover:from-amber-700 hover:to-orange-800 transition-all duration-300 inline-flex items-center transform hover:scale-105 hover:shadow-lg"
               >
                 <ShoppingBag className="w-5 h-5 mr-2 group-hover:animate-pulse" />
@@ -485,9 +505,6 @@ const CheckoutPage = () => {
                         </div>
                         <div className="text-sm text-gray-600 leading-relaxed">
                           {formatAddress(user.address)}
-                          {user.city && `, ${user.city}`}
-                          {user.state && `, ${user.state}`}
-                          {user.pincode && ` - ${user.pincode}`}
                         </div>
                       </div>
                     </label>
