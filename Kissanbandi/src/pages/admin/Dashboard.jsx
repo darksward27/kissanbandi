@@ -548,9 +548,9 @@ const Dashboard = () => {
             )}
           </div>
         </div>
-
         {/* Bottom Section */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        
+        <div className="grid grid-cols-1 lg:grid-cols-1 gap-8">
           {/* Recent Orders */}
        <div className="lg:col-span-2 bg-white rounded-2xl shadow-lg p-3 sm:p-6 border border-amber-100">
  <div className="flex items-center justify-between mb-4 sm:mb-6">
@@ -570,7 +570,7 @@ const Dashboard = () => {
            <div className="flex items-center justify-between">
              <div className="flex items-center space-x-2 min-w-0 flex-1">
                <div className="w-2 h-2 bg-amber-500 rounded-full animate-pulse flex-shrink-0"></div>
-               <p className="font-medium text-gray-800 text-sm truncate">{order.id}</p>
+               <p className="font-medium text-gray-800 text-sm truncate">Order Id : <span className='text-gray-600'>{order.id}</span></p>
              </div>
              <p className="font-bold text-gray-800 text-sm flex-shrink-0">₹{order.amount.toLocaleString()}</p>
            </div>
@@ -586,7 +586,7 @@ const Dashboard = () => {
          <div className="hidden sm:flex sm:items-center sm:space-x-4 sm:min-w-0 sm:flex-1">
            <div className="w-2 h-2 bg-amber-500 rounded-full animate-pulse flex-shrink-0"></div>
            <div className="min-w-0 flex-1">
-             <p className="font-medium text-gray-800 text-sm lg:text-base truncate">{order.id}</p>
+             <p className="font-medium text-gray-800 text-sm lg:text-base truncate">Order Id : <span className='text-gray-600'>{order.id}</span></p>
              <p className="text-xs lg:text-sm text-gray-500 truncate">{order.customer}</p>
            </div>
          </div>
@@ -608,58 +608,7 @@ const Dashboard = () => {
    </div>
  )}
 </div>
-          {/* Top Products */}
-         <div className="bg-white rounded-2xl shadow-lg p-3 sm:p-6 border border-amber-100">
- <div className="flex items-center justify-between mb-4 sm:mb-6">
-   <h3 className="text-base sm:text-lg lg:text-xl font-bold text-gray-800">Top Products</h3>
-   <Award className="w-4 h-4 sm:w-5 sm:h-5 text-amber-600" />
- </div>
- {topProducts.length > 0 ? (
-   <div className="space-y-2 sm:space-y-4">
-     {topProducts.map((product, index) => (
-       <div 
-         key={index} 
-         className="block sm:flex sm:items-center sm:justify-between p-2 sm:p-3 bg-gradient-to-r from-amber-50 to-orange-50 rounded-xl hover:from-amber-100 hover:to-orange-100 transition-all duration-200 space-y-2 sm:space-y-0"
-       >
-         {/* Mobile Layout - Stacked */}
-         <div className="sm:hidden space-y-2">
-           <div className="flex items-center justify-between">
-             <div className="flex items-center space-x-2 min-w-0 flex-1">
-               <div className="w-6 h-6 bg-gradient-to-r from-amber-400 to-orange-500 rounded-lg flex items-center justify-center flex-shrink-0">
-                 <span className="text-white font-bold text-xs">{index + 1}</span>
-               </div>
-               <p className="font-medium text-gray-800 text-xs truncate">{product.name}</p>
-             </div>
-             <p className="font-bold text-amber-600 text-xs flex-shrink-0">₹{product.revenue.toLocaleString()}</p>
-           </div>
-           <div className="pl-8">
-             <p className="text-xs text-gray-500">{product.sales} sales</p>
-           </div>
-         </div>
 
-         {/* Desktop Layout - Horizontal */}
-         <div className="hidden sm:flex sm:items-center sm:space-x-3 sm:min-w-0 sm:flex-1">
-           <div className="w-6 h-6 lg:w-8 lg:h-8 bg-gradient-to-r from-amber-400 to-orange-500 rounded-lg flex items-center justify-center flex-shrink-0">
-             <span className="text-white font-bold text-xs lg:text-sm">{index + 1}</span>
-           </div>
-           <div className="min-w-0 flex-1">
-             <p className="font-medium text-gray-800 text-xs lg:text-sm truncate">{product.name}</p>
-             <p className="text-xs text-gray-500">{product.sales} sales</p>
-           </div>
-         </div>
-         <p className="hidden sm:block font-bold text-amber-600 text-xs lg:text-sm flex-shrink-0">₹{product.revenue.toLocaleString()}</p>
-       </div>
-     ))}
-   </div>
- ) : (
-   <div className="flex items-center justify-center h-32 sm:h-64 text-gray-500">
-     <div className="text-center">
-       <Award className="w-8 h-8 sm:w-12 sm:h-12 mx-auto mb-2 sm:mb-4 opacity-50" />
-       <p className="text-sm sm:text-base">No product data available</p>
-     </div>
-   </div>
- )}
-</div>
         </div>
 
         {/* Quick Actions */}

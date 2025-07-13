@@ -198,8 +198,9 @@ export const productsApi = {
   }
 };
 
-// Orders API
+// Orders API - CONSOLIDATED VERSION
 export const ordersApi = {
+  // Get all orders for admin
   getAllOrders: async (params = {}) => {
     try {
       console.log('Fetching orders with params:', params);
@@ -238,6 +239,7 @@ export const ordersApi = {
     }
   },
   
+  // Get orders by date range
   getOrdersByDateRange: async (startDate, endDate) => {
     try {
       console.log('Fetching orders by date range:', { startDate, endDate });
@@ -266,6 +268,7 @@ export const ordersApi = {
     }
   },
   
+  // Get order statistics
   getOrderStats: async (params = {}) => {
     try {
       console.log('Fetching order stats with params:', params);
@@ -301,6 +304,7 @@ export const ordersApi = {
     }
   },
   
+  // Update order status
   updateOrderStatus: async (id, status) => {
     try {
       console.log('Updating order status:', { id, status });
@@ -312,6 +316,7 @@ export const ordersApi = {
     }
   },
   
+  // Export orders
   exportOrders: async (filters = {}) => {
     try {
       console.log('Exporting orders with filters:', filters);
@@ -347,6 +352,7 @@ export const ordersApi = {
     }
   },
 
+  // Get user's own orders
   getMyOrders: async () => {
     try {
       const timestamp = new Date().getTime();
@@ -372,24 +378,96 @@ export const ordersApi = {
     }
   },
 
+  // Get specific order by ID
   getOrder: async (id) => {
     const response = await api.get(`/orders/${id}`);
     return response.data;
   },
 
+  // Create new order
   createOrder: async (orderData) => {
     const response = await api.post('/orders', orderData);
     return response.data;
   },
 
+  // Create Razorpay order
   createRazorpayOrder: async (data) => {
     const response = await api.post('/orders/razorpay/create', data);
     return response.data;
   },
 
+  // Verify Razorpay payment
   verifyPayment: async (data) => {
     const response = await api.post('/orders/razorpay/verify', data);
     return response.data;
+  },
+
+  // ADMIN NOTES FUNCTIONALITY
+  // Update admin note for cancelled orders
+  updateAdminNote: async (orderId, data) => {
+    try {
+      console.log('API: Updating admin note for order:', orderId, data);
+      
+      const response = await api.patch(`/orders/${orderId}/admin-note`, data);
+      
+      console.log('API: Admin note update response:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('API: Error updating admin note:', error);
+      
+      // Enhanced error handling
+      if (error.response) {
+        // Server responded with error status
+        const errorMessage = error.response.data?.error || 'Failed to update admin note';
+        const errorDetails = error.response.data?.details || '';
+        
+        throw new Error(`${errorMessage}${errorDetails ? ': ' + errorDetails : ''}`);
+      } else if (error.request) {
+        // Network error
+        throw new Error('Network error: Unable to update admin note. Please check your connection.');
+      } else {
+        // Other error
+        throw new Error('An unexpected error occurred while updating admin note');
+      }
+    }
+  },
+
+  // Get admin note history (optional)
+  getAdminNoteHistory: async (orderId) => {
+    try {
+      console.log('API: Fetching admin note history for order:', orderId);
+      
+      const response = await api.get(`/orders/${orderId}/admin-note`);
+      
+      console.log('API: Admin note history response:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('API: Error fetching admin note history:', error);
+      
+      if (error.response) {
+        const errorMessage = error.response.data?.error || 'Failed to fetch admin note history';
+        throw new Error(errorMessage);
+      } else if (error.request) {
+        throw new Error('Network error: Unable to fetch admin note history');
+      } else {
+        throw new Error('An unexpected error occurred while fetching admin note history');
+      }
+    }
+  },
+
+  // Bulk update admin notes (optional - for future use)
+  bulkUpdateAdminNotes: async (updates) => {
+    try {
+      console.log('API: Bulk updating admin notes:', updates);
+      
+      const response = await api.patch('/orders/bulk-admin-notes', { updates });
+      
+      console.log('API: Bulk admin note update response:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('API: Error bulk updating admin notes:', error);
+      throw error;
+    }
   }
 };
 

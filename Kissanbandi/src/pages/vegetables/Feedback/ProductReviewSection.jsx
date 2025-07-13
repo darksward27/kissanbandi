@@ -341,8 +341,8 @@ const VerifiedReviewsSection = ({ productId = null, showProductInfo = false }) =
                       
                       // Try different server configurations for backend images
                       const possiblePaths = [
-                        `https://bogat.onrender.com${imageUrl}`, // Backend server with original path
-                        `https://bogat.onrender.com/uploads/reviews/${filename}`, // Backend with direct path
+                        `http://localhost:5000${imageUrl}`, // Backend server with original path
+                        `http://localhost:5000/uploads/reviews/${filename}`, // Backend with direct path
                         `http://localhost:3000${imageUrl}`, // Alternative backend port
                         `http://localhost:3000/uploads/reviews/${filename}`, // Alternative port with direct path
                         `/api/uploads/reviews/${filename}`, // API proxy route

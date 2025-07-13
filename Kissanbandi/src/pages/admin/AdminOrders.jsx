@@ -24,7 +24,12 @@ import {
   List,
   Phone,
   MapPin,
-  Mail
+  Mail,
+  Edit3,
+  Save,
+  MessageSquare,
+  AlertTriangle,
+  Plus
 } from 'lucide-react';
 import DatePicker from 'react-datepicker';
 import "react-datepicker/dist/react-datepicker.css";
@@ -48,6 +53,12 @@ const AdminOrders = () => {
   const [exportLoading, setExportLoading] = useState(false);
   const [statsLoading, setStatsLoading] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState(null);
+  
+  // Admin notes state
+  const [editingNote, setEditingNote] = useState(null);
+  const [noteText, setNoteText] = useState('');
+  const [savingNote, setSavingNote] = useState(false);
+  const [expandedNotes, setExpandedNotes] = useState(new Set());
   
   // New features state
   const [searchTerm, setSearchTerm] = useState('');
@@ -144,6 +155,60 @@ const AdminOrders = () => {
     loadOrders(1); // Reset to first page when filters change
     loadOrderStats();
   }, [startDate, endDate, filterStatus, searchTerm, sortField, sortOrder]);
+
+  // Admin note functions
+  const handleEditNote = (orderId, currentNote = '') => {
+    setEditingNote(orderId);
+    setNoteText(currentNote);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingNote(null);
+    setNoteText('');
+  };
+
+  const handleSaveNote = async (orderId) => {
+    try {
+      setSavingNote(true);
+      
+      // API call to save admin note
+      const response = await ordersApi.updateAdminNote(orderId, {
+        adminNote: noteText.trim()
+      });
+
+      if (response.success) {
+        // Update the order in local state
+        setOrders(prevOrders => 
+          prevOrders.map(order => 
+            order._id === orderId 
+              ? { ...order, adminNote: noteText.trim() }
+              : order
+          )
+        );
+
+        toast.success('Admin note saved successfully');
+        setEditingNote(null);
+        setNoteText('');
+      } else {
+        throw new Error(response.message || 'Failed to save note');
+      }
+    } catch (error) {
+      console.error('Error saving admin note:', error);
+      toast.error('Failed to save admin note. Please try again.');
+    } finally {
+      setSavingNote(false);
+    }
+  };
+
+  const toggleNoteExpansion = (orderId) => {
+    const newExpanded = new Set(expandedNotes);
+    if (newExpanded.has(orderId)) {
+      newExpanded.delete(orderId);
+    } else {
+      newExpanded.add(orderId);
+    }
+    setExpandedNotes(newExpanded);
+  };
 
   const handleStatusUpdate = async (orderId, newStatus) => {
     try {
@@ -293,6 +358,8 @@ const AdminOrders = () => {
         return <TrendingUp className="w-4 h-4" />;
       case 'processing':
         return <Clock className="w-4 h-4" />;
+      case 'cancelled':
+        return <AlertTriangle className="w-4 h-4" />;
       default:
         return <Clock className="w-4 h-4" />;
     }
@@ -301,6 +368,105 @@ const AdminOrders = () => {
   const SortIcon = ({ field }) => {
     if (sortField !== field) return <SortAsc className="w-4 h-4 opacity-30" />;
     return sortOrder === 'asc' ? <SortAsc className="w-4 h-4" /> : <SortDesc className="w-4 h-4" />;
+  };
+
+  const renderAdminNote = (order) => {
+    if (order.status !== 'cancelled') return null;
+
+    const isExpanded = expandedNotes.has(order._id);
+    const isEditing = editingNote === order._id;
+
+    return (
+      <div className="mt-2 p-3 bg-red-50 border border-red-200 rounded-lg">
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center space-x-2">
+            <AlertTriangle className="w-4 h-4 text-red-600" />
+            <span className="text-sm font-medium text-red-800">Cancellation Note</span>
+          </div>
+          <div className="flex items-center space-x-2">
+            {!isEditing && (
+              <button
+                onClick={() => handleEditNote(order._id, order.adminNote)}
+                className="text-red-600 hover:text-red-800 transition-colors"
+                title="Edit note"
+              >
+                <Edit3 className="w-4 h-4" />
+              </button>
+            )}
+            {order.adminNote && (
+              <button
+                onClick={() => toggleNoteExpansion(order._id)}
+                className="text-red-600 hover:text-red-800 transition-colors"
+              >
+                {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+              </button>
+            )}
+          </div>
+        </div>
+
+        {isEditing ? (
+          <div className="space-y-3">
+            <textarea
+              value={noteText}
+              onChange={(e) => setNoteText(e.target.value)}
+              placeholder="Add cancellation reason..."
+              className="w-full p-2 text-sm border border-red-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500 resize-none"
+              rows="3"
+            />
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={() => handleSaveNote(order._id)}
+                disabled={savingNote}
+                className="px-3 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700 transition-colors flex items-center space-x-1 disabled:opacity-50"
+              >
+                {savingNote ? (
+                  <Loader className="w-3 h-3 animate-spin" />
+                ) : (
+                  <Save className="w-3 h-3" />
+                )}
+                <span>{savingNote ? 'Saving...' : 'Save'}</span>
+              </button>
+              <button
+                onClick={handleCancelEdit}
+                className="px-3 py-1 text-xs bg-gray-500 text-white rounded hover:bg-gray-600 transition-colors flex items-center space-x-1"
+              >
+                <X className="w-3 h-3" />
+                <span>Cancel</span>
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="text-sm text-red-700">
+            {order.adminNote ? (
+              <div>
+                <p className={isExpanded ? '' : 'line-clamp-2'}>
+                  {order.adminNote}
+                </p>
+                {!isExpanded && order.adminNote.length > 100 && (
+                  <button
+                    onClick={() => toggleNoteExpansion(order._id)}
+                    className="text-red-600 hover:text-red-800 text-xs mt-1"
+                  >
+                    Show more...
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div className="flex items-center space-x-2 text-red-600">
+                <MessageSquare className="w-4 h-4" />
+                <span className="italic">No cancellation note added yet</span>
+                <button
+                  onClick={() => handleEditNote(order._id, '')}
+                  className="text-red-600 hover:text-red-800"
+                >
+                  <Plus className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    );
   };
 
   const renderPagination = () => {
@@ -430,7 +596,10 @@ const AdminOrders = () => {
                 </div>
               </div>
 
-              <div className="flex space-x-2">
+              {/* Admin Note in Card View */}
+              {renderAdminNote(order)}
+
+              <div className="flex space-x-2 mt-4">
                 <button
                   onClick={() => handleViewDetails(order)}
                   className="flex-1 px-3 py-2 text-sm bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors flex items-center justify-center space-x-1"
@@ -511,81 +680,174 @@ const AdminOrders = () => {
           </thead>
           <tbody className="bg-white divide-y divide-amber-100">
             {orders.map((order) => (
-              <tr key={order._id} className="hover:bg-amber-50 transition-colors">
-                <td className="px-3 sm:px-6 py-4">
-                  <input
-                    type="checkbox"
-                    checked={selectedOrders.has(order._id)}
-                    onChange={() => toggleOrderSelection(order._id)}
-                    className="rounded border-amber-300 text-amber-600 focus:ring-amber-500"
-                  />
-                </td>
-                <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                  <div className="font-medium">#{order._id.slice(-8)}</div>
-                  <div className="text-xs text-gray-500 sm:hidden">
-                    {order.user?.name || 'N/A'}
-                  </div>
-                </td>
-                <td className="px-3 sm:px-6 py-4 hidden sm:table-cell">
-                  <div className="text-sm font-medium text-gray-900">{order.user?.name || 'N/A'}</div>
-                  <div className="text-sm text-gray-500">{new Date(order.createdAt).toLocaleDateString()}</div>
-                </td>
-                <td className="px-3 sm:px-6 py-4 hidden md:table-cell">
-                  <div className="text-sm text-gray-900 max-w-xs">
-                    {order.items?.slice(0, 2).map((item, index) => (
-                      <div key={index} className="truncate">
-                        {item.product?.name || 'Unknown Product'} × {item.quantity}
-                      </div>
-                    ))}
-                    {order.items?.length > 2 && (
-                      <div className="text-xs text-gray-500">+{order.items.length - 2} more</div>
-                    )}
-                  </div>
-                </td>
-                <td className="px-3 sm:px-6 py-4 text-sm font-medium text-gray-900">
-                  ₹{(order.totalAmount || 0).toLocaleString()}
-                </td>
-                <td className="px-3 sm:px-6 py-4">
-                  {updatingStatus === order._id ? (
-                    <div className="flex items-center">
-                      <Loader className="w-4 h-4 animate-spin mr-2 text-amber-600" />
-                      <span className="text-sm text-gray-500">Updating...</span>
+              <React.Fragment key={order._id}>
+                <tr className="hover:bg-amber-50 transition-colors">
+                  <td className="px-3 sm:px-6 py-4">
+                    <input
+                      type="checkbox"
+                      checked={selectedOrders.has(order._id)}
+                      onChange={() => toggleOrderSelection(order._id)}
+                      className="rounded border-amber-300 text-amber-600 focus:ring-amber-500"
+                    />
+                  </td>
+                  <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <div className="font-medium">#{order._id.slice(-8)}</div>
+                    <div className="text-xs text-gray-500 sm:hidden">
+                      {order.user?.name || 'N/A'}
                     </div>
-                  ) : (
-                    <select
-                      value={order.status || 'pending'}
-                      onChange={(e) => handleStatusUpdate(order._id, e.target.value)}
-                      className={`px-2 py-1 rounded-full text-xs font-medium border ${getStatusBadgeClass(order.status)} focus:ring-2 focus:ring-amber-500`}
-                      disabled={updatingStatus === order._id}
-                    >
-                      {STATUS_OPTIONS.map(status => (
-                        <option key={status} value={status}>
-                          {status.charAt(0).toUpperCase() + status.slice(1)}
-                        </option>
+                  </td>
+                  <td className="px-3 sm:px-6 py-4 hidden sm:table-cell">
+                    <div className="text-sm font-medium text-gray-900">{order.user?.name || 'N/A'}</div>
+                    <div className="text-sm text-gray-500">{new Date(order.createdAt).toLocaleDateString()}</div>
+                  </td>
+                  <td className="px-3 sm:px-6 py-4 hidden md:table-cell">
+                    <div className="text-sm text-gray-900 max-w-xs">
+                      {order.items?.slice(0, 2).map((item, index) => (
+                        <div key={index} className="truncate">
+                          {item.product?.name || 'Unknown Product'} × {item.quantity}
+                        </div>
                       ))}
-                    </select>
-                  )}
-                </td>
-                <td className="px-3 sm:px-6 py-4 hidden lg:table-cell">
-                  <div className="text-sm text-gray-900">{order.user?.phone || 'N/A'}</div>
-                  <div className="text-sm text-gray-500">
-                    {order.shippingAddress ? (
-                      `${order.shippingAddress.city || 'N/A'}, ${order.shippingAddress.state || 'N/A'}`
+                      {order.items?.length > 2 && (
+                        <div className="text-xs text-gray-500">+{order.items.length - 2} more</div>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-3 sm:px-6 py-4 text-sm font-medium text-gray-900">
+                    ₹{(order.totalAmount || 0).toLocaleString()}
+                  </td>
+                  <td className="px-3 sm:px-6 py-4">
+                    {updatingStatus === order._id ? (
+                      <div className="flex items-center">
+                        <Loader className="w-4 h-4 animate-spin mr-2 text-amber-600" />
+                        <span className="text-sm text-gray-500">Updating...</span>
+                      </div>
                     ) : (
-                      'Address not available'
+                      <select
+                        value={order.status || 'pending'}
+                        onChange={(e) => handleStatusUpdate(order._id, e.target.value)}
+                        className={`px-2 py-1 rounded-full text-xs font-medium border ${getStatusBadgeClass(order.status)} focus:ring-2 focus:ring-amber-500`}
+                        disabled={updatingStatus === order._id}
+                      >
+                        {STATUS_OPTIONS.map(status => (
+                          <option key={status} value={status}>
+                            {status.charAt(0).toUpperCase() + status.slice(1)}
+                          </option>
+                        ))}
+                      </select>
                     )}
-                  </div>
-                </td>
-                <td className="px-3 sm:px-6 py-4">
-                  <button
-                    onClick={() => handleViewDetails(order)}
-                    className="text-amber-600 hover:text-amber-900 text-sm font-medium flex items-center space-x-1"
-                  >
-                    <Eye className="w-4 h-4" />
-                    <span className="hidden sm:inline">View</span>
-                  </button>
-                </td>
-              </tr>
+                  </td>
+                  <td className="px-3 sm:px-6 py-4 hidden lg:table-cell">
+                    <div className="text-sm text-gray-900">{order.user?.phone || 'N/A'}</div>
+                    <div className="text-sm text-gray-500">
+                      {order.shippingAddress ? (
+                        `${order.shippingAddress.city || 'N/A'}, ${order.shippingAddress.state || 'N/A'}`
+                      ) : (
+                        'Address not available'
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-3 sm:px-6 py-4">
+                    <button
+                      onClick={() => handleViewDetails(order)}
+                      className="text-amber-600 hover:text-amber-900 text-sm font-medium flex items-center space-x-1"
+                    >
+                      <Eye className="w-4 h-4" />
+                      <span className="hidden sm:inline">View</span>
+                    </button>
+                  </td>
+                </tr>
+                
+                {/* Admin Note Row for Cancelled Orders */}
+                {order.status === 'cancelled' && (
+                  <tr className="bg-red-50 border-t border-red-200">
+                    <td colSpan="8" className="px-3 sm:px-6 py-3">
+                      <div className="flex items-start space-x-3">
+                        <div className="flex-shrink-0 mt-1">
+                          <AlertTriangle className="w-4 h-4 text-red-600" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between mb-2">
+                            <h4 className="text-sm font-medium text-red-800">Cancellation Note</h4>
+                            {editingNote !== order._id && (
+                              <button
+                                onClick={() => handleEditNote(order._id, order.adminNote)}
+                                className="text-red-600 hover:text-red-800 transition-colors flex items-center space-x-1"
+                                title="Edit cancellation note"
+                              >
+                                <Edit3 className="w-4 h-4" />
+                                <span className="text-xs hidden sm:inline">Edit Note</span>
+                              </button>
+                            )}
+                          </div>
+                          
+                          {editingNote === order._id ? (
+                            <div className="space-y-3">
+                              <textarea
+                                value={noteText}
+                                onChange={(e) => setNoteText(e.target.value)}
+                                placeholder="Enter cancellation reason..."
+                                className="w-full p-3 text-sm border border-red-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 resize-none"
+                                rows="3"
+                              />
+                              <div className="flex items-center space-x-2">
+                                <button
+                                  onClick={() => handleSaveNote(order._id)}
+                                  disabled={savingNote}
+                                  className="px-4 py-2 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center space-x-1 disabled:opacity-50"
+                                >
+                                  {savingNote ? (
+                                    <Loader className="w-4 h-4 animate-spin" />
+                                  ) : (
+                                    <Save className="w-4 h-4" />
+                                  )}
+                                  <span>{savingNote ? 'Saving...' : 'Save Note'}</span>
+                                </button>
+                                <button
+                                  onClick={handleCancelEdit}
+                                  className="px-4 py-2 text-sm bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors flex items-center space-x-1"
+                                >
+                                  <X className="w-4 h-4" />
+                                  <span>Cancel</span>
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="bg-white/60 p-3 rounded-lg border border-red-200">
+                              {order.adminNote ? (
+                                <div className="text-sm text-black">
+                                  <div className="flex items-start space-x-2">
+                                    <MessageSquare className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                                    <div className="flex-1">
+                                      <p className="leading-relaxed">Reason : {order.adminNote}</p>
+                                      <p className="text-xs text-red-600 mt-1 opacity-75">
+                                        Added by admin
+                                      </p>
+                                    </div>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center space-x-2 text-red-600">
+                                    <MessageSquare className="w-4 h-4" />
+                                    <span className="text-sm italic">No cancellation note added yet</span>
+                                  </div>
+                                  <button
+                                    onClick={() => handleEditNote(order._id, '')}
+                                    className="px-3 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700 transition-colors flex items-center space-x-1"
+                                  >
+                                    <Plus className="w-3 h-3" />
+                                    <span>Add Note</span>
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                )}
+              </React.Fragment>
             ))}
           </tbody>
         </table>
@@ -932,6 +1194,15 @@ const AdminOrders = () => {
           />
         )}
       </div>
+
+      <style>{`
+        .line-clamp-2 {
+          display: -webkit-box;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+        }
+      `}</style>
     </div>
   );
 };

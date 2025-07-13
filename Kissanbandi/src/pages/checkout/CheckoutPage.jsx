@@ -22,6 +22,13 @@ const CheckoutPage = () => {
     phone: ''
   });
 
+  // GST rates configuration
+  const GST_RATES = {
+    CGST: 2.5, // 2.5%
+    SGST: 2.5, // 2.5%
+    IGST: 5.0  // 5% (for inter-state)
+  };
+
   useEffect(() => {
     // Load Razorpay script
     const script = document.createElement('script');
@@ -97,10 +104,23 @@ const CheckoutPage = () => {
     return state.items.reduce((total, item) => total + (item.price * item.quantity), 0);
   };
 
+  // GST calculation functions
+  const calculateGST = (subtotal) => {
+    const cgst = (subtotal * GST_RATES.CGST) / 100;
+    const sgst = (subtotal * GST_RATES.SGST) / 100;
+    const totalGST = cgst + sgst;
+    
+    return {
+      cgst: Math.round(cgst * 100) / 100,
+      sgst: Math.round(sgst * 100) / 100,
+      totalGST: Math.round(totalGST * 100) / 100
+    };
+  };
+
   const subtotal = calculateSubtotal();
-  // FIXED: Changed from subtotal > 500 to subtotal >= 500 to match backend
+  const gstCalculation = calculateGST(subtotal);
   const shipping = subtotal >= 500 ? 0 : 50;
-  const total = subtotal + shipping;
+  const total = subtotal + gstCalculation.totalGST + shipping;
 
   const formatAddress = (addressObj) => {
     if (typeof addressObj === 'string') return addressObj;
@@ -125,9 +145,8 @@ const CheckoutPage = () => {
 
   const getShippingAddress = () => {
     if (useRegisteredAddress && user?.address) {
-      // Handle registered address object
       return {
-        address: formatAddress(user.address), // Convert object to string
+        address: formatAddress(user.address),
         city: user.address.city || user.city || '',
         state: user.address.state || user.state || '',
         pincode: user.address.pincode || user.pincode || '',
@@ -141,7 +160,6 @@ const CheckoutPage = () => {
   const validateAddress = () => {
     const address = getShippingAddress();
     
-    // For registered address, check if we have the formatted address string
     if (useRegisteredAddress && user?.address) {
       const hasRequiredFields = user.address.street && user.address.city && 
                                user.address.state && user.address.pincode;
@@ -158,7 +176,6 @@ const CheckoutPage = () => {
       
       return true;
     } else {
-      // For custom address, check the form fields
       if (!address.address || !address.city || !address.state || !address.pincode) {
         toast.error('Please fill in all address fields');
         return false;
@@ -188,7 +205,6 @@ const CheckoutPage = () => {
       setIsProcessing(true);
 
       if (paymentMethod === 'razorpay') {
-        // Validate Razorpay key
         const razorpayKey = import.meta.env.VITE_RAZORPAY_KEY_ID;
         console.log("Razorpay Key:", import.meta.env.VITE_RAZORPAY_KEY_ID);
         if (!razorpayKey || !razorpayKey.startsWith('rzp_')) {
@@ -201,17 +217,18 @@ const CheckoutPage = () => {
         console.log('Using Razorpay Key:', razorpayKey);
 
         try {
-          // Log the values being sent for debugging
           console.log('=== FRONTEND CALCULATION DEBUG ===');
           console.log('Subtotal:', subtotal);
+          console.log('GST:', gstCalculation);
           console.log('Shipping (calculated):', shipping);
           console.log('Total:', total);
           console.log('Free shipping eligible:', subtotal >= 500);
 
-          // Create Razorpay order with correct shipping calculation
+          // Create Razorpay order with GST included
           const orderResponse = await ordersApi.createRazorpayOrder({ 
             amount: total,
             subtotal: subtotal,
+            gst: gstCalculation.totalGST,
             shipping: shipping
           });
 
@@ -221,7 +238,6 @@ const CheckoutPage = () => {
             throw new Error('Failed to create order');
           }
 
-          // Check if Razorpay is loaded
           if (!window.Razorpay) {
             toast.dismiss('cart-empty');
             toast.error('Payment system not loaded. Please refresh and try again.');
@@ -229,7 +245,6 @@ const CheckoutPage = () => {
             return;
           }
 
-          // Initialize Razorpay payment
           const options = {
             key: razorpayKey,
             amount: total * 100,
@@ -241,7 +256,6 @@ const CheckoutPage = () => {
               try {
                 console.log('Payment Response:', response);
                 
-                // FIXED: Use consistent shipping calculation in verification
                 const verificationResponse = await ordersApi.verifyPayment({
                   razorpay_order_id: response.razorpay_order_id,
                   razorpay_payment_id: response.razorpay_payment_id,
@@ -253,8 +267,8 @@ const CheckoutPage = () => {
                       price: item.price
                     })),
                     shippingAddress: getShippingAddress(),
-                    // FIXED: Use the same calculation as above
-                    shipping: subtotal >= 500 ? 0 : 50
+                    shipping: subtotal >= 500 ? 0 : 50,
+                    gst: gstCalculation.totalGST
                   }
                 });
 
@@ -316,7 +330,6 @@ const CheckoutPage = () => {
 
   const handleCODOrder = async () => {
     try {
-      // FIXED: Use consistent shipping calculation
       const response = await ordersApi.createOrder({
         items: state.items.map(item => ({
           product: item._id || item.id,
@@ -325,8 +338,8 @@ const CheckoutPage = () => {
         })),
         shippingAddress: getShippingAddress(),
         paymentMethod: 'cod',
-        // FIXED: Use the same calculation as the rest of the component
-        shipping: subtotal >= 500 ? 0 : 50
+        shipping: subtotal >= 500 ? 0 : 50,
+        gst: gstCalculation.totalGST
       });
 
       if (response._id) {
@@ -424,6 +437,9 @@ const CheckoutPage = () => {
                         <div className="bg-gradient-to-r from-amber-700 to-orange-700 bg-clip-text text-transparent font-bold text-lg">
                           ₹{item.price}/{item.unit}
                         </div>
+                        <div className="text-sm text-gray-600 mt-1">
+                          GST: ₹{((item.price * item.quantity * GST_RATES.CGST * 2) / 100).toFixed(2)}
+                        </div>
                       </div>
 
                       <div className="flex items-center space-x-6">
@@ -473,6 +489,26 @@ const CheckoutPage = () => {
                   <span>Subtotal</span>
                   <span className="font-semibold">₹{subtotal.toFixed(2)}</span>
                 </div>
+                
+                {/* GST Breakdown */}
+                <div className="bg-amber-50/50 rounded-xl p-4 border border-amber-200">
+                  <div className="text-sm font-medium text-gray-700 mb-2">GST Breakdown:</div>
+                  <div className="space-y-1 text-sm">
+                    <div className="flex justify-between text-gray-600">
+                      <span>CGST @ {GST_RATES.CGST}%</span>
+                      <span>₹{gstCalculation.cgst.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between text-gray-600">
+                      <span>SGST @ {GST_RATES.SGST}%</span>
+                      <span>₹{gstCalculation.sgst.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between font-semibold text-amber-700 pt-1 border-t border-amber-200">
+                      <span>Total GST</span>
+                      <span>₹{gstCalculation.totalGST.toFixed(2)}</span>
+                    </div>
+                  </div>
+                </div>
+                
                 <div className="flex justify-between text-gray-600 text-lg items-center">
                   <span className="flex items-center">
                     <Truck className="w-4 h-4 mr-1" />

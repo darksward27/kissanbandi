@@ -16,6 +16,34 @@ const STATUS_COLORS = {
 
 const FALLBACK_IMAGE = '/images/product-placeholder.jpg';
 
+// GST rates configuration (should match backend)
+const GST_RATES = {
+    CGST: 2.5, // 2.5%
+    SGST: 2.5, // 2.5%
+    IGST: 5.0  // 5% (for inter-state)
+};
+
+// Helper function to calculate GST breakdown
+const calculateGSTBreakdown = (subtotal, totalGST) => {
+    // If we have total GST from order, split it equally between CGST and SGST
+    if (totalGST && totalGST > 0) {
+        return {
+            cgst: totalGST / 2,
+            sgst: totalGST / 2,
+            totalGST: totalGST
+        };
+    }
+    
+    // Fallback calculation
+    const cgst = (subtotal * GST_RATES.CGST) / 100;
+    const sgst = (subtotal * GST_RATES.SGST) / 100;
+    return {
+        cgst: Math.round(cgst * 100) / 100,
+        sgst: Math.round(sgst * 100) / 100,
+        totalGST: Math.round((cgst + sgst) * 100) / 100
+    };
+};
+
 const Orders = () => {
     const { user } = useAuth();
     const [orders, setOrders] = useState([]);
@@ -121,11 +149,17 @@ const Orders = () => {
                 throw new Error('Order data not found');
             }
 
-            // Calculate subtotal
+            // Calculate subtotal from items
             const subtotal = (orderData.items || []).reduce((sum, item) => sum + (item.price * item.quantity), 0);
-            const shipping = subtotal > 500 ? 0 : 50;
+            
+            // Get GST amount from order or calculate it
+            const gstAmount = orderData.gstAmount || 0;
+            const gstBreakdown = calculateGSTBreakdown(subtotal, gstAmount);
+            
+            // Calculate shipping
+            const shipping = orderData.shippingCharge || (subtotal >= 500 ? 0 : 50);
 
-            // Create PDF content
+            // Create PDF content with GST breakdown
             const invoiceContent = `
                 <html>
                 <head>
@@ -172,6 +206,13 @@ const Orders = () => {
                         .company-info p {
                             color: #666;
                             font-size: 16px;
+                        }
+                        
+                        .company-info .gst-number {
+                            color: #666;
+                            font-size: 12px;
+                            font-weight: bold;
+                            margin-top: 5px;
                         }
                         
                         .invoice-details {
@@ -302,6 +343,37 @@ const Orders = () => {
                             font-size: 16px;
                         }
                         
+                        .gst-section {
+                            background: #fef3c7;
+                            padding: 20px;
+                            border-radius: 8px;
+                            margin: 20px 0;
+                            border: 2px solid #f59e0b;
+                        }
+                        
+                        .gst-title {
+                            color: #f59e0b;
+                            font-size: 18px;
+                            font-weight: bold;
+                            margin-bottom: 15px;
+                            text-align: center;
+                        }
+                        
+                        .gst-row {
+                            display: flex;
+                            justify-content: space-between;
+                            margin: 8px 0;
+                            font-size: 14px;
+                        }
+                        
+                        .gst-total {
+                            font-weight: bold;
+                            color: #f59e0b;
+                            border-top: 1px solid #f59e0b;
+                            padding-top: 10px;
+                            margin-top: 10px;
+                        }
+                        
                         .total-row.grand-total {
                             font-size: 20px;
                             font-weight: bold;
@@ -362,9 +434,10 @@ const Orders = () => {
                             <div class="company-info">
                                 <h1>BOGAT</h1>
                                 <p>Premium Quality Products</p>
+                                <p class="gst-number">GSTIN: 27AABCU9603R1ZM</p>
                             </div>
                             <div class="invoice-details">
-                                <h2>INVOICE</h2>
+                                <h2>TAX INVOICE</h2>
                                 <p><strong>Invoice #:</strong> INV-${orderData._id.slice(-8).toUpperCase()}</p>
                                 <p><strong>Date:</strong> ${new Date(orderData.createdAt).toLocaleDateString('en-IN')}</p>
                                 <p><strong>Order ID:</strong> ${orderData._id}</p>
@@ -407,9 +480,10 @@ const Orders = () => {
                             <thead>
                                 <tr>
                                     <th>Item</th>
-                                    <th>Quantity</th>
-                                    <th>Unit Price</th>
-                                    <th>Total</th>
+                                    <th>HSN Code</th>
+                                    <th>Qty</th>
+                                    <th>Rate</th>
+                                    <th>Amount</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -420,22 +494,41 @@ const Orders = () => {
                                             <br>
                                             <small style="color: #666;">${item.product?.description || ''}</small>
                                         </td>
+                                        <td>1234</td>
                                         <td>${item.quantity || 0}</td>
                                         <td>₹${(item.price || 0).toFixed(2)}</td>
                                         <td>₹${((item.price || 0) * (item.quantity || 0)).toFixed(2)}</td>
                                     </tr>
-                                `).join('') || '<tr><td colspan="4">No items found</td></tr>'}
+                                `).join('') || '<tr><td colspan="5">No items found</td></tr>'}
                             </tbody>
                         </table>
 
                         <!-- Total Section -->
                         <div class="total-section">
                             <div class="total-row">
-                                <span>Subtotal:</span>
+                                <span>Subtotal (Before Tax):</span>
                                 <span>₹${subtotal.toFixed(2)}</span>
                             </div>
+                            
+                            <!-- GST Breakdown Section -->
+                            <div class="gst-section">
+                                <div class="gst-title">GST Breakdown</div>
+                                <div class="gst-row">
+                                    <span>CGST @ ${GST_RATES.CGST}%:</span>
+                                    <span>₹${gstBreakdown.cgst.toFixed(2)}</span>
+                                </div>
+                                <div class="gst-row">
+                                    <span>SGST @ ${GST_RATES.SGST}%:</span>
+                                    <span>₹${gstBreakdown.sgst.toFixed(2)}</span>
+                                </div>
+                                <div class="gst-row gst-total">
+                                    <span>Total GST:</span>
+                                    <span>₹${gstBreakdown.totalGST.toFixed(2)}</span>
+                                </div>
+                            </div>
+                            
                             <div class="total-row">
-                                <span>Shipping:</span>
+                                <span>Shipping & Handling:</span>
                                 <span>₹${shipping.toFixed(2)}</span>
                             </div>
                             <div class="total-row grand-total">
@@ -444,12 +537,25 @@ const Orders = () => {
                             </div>
                         </div>
 
+                        <!-- Amount in Words -->
+                        <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-top: 20px;">
+                            <p><strong>Amount in Words:</strong> ${convertToWords(orderData.totalAmount || 0)} Rupees Only</p>
+                        </div>
+
                         <!-- Payment Information -->
                         <div class="payment-info">
                             <h3>Payment Information</h3>
                             <p><strong>Payment Method:</strong> ${orderData.paymentMethod || 'N/A'}</p>
                             <p><strong>Payment Status:</strong> ${orderData.paymentStatus || 'Pending'}</p>
                             ${orderData.razorpayDetails?.paymentId ? `<p><strong>Transaction ID:</strong> ${orderData.razorpayDetails.paymentId}</p>` : ''}
+                        </div>
+
+                        <!-- GST Declaration -->
+                        <div style="background: #fef3c7; padding: 15px; border-radius: 8px; margin-top: 20px; border: 1px solid #f59e0b;">
+                            <p style="font-size: 12px; color: #92400e; text-align: center;">
+                                <strong>GST Registration Number:</strong> 27AABCU9603R1ZM<br>
+                                This is a computer-generated invoice and does not require physical signature.
+                            </p>
                         </div>
 
                         <!-- Thank You -->
@@ -493,6 +599,22 @@ const Orders = () => {
         } finally {
             setDownloadingInvoice(null);
         }
+    };
+
+    // Helper function to convert number to words (basic implementation)
+    const convertToWords = (amount) => {
+        const ones = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine'];
+        const teens = ['Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
+        const tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+        
+        if (amount === 0) return 'Zero';
+        if (amount < 10) return ones[amount];
+        if (amount < 20) return teens[amount - 10];
+        if (amount < 100) return tens[Math.floor(amount / 10)] + (amount % 10 !== 0 ? ' ' + ones[amount % 10] : '');
+        if (amount < 1000) return ones[Math.floor(amount / 100)] + ' Hundred' + (amount % 100 !== 0 ? ' ' + convertToWords(amount % 100) : '');
+        if (amount < 100000) return convertToWords(Math.floor(amount / 1000)) + ' Thousand' + (amount % 1000 !== 0 ? ' ' + convertToWords(amount % 1000) : '');
+        
+        return 'Amount too large';
     };
 
     const filteredOrders = useMemo(() => {
@@ -669,6 +791,12 @@ const Orders = () => {
                                                         <CheckCircle className="w-4 h-4 inline mr-2" />
                                                         {order.status || 'Processing'}
                                                     </span>
+                                                    {/* GST Badge */}
+                                                    {order.gstAmount > 0 && (
+                                                        <div className="bg-gradient-to-r from-green-100 to-emerald-100 text-green-700 px-3 py-2 rounded-lg border border-green-200">
+                                                            <span className="text-xs font-medium">GST ₹{order.gstAmount.toFixed(2)}</span>
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </div>
                                             
@@ -732,7 +860,7 @@ const Orders = () => {
                                                     </div>
                                                 </div>
 
-                                                {/* Address Section */}
+                                                {/* Address & Price Breakdown Section */}
                                                 <div className="space-y-4">
                                                     <h4 className="text-lg font-bold text-gray-800 flex items-center">
                                                         <MapPin className="w-5 h-5 text-amber-600 mr-2" />
@@ -746,6 +874,53 @@ const Orders = () => {
                                                             <div className="text-gray-700 leading-relaxed">
                                                                 {formatAddress(order.shippingAddress)}
                                                             </div>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Price Breakdown */}
+                                                    <div className="bg-gradient-to-r from-amber-50 to-orange-50 p-4 rounded-xl border border-amber-200">
+                                                        <h5 className="font-bold text-gray-800 mb-3 flex items-center">
+                                                            <IndianRupee className="w-4 h-4 text-amber-600 mr-2" />
+                                                            Price Breakdown
+                                                        </h5>
+                                                        <div className="space-y-2 text-sm">
+                                                            {(() => {
+                                                                const subtotal = (order.items || []).reduce((sum, item) => sum + (item.price * item.quantity), 0);
+                                                                const gstAmount = order.gstAmount || 0;
+                                                                const gstBreakdown = calculateGSTBreakdown(subtotal, gstAmount);
+                                                                const shipping = order.shippingCharge || 0;
+                                                                
+                                                                return (
+                                                                    <>
+                                                                        <div className="flex justify-between text-gray-600">
+                                                                            <span>Subtotal:</span>
+                                                                            <span>₹{subtotal.toFixed(2)}</span>
+                                                                        </div>
+                                                                        <div className="flex justify-between text-gray-600">
+                                                                            <span>CGST @ {GST_RATES.CGST}%:</span>
+                                                                            <span>₹{gstBreakdown.cgst.toFixed(2)}</span>
+                                                                        </div>
+                                                                        <div className="flex justify-between text-gray-600">
+                                                                            <span>SGST @ {GST_RATES.SGST}%:</span>
+                                                                            <span>₹{gstBreakdown.sgst.toFixed(2)}</span>
+                                                                        </div>
+                                                                        <div className="flex justify-between font-semibold text-amber-700 border-t border-amber-200 pt-2">
+                                                                            <span>Total GST:</span>
+                                                                            <span>₹{gstBreakdown.totalGST.toFixed(2)}</span>
+                                                                        </div>
+                                                                        <div className="flex justify-between text-gray-600">
+                                                                            <span>Shipping:</span>
+                                                                            <span className={shipping === 0 ? 'text-green-600 font-medium' : ''}>
+                                                                                {shipping === 0 ? 'Free' : `₹${shipping.toFixed(2)}`}
+                                                                            </span>
+                                                                        </div>
+                                                                        <div className="flex justify-between font-bold text-lg text-amber-700 border-t-2 border-amber-300 pt-2 mt-2">
+                                                                            <span>Total:</span>
+                                                                            <span>₹{order.totalAmount?.toFixed(2) || '0.00'}</span>
+                                                                        </div>
+                                                                    </>
+                                                                );
+                                                            })()}
                                                         </div>
                                                     </div>
                                                 </div>
