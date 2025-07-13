@@ -301,7 +301,7 @@ const Analytics = () => {
             </div>
 
             {/* Additional Analytics Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="bg-white p-6 rounded-2xl shadow-lg border border-amber-100">
                 <h3 className="text-lg font-bold text-amber-800 mb-4">Performance Metrics</h3>
                 <div className="space-y-4">
@@ -342,20 +342,7 @@ const Analytics = () => {
                 </div>
               </div>
 
-              <div className="bg-white p-6 rounded-2xl shadow-lg border border-amber-100">
-                <h3 className="text-lg font-bold text-amber-800 mb-4">Quick Actions</h3>
-                <div className="space-y-3">
-                  <button className="w-full bg-gradient-to-r from-amber-400 to-amber-600 text-white py-2 px-4 rounded-lg hover:from-amber-500 hover:to-amber-700 transition-all duration-200 shadow-md hover:shadow-lg">
-                    Generate Report
-                  </button>
-                  <button className="w-full bg-gradient-to-r from-orange-400 to-orange-600 text-white py-2 px-4 rounded-lg hover:from-orange-500 hover:to-orange-700 transition-all duration-200 shadow-md hover:shadow-lg">
-                    Export Analytics
-                  </button>
-                  <button className="w-full bg-gradient-to-r from-yellow-400 to-yellow-600 text-white py-2 px-4 rounded-lg hover:from-yellow-500 hover:to-yellow-700 transition-all duration-200 shadow-md hover:shadow-lg">
-                    Schedule Report
-                  </button>
-                </div>
-              </div>
+              
             </div>
           </div>
         )}

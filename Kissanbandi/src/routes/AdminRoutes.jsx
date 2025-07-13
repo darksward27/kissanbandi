@@ -6,15 +6,17 @@ import Orders from '../pages/admin/AdminOrders';
 import Customers from '../pages/admin/Customers';
 import Analytics from '../pages/admin/Analytics';
 import AdminBlogs from '../pages/admin/AdminBlogs'
+import AdminReviewManagement from '../pages/admin/FeedbackSection';
 const AdminRoutes = () => {
   return (
     <Routes>
-      <Route path="/" element={<Dashboard />} />
+      <Route path="/" element={<Dashboard/>} />
       <Route path="/products" element={<ProductsManagement />} />
       <Route path="/orders" element={<Orders />} />
       <Route path="/customers" element={<Customers />} />
       <Route path="/analytics" element={<Analytics />} />
       <Route path="/blogs" element={<AdminBlogs/>}/>
+      <Route path="/reviews" element={<AdminReviewManagement />} /> 
     </Routes>
   );
 };

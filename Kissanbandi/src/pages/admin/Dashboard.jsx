@@ -3,8 +3,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { productsApi, ordersApi, usersApi } from '../../services/api';
 import { ShoppingBag, Users, Package, IndianRupee, TrendingUp, Clock, Award, Eye } from 'lucide-react';
 import { toast } from 'react-hot-toast';
-import {Link } from 'react-router-dom';
-
+import { Link } from 'react-router-dom';
 
 const Dashboard = () => {
   const [stats, setStats] = useState({
@@ -25,6 +24,8 @@ const Dashboard = () => {
   }, []);
 
   const processRevenueData = (orders) => {
+    console.log('Processing revenue data from orders:', orders);
+    
     // Group orders by month for the last 6 months
     const monthlyRevenue = {};
     const currentDate = new Date();
@@ -37,73 +38,123 @@ const Dashboard = () => {
     }
 
     // Process actual orders
-    orders.forEach(order => {
-      const orderDate = new Date(order.createdAt || order.date || new Date());
-      const monthKey = orderDate.toLocaleString('default', { month: 'short' });
-      const amount = Number(order?.totalAmount || order?.total || 0);
-      
-      if (monthlyRevenue.hasOwnProperty(monthKey) && !isNaN(amount)) {
-        monthlyRevenue[monthKey] += amount;
-      }
-    });
+    if (Array.isArray(orders) && orders.length > 0) {
+      orders.forEach(order => {
+        try {
+          const orderDate = new Date(order.createdAt || order.date || order.orderDate || new Date());
+          const monthKey = orderDate.toLocaleString('default', { month: 'short' });
+          
+          // Try different possible amount fields
+          const amount = Number(
+            order.totalAmount || 
+            order.total || 
+            order.amount || 
+            order.grandTotal || 
+            order.finalAmount || 
+            0
+          );
+          
+          if (monthlyRevenue.hasOwnProperty(monthKey) && !isNaN(amount) && amount > 0) {
+            monthlyRevenue[monthKey] += amount;
+          }
+        } catch (error) {
+          console.warn('Error processing order for revenue:', order, error);
+        }
+      });
+    }
 
-    return Object.entries(monthlyRevenue).map(([month, revenue]) => ({
+    const result = Object.entries(monthlyRevenue).map(([month, revenue]) => ({
       month,
-      revenue
+      revenue: Math.round(revenue)
     }));
+    
+    console.log('Processed revenue data:', result);
+    return result;
   };
 
   const processTopProducts = (orders, products) => {
+    console.log('Processing top products from orders:', orders, 'and products:', products);
+    
     const productSales = {};
     
     // Count sales per product from orders
-    orders.forEach(order => {
-      const items = order.items || order.products || [];
-      items.forEach(item => {
-        const productId = item.productId || item.id;
-        const quantity = Number(item.quantity || 1);
-        const price = Number(item.price || item.amount || 0);
-        
-        if (!productSales[productId]) {
-          productSales[productId] = {
-            sales: 0,
-            revenue: 0,
-            name: item.name || item.productName
-          };
+    if (Array.isArray(orders) && orders.length > 0) {
+      orders.forEach(order => {
+        try {
+          const items = order.items || order.products || order.orderItems || [];
+          if (Array.isArray(items)) {
+            items.forEach(item => {
+              const productId = item.productId || item.product_id || item.id || item._id;
+              const quantity = Number(item.quantity || item.qty || 1);
+              const price = Number(item.price || item.amount || item.unitPrice || 0);
+              
+              if (productId) {
+                if (!productSales[productId]) {
+                  productSales[productId] = {
+                    sales: 0,
+                    revenue: 0,
+                    name: item.name || item.productName || item.title || `Product ${productId}`
+                  };
+                }
+                
+                productSales[productId].sales += quantity;
+                productSales[productId].revenue += (price * quantity);
+              }
+            });
+          }
+        } catch (error) {
+          console.warn('Error processing order items:', order, error);
         }
-        
-        productSales[productId].sales += quantity;
-        productSales[productId].revenue += (price * quantity);
       });
-    });
+    }
 
-    // If no order items found, use products directly
-    if (Object.keys(productSales).length === 0) {
-      products.forEach(product => {
-        productSales[product.id || product._id] = {
-          name: product.name || product.title,
-          sales: product.soldCount || Math.floor(Math.random() * 50) + 10,
-          revenue: (product.price || 0) * (product.soldCount || Math.floor(Math.random() * 50) + 10)
+    // If no order items found, create mock data from products
+    if (Object.keys(productSales).length === 0 && Array.isArray(products)) {
+      console.log('No order data found, creating mock sales data from products');
+      products.slice(0, 8).forEach((product, index) => {
+        const productId = product.id || product._id || index;
+        const mockSales = Math.floor(Math.random() * 50) + 10;
+        const price = Number(product.price || product.amount || 100);
+        
+        productSales[productId] = {
+          name: product.name || product.title || `Product ${index + 1}`,
+          sales: mockSales,
+          revenue: price * mockSales
         };
       });
     }
 
     // Sort by sales and return top 4
-    return Object.values(productSales)
+    const result = Object.values(productSales)
+      .filter(product => product.sales > 0)
       .sort((a, b) => b.sales - a.sales)
       .slice(0, 4);
+    
+    console.log('Processed top products:', result);
+    return result;
   };
 
   const processCategoryData = (products) => {
+    console.log('Processing category data from products:', products);
+    
     const categoryCount = {};
     
-    products.forEach(product => {
-      const category = product.category || product.type || 'Others';
-      categoryCount[category] = (categoryCount[category] || 0) + 1;
-    });
+    if (Array.isArray(products) && products.length > 0) {
+      products.forEach(product => {
+        const category = product.category || product.type || product.categoryName || 'Others';
+        categoryCount[category] = (categoryCount[category] || 0) + 1;
+      });
+    } else {
+      // Mock data if no products
+      categoryCount['Electronics'] = 15;
+      categoryCount['Clothing'] = 20;
+      categoryCount['Books'] = 10;
+      categoryCount['Home'] = 8;
+      categoryCount['Others'] = 5;
+    }
 
     const colors = ['#d97706', '#b45309', '#92400e', '#78350f', '#451a03'];
-    return Object.entries(categoryCount)
+    const result = Object.entries(categoryCount)
       .map(([name, count], index) => ({
         name,
         value: count,
@@ -111,19 +162,36 @@ const Dashboard = () => {
       }))
       .sort((a, b) => b.value - a.value)
       .slice(0, 5);
+    
+    console.log('Processed category data:', result);
+    return result;
   };
 
   const processRecentOrders = (orders) => {
-    return orders
-      .sort((a, b) => new Date(b.createdAt || b.date || 0) - new Date(a.createdAt || a.date || 0))
+    console.log('Processing recent orders:', orders);
+    
+    if (!Array.isArray(orders) || orders.length === 0) {
+      console.log('No orders found, returning empty array');
+      return [];
+    }
+
+    const result = orders
+      .sort((a, b) => {
+        const dateA = new Date(a.createdAt || a.date || a.orderDate || 0);
+        const dateB = new Date(b.createdAt || b.date || b.orderDate || 0);
+        return dateB - dateA;
+      })
       .slice(0, 5)
-      .map(order => ({
-        id: order.id || order._id || order.orderNumber || `ORD-${Math.random().toString(36).substr(2, 9)}`,
-        customer: order.customerName || order.customer?.name || order.user?.name || 'Unknown Customer',
-        amount: Number(order.totalAmount || order.total || order.amount || 0),
-        status: order.status || 'Pending',
-        date: order.createdAt || order.date || new Date().toISOString()
+      .map((order, index) => ({
+        id: order.id || order._id || order.orderNumber || order.orderId || `ORD-${Date.now()}-${index}`,
+        customer: order.customerName || order.customer?.name || order.user?.name || order.userName || 'Unknown Customer',
+        amount: Number(order.totalAmount || order.total || order.amount || order.grandTotal || 0),
+        status: order.status || order.orderStatus || 'Pending',
+        date: order.createdAt || order.date || order.orderDate || new Date().toISOString()
       }));
+    
+    console.log('Processed recent orders:', result);
+    return result;
   };
 
   const calculateGrowthPercentage = (current, previous) => {
@@ -134,50 +202,90 @@ const Dashboard = () => {
 
   const loadDashboardStats = async () => {
     setStats(prev => ({ ...prev, loading: true, error: null }));
+    
     try {
-      console.log('Fetching dashboard stats...');
+      console.log('Starting to fetch dashboard stats...');
       
-      // Fetch all data concurrently
-      const [ordersResponse, customersResponse, productsResponse] = await Promise.all([
-        ordersApi.getAllOrders(),
-        usersApi.getAllCustomers(),
-        productsApi.getAllProducts()
-      ]);
-
-      // Process responses
-      const orders = Array.isArray(ordersResponse?.data) 
-        ? ordersResponse.data 
-        : ordersResponse?.orders || [];
+      // Fetch data with individual error handling
+      let orders = [];
+      let customers = [];
+      let products = [];
+      
+      // Fetch products
+      try {
+        console.log('Fetching products...');
+        const productsResponse = await productsApi.getAllProducts();
+        console.log('Products response:', productsResponse);
         
-      const customers = Array.isArray(customersResponse) 
-        ? customersResponse 
-        : customersResponse?.data || customersResponse?.users || [];
+        products = Array.isArray(productsResponse) 
+          ? productsResponse 
+          : productsResponse?.data || productsResponse?.products || [];
         
-      const products = Array.isArray(productsResponse) 
-        ? productsResponse 
-        : productsResponse?.data || productsResponse?.products || [];
+        console.log('Processed products:', products.length);
+      } catch (error) {
+        console.error('Error fetching products:', error);
+        toast.error('Failed to load products data');
+      }
 
-      console.log('Data fetched:', { orders: orders.length, customers: customers.length, products: products.length });
+      // Fetch orders
+      try {
+        console.log('Fetching orders...');
+        const ordersResponse = await ordersApi.getAllOrders();
+        console.log('Orders response:', ordersResponse);
+        
+        orders = Array.isArray(ordersResponse) 
+          ? ordersResponse 
+          : ordersResponse?.orders || ordersResponse?.data || [];
+        
+        console.log('Processed orders:', orders.length);
+      } catch (error) {
+        console.error('Error fetching orders:', error);
+        toast.error('Failed to load orders data');
+      }
+
+      // Fetch customers
+      try {
+        console.log('Fetching customers...');
+        const customersResponse = await usersApi.getAllCustomers();
+        console.log('Customers response:', customersResponse);
+        
+        customers = Array.isArray(customersResponse) 
+          ? customersResponse 
+          : customersResponse?.data || customersResponse?.users || [];
+        
+        console.log('Processed customers:', customers.length);
+      } catch (error) {
+        console.error('Error fetching customers:', error);
+        toast.error('Failed to load customers data');
+      }
 
       // Calculate total revenue
       const totalRevenue = orders.reduce((sum, order) => {
-        const amount = Number(order?.totalAmount || order?.total || order?.amount || 0);
+        const amount = Number(order?.totalAmount || order?.total || order?.amount || order?.grandTotal || 0);
         return sum + (isNaN(amount) ? 0 : amount);
       }, 0);
 
+      console.log('Calculated total revenue:', totalRevenue);
+
       // Calculate previous month stats for growth comparison
       const currentMonth = new Date().getMonth();
+      const currentYear = new Date().getFullYear();
+      
       const currentMonthOrders = orders.filter(order => {
-        const orderDate = new Date(order.createdAt || order.date || new Date());
-        return orderDate.getMonth() === currentMonth;
+        const orderDate = new Date(order.createdAt || order.date || order.orderDate || new Date());
+        return orderDate.getMonth() === currentMonth && orderDate.getFullYear() === currentYear;
       });
       
+      const previousMonth = currentMonth === 0 ? 11 : currentMonth - 1;
+      const previousYear = currentMonth === 0 ? currentYear - 1 : currentYear;
+      
       const previousMonthOrders = orders.filter(order => {
-        const orderDate = new Date(order.createdAt || order.date || new Date());
-        return orderDate.getMonth() === (currentMonth - 1 + 12) % 12;
+        const orderDate = new Date(order.createdAt || order.date || order.orderDate || new Date());
+        return orderDate.getMonth() === previousMonth && orderDate.getFullYear() === previousYear;
       });
 
       // Process all dashboard data
+      console.log('Processing dashboard data...');
       const processedRevenueData = processRevenueData(orders);
       const processedRecentOrders = processRecentOrders(orders);
       const processedTopProducts = processTopProducts(orders, products);
@@ -186,8 +294,8 @@ const Dashboard = () => {
       // Calculate growth percentages
       const orderGrowth = calculateGrowthPercentage(currentMonthOrders.length, previousMonthOrders.length);
       const revenueGrowth = calculateGrowthPercentage(
-        currentMonthOrders.reduce((sum, order) => sum + Number(order?.totalAmount || order?.total || 0), 0),
-        previousMonthOrders.reduce((sum, order) => sum + Number(order?.totalAmount || order?.total || 0), 0)
+        currentMonthOrders.reduce((sum, order) => sum + Number(order?.totalAmount || order?.total || order?.amount || 0), 0),
+        previousMonthOrders.reduce((sum, order) => sum + Number(order?.totalAmount || order?.total || order?.amount || 0), 0)
       );
 
       // Update all states
@@ -198,8 +306,8 @@ const Dashboard = () => {
         totalRevenue,
         orderGrowth,
         revenueGrowth,
-        customerGrowth: '+8%', // Calculate this based on registration dates if available
-        productGrowth: '+5%',  // Calculate this based on product creation dates if available
+        customerGrowth: '+8%', // This would need actual user registration data
+        productGrowth: '+5%',  // This would need actual product creation data
         loading: false,
         error: null
       });
@@ -210,6 +318,12 @@ const Dashboard = () => {
       setCategoryData(processedCategoryData);
       
       console.log('Dashboard stats updated successfully');
+      
+      // Show success message only if we have some data
+      if (products.length > 0 || orders.length > 0 || customers.length > 0) {
+        toast.success('Dashboard data loaded successfully!');
+      }
+      
     } catch (err) {
       console.error('Dashboard stats error:', err);
       const errorMessage = err.response?.data?.error || err.message || 'Failed to load dashboard statistics';
@@ -295,6 +409,8 @@ const Dashboard = () => {
         return 'bg-yellow-100 text-yellow-800';
       case 'pending':
         return 'bg-orange-100 text-orange-800';
+      case 'cancelled':
+        return 'bg-red-100 text-red-800';
       default:
         return 'bg-gray-100 text-gray-800';
     }
@@ -349,128 +465,201 @@ const Dashboard = () => {
               <h3 className="text-xl font-bold text-gray-800">Revenue Trend</h3>
               <div className="flex items-center space-x-2">
                 <div className="w-3 h-3 bg-amber-500 rounded-full animate-pulse"></div>
-                <span className="text-sm text-gray-500">Live</span>
+                <span className="text-sm text-gray-500">Last 6 months</span>
               </div>
             </div>
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={revenueData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#fef3c7" />
-                <XAxis dataKey="month" stroke="#6b7280" />
-                <YAxis stroke="#6b7280" />
-                <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: '#fef3c7', 
-                    border: '1px solid #d97706',
-                    borderRadius: '12px'
-                  }} 
-                />
-                <Line 
-                  type="monotone" 
-                  dataKey="revenue" 
-                  stroke="#d97706" 
-                  strokeWidth={3}
-                  dot={{ fill: '#d97706', strokeWidth: 2, r: 6 }}
-                  activeDot={{ r: 8, stroke: '#d97706', strokeWidth: 2 }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
+            {revenueData.length > 0 ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <LineChart data={revenueData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#fef3c7" />
+                  <XAxis dataKey="month" stroke="#6b7280" />
+                  <YAxis stroke="#6b7280" />
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: '#fef3c7', 
+                      border: '1px solid #d97706',
+                      borderRadius: '12px'
+                    }}
+                    formatter={(value) => [`₹${value.toLocaleString()}`, 'Revenue']}
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey="revenue" 
+                    stroke="#d97706" 
+                    strokeWidth={3}
+                    dot={{ fill: '#d97706', strokeWidth: 2, r: 6 }}
+                    activeDot={{ r: 8, stroke: '#d97706', strokeWidth: 2 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex items-center justify-center h-64 text-gray-500">
+                <div className="text-center">
+                  <TrendingUp className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                  <p>No revenue data available</p>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Product Categories */}
           <div className="bg-white rounded-2xl shadow-lg p-6 border border-amber-100">
             <h3 className="text-xl font-bold text-gray-800 mb-6">Product Categories</h3>
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie
-                  data={categoryData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={60}
-                  outerRadius={100}
-                  paddingAngle={5}
-                  dataKey="value"
-                >
-                  {categoryData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
+            {categoryData.length > 0 ? (
+              <>
+                <ResponsiveContainer width="100%" height={300}>
+                  <PieChart>
+                    <Pie
+                      data={categoryData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={60}
+                      outerRadius={100}
+                      paddingAngle={5}
+                      dataKey="value"
+                    >
+                      {categoryData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                  </PieChart>
+                </ResponsiveContainer>
+                <div className="grid grid-cols-2 gap-4 mt-4">
+                  {categoryData.map((item, index) => (
+                    <div key={index} className="flex items-center space-x-2">
+                      <div 
+                        className="w-3 h-3 rounded-full" 
+                        style={{ backgroundColor: item.color }}
+                      ></div>
+                      <span className="text-sm text-gray-600">{item.name}</span>
+                      <span className="text-sm font-medium text-gray-800">{item.value}</span>
+                    </div>
                   ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
-            <div className="grid grid-cols-2 gap-4 mt-4">
-              {categoryData.map((item, index) => (
-                <div key={index} className="flex items-center space-x-2">
-                  <div 
-                    className="w-3 h-3 rounded-full" 
-                    style={{ backgroundColor: item.color }}
-                  ></div>
-                  <span className="text-sm text-gray-600">{item.name}</span>
-                  <span className="text-sm font-medium text-gray-800">{item.value}</span>
                 </div>
-              ))}
-            </div>
+              </>
+            ) : (
+              <div className="flex items-center justify-center h-64 text-gray-500">
+                <div className="text-center">
+                  <Package className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                  <p>No category data available</p>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
         {/* Bottom Section */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Recent Orders */}
-          <div className="lg:col-span-2 bg-white rounded-2xl shadow-lg p-6 border border-amber-100">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-bold text-gray-800">Recent Orders</h3>
-              <Clock className="w-5 h-5 text-amber-600" />
-            </div>
-            <div className="space-y-4">
-              {recentOrders.map((order, index) => (
-                <div 
-                  key={order.id} 
-                  className="flex items-center justify-between p-4 bg-amber-50 rounded-xl hover:bg-amber-100 transition-colors duration-200"
-                  style={{ animationDelay: `${index * 50}ms` }}
-                >
-                  <div className="flex items-center space-x-4">
-                    <div className="w-2 h-2 bg-amber-500 rounded-full animate-pulse"></div>
-                    <div>
-                      <p className="font-medium text-gray-800">{order.id}</p>
-                      <p className="text-sm text-gray-500">{order.customer}</p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-bold text-gray-800">₹{order.amount.toLocaleString()}</p>
-                    <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(order.status)}`}>
-                      {order.status}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
+       <div className="lg:col-span-2 bg-white rounded-2xl shadow-lg p-3 sm:p-6 border border-amber-100">
+ <div className="flex items-center justify-between mb-4 sm:mb-6">
+   <h3 className="text-base sm:text-lg lg:text-xl font-bold text-gray-800">Recent Orders</h3>
+   <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-amber-600" />
+ </div>
+ {recentOrders.length > 0 ? (
+   <div className="space-y-2 sm:space-y-4">
+     {recentOrders.map((order, index) => (
+       <div 
+         key={order.id} 
+         className="block sm:flex sm:items-center sm:justify-between p-3 sm:p-4 bg-amber-50 rounded-xl hover:bg-amber-100 transition-colors duration-200 animate-fade-in space-y-2 sm:space-y-0"
+         style={{ animationDelay: `${index * 50}ms` }}
+       >
+         {/* Mobile Layout - Stacked */}
+         <div className="sm:hidden space-y-2">
+           <div className="flex items-center justify-between">
+             <div className="flex items-center space-x-2 min-w-0 flex-1">
+               <div className="w-2 h-2 bg-amber-500 rounded-full animate-pulse flex-shrink-0"></div>
+               <p className="font-medium text-gray-800 text-sm truncate">{order.id}</p>
+             </div>
+             <p className="font-bold text-gray-800 text-sm flex-shrink-0">₹{order.amount.toLocaleString()}</p>
+           </div>
+           <div className="flex items-center justify-between pl-4">
+             <p className="text-xs text-gray-500 truncate flex-1">{order.customer}</p>
+             <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ml-2 ${getStatusColor(order.status)}`}>
+               {order.status}
+             </span>
+           </div>
+         </div>
 
+         {/* Desktop Layout - Horizontal */}
+         <div className="hidden sm:flex sm:items-center sm:space-x-4 sm:min-w-0 sm:flex-1">
+           <div className="w-2 h-2 bg-amber-500 rounded-full animate-pulse flex-shrink-0"></div>
+           <div className="min-w-0 flex-1">
+             <p className="font-medium text-gray-800 text-sm lg:text-base truncate">{order.id}</p>
+             <p className="text-xs lg:text-sm text-gray-500 truncate">{order.customer}</p>
+           </div>
+         </div>
+         <div className="hidden sm:block sm:text-right sm:flex-shrink-0">
+           <p className="font-bold text-gray-800 text-sm lg:text-base">₹{order.amount.toLocaleString()}</p>
+           <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(order.status)}`}>
+             {order.status}
+           </span>
+         </div>
+       </div>
+     ))}
+   </div>
+ ) : (
+   <div className="flex items-center justify-center h-32 sm:h-64 text-gray-500">
+     <div className="text-center">
+       <ShoppingBag className="w-8 h-8 sm:w-12 sm:h-12 mx-auto mb-2 sm:mb-4 opacity-50" />
+       <p className="text-sm sm:text-base">No recent orders found</p>
+     </div>
+   </div>
+ )}
+</div>
           {/* Top Products */}
-          <div className="bg-white rounded-2xl shadow-lg p-6 border border-amber-100">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-bold text-gray-800">Top Products</h3>
-              <Award className="w-5 h-5 text-amber-600" />
-            </div>
-            <div className="space-y-4">
-              {topProducts.map((product, index) => (
-                <div 
-                  key={index} 
-                  className="flex items-center justify-between p-3 bg-gradient-to-r from-amber-50 to-orange-50 rounded-xl hover:from-amber-100 hover:to-orange-100 transition-all duration-200"
-                >
-                  <div className="flex items-center space-x-3">
-                    <div className="w-8 h-8 bg-gradient-to-r from-amber-400 to-orange-500 rounded-lg flex items-center justify-center">
-                      <span className="text-white font-bold text-sm">{index + 1}</span>
-                    </div>
-                    <div>
-                      <p className="font-medium text-gray-800 text-sm">{product.name}</p>
-                      <p className="text-xs text-gray-500">{product.sales} sales</p>
-                    </div>
-                  </div>
-                  <p className="font-bold text-amber-600 text-sm">₹{product.revenue.toLocaleString()}</p>
-                </div>
-              ))}
-            </div>
-          </div>
+         <div className="bg-white rounded-2xl shadow-lg p-3 sm:p-6 border border-amber-100">
+ <div className="flex items-center justify-between mb-4 sm:mb-6">
+   <h3 className="text-base sm:text-lg lg:text-xl font-bold text-gray-800">Top Products</h3>
+   <Award className="w-4 h-4 sm:w-5 sm:h-5 text-amber-600" />
+ </div>
+ {topProducts.length > 0 ? (
+   <div className="space-y-2 sm:space-y-4">
+     {topProducts.map((product, index) => (
+       <div 
+         key={index} 
+         className="block sm:flex sm:items-center sm:justify-between p-2 sm:p-3 bg-gradient-to-r from-amber-50 to-orange-50 rounded-xl hover:from-amber-100 hover:to-orange-100 transition-all duration-200 space-y-2 sm:space-y-0"
+       >
+         {/* Mobile Layout - Stacked */}
+         <div className="sm:hidden space-y-2">
+           <div className="flex items-center justify-between">
+             <div className="flex items-center space-x-2 min-w-0 flex-1">
+               <div className="w-6 h-6 bg-gradient-to-r from-amber-400 to-orange-500 rounded-lg flex items-center justify-center flex-shrink-0">
+                 <span className="text-white font-bold text-xs">{index + 1}</span>
+               </div>
+               <p className="font-medium text-gray-800 text-xs truncate">{product.name}</p>
+             </div>
+             <p className="font-bold text-amber-600 text-xs flex-shrink-0">₹{product.revenue.toLocaleString()}</p>
+           </div>
+           <div className="pl-8">
+             <p className="text-xs text-gray-500">{product.sales} sales</p>
+           </div>
+         </div>
+
+         {/* Desktop Layout - Horizontal */}
+         <div className="hidden sm:flex sm:items-center sm:space-x-3 sm:min-w-0 sm:flex-1">
+           <div className="w-6 h-6 lg:w-8 lg:h-8 bg-gradient-to-r from-amber-400 to-orange-500 rounded-lg flex items-center justify-center flex-shrink-0">
+             <span className="text-white font-bold text-xs lg:text-sm">{index + 1}</span>
+           </div>
+           <div className="min-w-0 flex-1">
+             <p className="font-medium text-gray-800 text-xs lg:text-sm truncate">{product.name}</p>
+             <p className="text-xs text-gray-500">{product.sales} sales</p>
+           </div>
+         </div>
+         <p className="hidden sm:block font-bold text-amber-600 text-xs lg:text-sm flex-shrink-0">₹{product.revenue.toLocaleString()}</p>
+       </div>
+     ))}
+   </div>
+ ) : (
+   <div className="flex items-center justify-center h-32 sm:h-64 text-gray-500">
+     <div className="text-center">
+       <Award className="w-8 h-8 sm:w-12 sm:h-12 mx-auto mb-2 sm:mb-4 opacity-50" />
+       <p className="text-sm sm:text-base">No product data available</p>
+     </div>
+   </div>
+ )}
+</div>
         </div>
 
         {/* Quick Actions */}
@@ -478,10 +667,10 @@ const Dashboard = () => {
           <h3 className="text-xl font-bold text-gray-800 mb-6">Quick Actions</h3>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {[
-              { label: 'Add Product', icon: Package, color: 'from-amber-400 to-amber-600', href:'/admin/products'},
-              { label: 'View Orders', icon: ShoppingBag, color: 'from-orange-400 to-orange-600', href:'/admin/orders' },
-              { label: 'Manage Users', icon: Users, color: 'from-yellow-400 to-yellow-600', href:'/admin/customers' },
-              { label: 'Analytics', icon: Eye, color: 'from-amber-500 to-orange-600', href:'/admin/analytics' }
+              { label: 'Add Product', icon: Package, color: 'from-amber-400 to-amber-600', href: '/admin/products' },
+              { label: 'View Orders', icon: ShoppingBag, color: 'from-orange-400 to-orange-600', href: '/admin/orders' },
+              { label: 'Manage Users', icon: Users, color: 'from-yellow-400 to-yellow-600', href: '/admin/customers' },
+              { label: 'Analytics', icon: Eye, color: 'from-amber-500 to-orange-600', href: '/admin/analytics' }
             ].map((action, index) => (
               <Link
                 to={action.href}

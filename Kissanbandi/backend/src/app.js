@@ -14,6 +14,7 @@ const orderRoutes = require('./routes/orderRoutes');
 const analyticsRoutes = require('./routes/analyticsRoutes');
 const blogRoutes = require('./routes/blogRoutes');
 const categoryRoutes = require('./routes/categoryRoutes');
+const reviewRoutes = require('./routes/reviewRoutes'); 
 
 
 // Validate required environment variables
@@ -86,6 +87,8 @@ app.use('/api/analytics', analyticsRoutes);
 //Blog Routes
 app.use('/api/blogs', blogRoutes);
 
+// Review routes 
+app.use('/api/reviews', reviewRoutes);
 // Category routes
 app.use('/api/categories', categoryRoutes);
 

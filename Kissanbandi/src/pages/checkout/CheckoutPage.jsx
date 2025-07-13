@@ -98,7 +98,8 @@ const CheckoutPage = () => {
   };
 
   const subtotal = calculateSubtotal();
-  const shipping = subtotal > 500 ? 0 : 50;
+  // FIXED: Changed from subtotal > 500 to subtotal >= 500 to match backend
+  const shipping = subtotal >= 500 ? 0 : 50;
   const total = subtotal + shipping;
 
   const formatAddress = (addressObj) => {
@@ -200,10 +201,19 @@ const CheckoutPage = () => {
         console.log('Using Razorpay Key:', razorpayKey);
 
         try {
-          // Create Razorpay order
+          // Log the values being sent for debugging
+          console.log('=== FRONTEND CALCULATION DEBUG ===');
+          console.log('Subtotal:', subtotal);
+          console.log('Shipping (calculated):', shipping);
+          console.log('Total:', total);
+          console.log('Free shipping eligible:', subtotal >= 500);
+
+          // Create Razorpay order with correct shipping calculation
           const orderResponse = await ordersApi.createRazorpayOrder({ 
-            amount: total 
-          }, user.token);
+            amount: total,
+            subtotal: subtotal,
+            shipping: shipping
+          });
 
           console.log('Order Response:', orderResponse);
 
@@ -231,7 +241,7 @@ const CheckoutPage = () => {
               try {
                 console.log('Payment Response:', response);
                 
-                // Verify payment
+                // FIXED: Use consistent shipping calculation in verification
                 const verificationResponse = await ordersApi.verifyPayment({
                   razorpay_order_id: response.razorpay_order_id,
                   razorpay_payment_id: response.razorpay_payment_id,
@@ -243,9 +253,10 @@ const CheckoutPage = () => {
                       price: item.price
                     })),
                     shippingAddress: getShippingAddress(),
-                    shipping: subtotal > 500 ? 0 : 50
+                    // FIXED: Use the same calculation as above
+                    shipping: subtotal >= 500 ? 0 : 50
                   }
-                }, user.token);
+                });
 
                 if (verificationResponse.success) {
                   toast.dismiss('cart-empty');
@@ -305,6 +316,7 @@ const CheckoutPage = () => {
 
   const handleCODOrder = async () => {
     try {
+      // FIXED: Use consistent shipping calculation
       const response = await ordersApi.createOrder({
         items: state.items.map(item => ({
           product: item._id || item.id,
@@ -313,8 +325,9 @@ const CheckoutPage = () => {
         })),
         shippingAddress: getShippingAddress(),
         paymentMethod: 'cod',
-        shipping: subtotal > 500 ? 0 : 50
-      }, user.token);
+        // FIXED: Use the same calculation as the rest of the component
+        shipping: subtotal >= 500 ? 0 : 50
+      });
 
       if (response._id) {
         toast.success('Order placed successfully!', { id: 'cart-empty' });

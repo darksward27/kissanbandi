@@ -26,6 +26,10 @@ const orderSchema = new mongoose.Schema({
     type: Number,
     required: true
   },
+  shippingCharge: {
+    type: Number,
+    default: 0
+  },
   shippingAddress: {
     address: String,
     city: String,
@@ -62,14 +66,5 @@ orderSchema.index({ user: 1, createdAt: -1 });
 orderSchema.index({ status: 1 });
 orderSchema.index({ paymentStatus: 1 });
 
-// Calculate total amount before saving
-orderSchema.pre('save', async function(next) {
-  if (this.isModified('items')) {
-    this.totalAmount = this.items.reduce((total, item) => {
-      return total + (item.price * item.quantity);
-    }, 0);
-  }
-  next();
-});
 
-module.exports = mongoose.model('Order', orderSchema); 
+module.exports = mongoose.model('Order', orderSchema);

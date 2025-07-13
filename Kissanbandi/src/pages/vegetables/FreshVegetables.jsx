@@ -7,7 +7,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../checkout/AuthProvider';
 import { toast } from 'react-hot-toast';
 import { usersApi, productsApi } from '../../services/api';
-
+import ProductReviewSection from './Feedback/ProductReviewSection';
 const BogatProducts = () => {
   const [products, setProducts] = useState([]);
   const [wishlist, setWishlist] = useState(new Set());
@@ -450,6 +450,8 @@ const BogatProducts = () => {
           </div>
         )}
       </div>
+
+      <ProductReviewSection />
     </div>
   );
 };

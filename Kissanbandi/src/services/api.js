@@ -10,6 +10,10 @@ const api = axios.create({
   },
   withCredentials: true,
   timeout: 30000,
+  // Make sure all 2xx status codes are treated as success
+  validateStatus: function (status) {
+    return status >= 200 && status < 300;
+  }
 });
 
 // Request interceptor for adding auth token
@@ -43,8 +47,6 @@ api.interceptors.request.use(
   }
 );
 
-
-
 // Response interceptor for handling errors
 api.interceptors.response.use(
   (response) => response,
@@ -69,11 +71,19 @@ api.interceptors.response.use(
       sessionStorage.removeItem('adminUser');
       sessionStorage.removeItem('kissanbandi_user');
       window.location.href = '/login';
+      return Promise.reject(error);
     }
 
-    // Handle other errors
-    const message = error.response?.data?.error || error.message || 'An error occurred';
-    toast.error(message);
+    // FIXED: Don't show automatic toast for registration endpoints
+    // Let the component handle success/error messaging
+    const isRegistrationEndpoint = error.config?.url?.includes('/users/register');
+    const isLoginEndpoint = error.config?.url?.includes('/auth/login') || error.config?.url?.includes('/users/login');
+    
+    // Don't show automatic toasts for auth endpoints - let components handle them
+    if (!isRegistrationEndpoint && !isLoginEndpoint) {
+      const message = error.response?.data?.error || error.message || 'An error occurred';
+      toast.error(message);
+    }
 
     return Promise.reject(error);
   }
@@ -83,56 +93,55 @@ api.interceptors.response.use(
 export const productsApi = {
   // Get all products with optional filters
   getAllProducts: async (filters = {}) => {
-  try {
-    console.log('🔄 Fetching products with filters:', filters);
+    try {
+      console.log('🔄 Fetching products with filters:', filters);
 
-    const timestamp = Date.now();
+      const timestamp = Date.now();
 
-    const response = await api.get('/products', {
-      params: { ...filters, _t: timestamp },
-      headers: {
-        'Cache-Control': 'no-cache',
-        'Pragma': 'no-cache'
+      const response = await api.get('/products', {
+        params: { ...filters, _t: timestamp },
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        }
+      });
+
+      const { data } = response;
+
+      // Debug full API response structure
+      console.log('✅ API response received:', data);
+
+      // Normalize the data
+      let products = [];
+
+      if (Array.isArray(data)) {
+        products = data;
+      } else if (data && typeof data === 'object') {
+        if (Array.isArray(data.products)) {
+          products = data.products;
+        } else if (Array.isArray(data.data)) {
+          products = data.data;
+        }
       }
-    });
 
-    const { data } = response;
-
-    // Debug full API response structure
-    console.log('✅ API response received:', data);
-
-    // Normalize the data
-    let products = [];
-
-    if (Array.isArray(data)) {
-      products = data;
-    } else if (data && typeof data === 'object') {
-      if (Array.isArray(data.products)) {
-        products = data.products;
-      } else if (Array.isArray(data.data)) {
-        products = data.data;
+      // Fallback check
+      if (!Array.isArray(products)) {
+        console.warn('⚠️ Unexpected products format. Setting to empty array.');
+        products = [];
       }
+
+      console.log('📦 Products to return:', products);
+      return products;
+
+    } catch (error) {
+      console.error('❌ Error fetching products:', {
+        message: error.message,
+        status: error.response?.status,
+        data: error.response?.data
+      });
+      throw error;
     }
-
-    // Fallback check
-    if (!Array.isArray(products)) {
-      console.warn('⚠️ Unexpected products format. Setting to empty array.');
-      products = [];
-    }
-
-    console.log('📦 Products to return:', products);
-    return products;
-
-  } catch (error) {
-    console.error('❌ Error fetching products:', {
-      message: error.message,
-      status: error.response?.status,
-      data: error.response?.data
-    });
-    throw error;
-  }
-},
-
+  },
 
   // Get product by ID
   getProductById: async (id) => {
@@ -157,15 +166,16 @@ export const productsApi = {
     const response = await api.delete(`/products/${id}`);
     return response.data;
   },
-    InactiveProduct: async (id) => {
-      const response = await api.patch(`/products/${id}/inactive`);
-      return response.data;
-    },
 
-    ActiveProduct: async (id) => {
-      const response = await api.patch(`/products/${id}/active`);
-      return response.data;
-    },
+  InactiveProduct: async (id) => {
+    const response = await api.patch(`/products/${id}/inactive`);
+    return response.data;
+  },
+
+  ActiveProduct: async (id) => {
+    const response = await api.patch(`/products/${id}/active`);
+    return response.data;
+  },
 
   // Get products by category
   getProductsByCategory: async (category, subcategory = null) => {
@@ -194,7 +204,7 @@ export const ordersApi = {
     try {
       console.log('Fetching orders with params:', params);
       const timestamp = new Date().getTime();
-      const response = await api.get('/orders', {
+      const response = await api.get('/orders/admin/all', {
         params: { ...params, _t: timestamp },
         headers: {
           'Cache-Control': 'no-cache',
@@ -260,7 +270,7 @@ export const ordersApi = {
     try {
       console.log('Fetching order stats with params:', params);
       const timestamp = new Date().getTime();
-      const response = await api.get('/orders/stats', {
+      const response = await api.get('/orders/admin/stats', {
         params: { ...params, _t: timestamp },
         headers: {
           'Cache-Control': 'no-cache',
@@ -336,30 +346,31 @@ export const ordersApi = {
       throw error;
     }
   },
-  getMyOrders: async () => {
-  try {
-    const timestamp = new Date().getTime();
-    const response = await api.get('/orders/my-orders', {
-      params: { _t: timestamp },
-      headers: {
-        'Cache-Control': 'no-cache',
-        'Pragma': 'no-cache'
-      }
-    });
 
-    // Normalize response
-    return Array.isArray(response.data)
-      ? response.data
-      : response.data?.orders || response.data?.data || [];
-  } catch (error) {
-    console.error('Error fetching user orders:', {
-      message: error.message,
-      status: error.response?.status,
-      data: error.response?.data
-    });
-    throw error;
-  }
-},
+  getMyOrders: async () => {
+    try {
+      const timestamp = new Date().getTime();
+      const response = await api.get('/orders/my-orders', {
+        params: { _t: timestamp },
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        }
+      });
+
+      // Normalize response
+      return Array.isArray(response.data)
+        ? response.data
+        : response.data?.orders || response.data?.data || [];
+    } catch (error) {
+      console.error('Error fetching user orders:', {
+        message: error.message,
+        status: error.response?.status,
+        data: error.response?.data
+      });
+      throw error;
+    }
+  },
 
   getOrder: async (id) => {
     const response = await api.get(`/orders/${id}`);
@@ -371,23 +382,15 @@ export const ordersApi = {
     return response.data;
   },
 
-createRazorpayOrder: async (data, token) => {
-  const response = await api.post('/orders/razorpay/create', data, {
-    headers: {
-      Authorization: `Bearer ${token}`
-    }
-  });
-  return response.data;
-},
+  createRazorpayOrder: async (data) => {
+    const response = await api.post('/orders/razorpay/create', data);
+    return response.data;
+  },
 
-verifyPayment: async (data, token) => {
-  const response = await api.post('/orders/razorpay/verify', data, {
-    headers: {
-      Authorization: `Bearer ${token}`
-    }
-  });
-  return response.data;
-}
+  verifyPayment: async (data) => {
+    const response = await api.post('/orders/razorpay/verify', data);
+    return response.data;
+  }
 };
 
 // Users API
@@ -433,4 +436,4 @@ export const usersApi = {
   }
 };
 
-export default api; 
+export default api;

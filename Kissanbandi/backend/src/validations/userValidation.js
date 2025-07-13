@@ -32,6 +32,13 @@ const registerSchema = Joi.object({
       'string.pattern.base': 'Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character'
     }),
 
+  // Add confirmPassword to validation but strip it before processing
+  confirmPassword: Joi.string()
+    .valid(Joi.ref('password'))
+    .messages({
+      'any.only': 'Passwords do not match'
+    }),
+
   phone: Joi.string()
     .pattern(/^\+?[\d\s-]{10,}$/)
     .messages({
@@ -67,8 +74,12 @@ const registerSchema = Joi.object({
       .messages({
         'string.pattern.base': 'Please provide a valid 6-digit pincode'
       })
-  })
-});
+  }),
+
+  // Allow but ignore verification object from frontend
+  verification: Joi.object().unknown(true).optional()
+
+}).unknown(false); // This will strip any unknown fields
 
 const loginSchema = Joi.object({
   email: Joi.string()
@@ -137,9 +148,48 @@ const profileUpdateSchema = Joi.object({
   })
 }).min(1);
 
+const forgotPasswordSchema = Joi.object({
+  email: Joi.string()
+    .required()
+    .email()
+    .lowercase()
+    .trim()
+    .messages({
+      'string.empty': 'Email is required',
+      'string.email': 'Please provide a valid email address'
+    })
+});
+
+// ✅ ADD THIS VALIDATE FUNCTION
+const validate = (schema) => {
+  return (req, res, next) => {
+    try {
+      const { error, value } = schema.validate(req.body, {
+        abortEarly: false,    // Show all errors, not just the first one
+        stripUnknown: true    // Remove fields not defined in schema
+      });
+
+      if (error) {
+        const errorMessage = error.details.map(detail => detail.message).join(', ');
+        return res.status(400).json({ error: errorMessage });
+      }
+
+      // Replace req.body with validated and cleaned data
+      req.body = value;
+      next();
+    } catch (err) {
+      console.error('Validation middleware error:', err);
+      return res.status(500).json({ error: 'Validation error occurred' });
+    }
+  };
+};
+
+// ✅ UPDATE MODULE.EXPORTS TO INCLUDE VALIDATE
 module.exports = {
   registerSchema,
   loginSchema,
   passwordResetSchema,
-  profileUpdateSchema
-}; 
+  profileUpdateSchema,
+  forgotPasswordSchema,
+  validate // ← Add this line
+};

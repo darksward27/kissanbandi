@@ -10,18 +10,26 @@ exports.createOrder = async (req, res) => {
   try {
     const { items, shippingAddress, paymentMethod } = req.body;
 
-    // Validate stock availability and calculate total
-    let totalAmount = 0;
+    // Validate items
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ error: 'Order must contain at least one item' });
+    }
+
+    // Validate stock availability and calculate subtotal
+    let subtotal = 0;
+
     for (const item of items) {
       const product = await Product.findById(item.product);
       if (!product) {
         return res.status(404).json({ error: `Product ${item.product} not found` });
       }
+
       if (product.stock < item.quantity) {
         return res.status(400).json({ error: `Insufficient stock for ${product.name}` });
       }
+
       item.price = product.price;
-      totalAmount += product.price * item.quantity;
+      subtotal += product.price * item.quantity;
 
       // Update product stock
       await Product.findByIdAndUpdate(item.product, {
@@ -29,20 +37,39 @@ exports.createOrder = async (req, res) => {
       });
     }
 
+    // Calculate shipping charge
+    const shippingCharge = subtotal >= 500 ? 0 : 50;
+
+    // Final total amount
+    const totalAmount = subtotal + shippingCharge;
+    console.log("VAIBHAV SAYS : ", totalAmount);
+    
+    // Create new order
     const order = new Order({
       user: req.user.userId,
       items,
       totalAmount,
+      shippingCharge,
       shippingAddress,
-      paymentMethod
+      paymentMethod,
+      paymentStatus: paymentMethod === 'cod' ? 'pending' : 'initiated', // optional logic
+      status: 'pending'
     });
 
     await order.save();
-    res.status(201).json(order);
+
+    res.status(201).json({
+      success: true,
+      order,
+      message: 'Order created successfully'
+    });
+
   } catch (error) {
-    res.status(400).json({ error: error.message });
+    console.error('Error in createOrder:', error);
+    res.status(500).json({ error: 'Failed to create order', details: error.message });
   }
 };
+
 
 // Get all orders (admin)
 exports.getAllOrders = async (req, res) => {
@@ -372,60 +399,229 @@ exports.getOrderStats = async (req, res) => {
 };
 
 // Create Razorpay order
+// Create Razorpay order - UPDATED to handle both simple amount and full order details
+// Create Razorpay order - UPDATED to handle both simple amount and full order details
+// Create Razorpay order - FIXED to avoid variable conflicts
+// Create Razorpay order - FIXED for consistent shipping calculation
 exports.createRazorpayOrder = async (req, res) => {
   try {
-    const { amount } = req.body;
+    console.log('=== RAZORPAY ORDER CREATE DEBUG ===');
+    console.log('Request body:', req.body);
+    console.log('User from auth middleware:', req.user ? { id: req.user.userId, role: req.user.role } : 'No user');
+    
+    const { amount, items, shippingAddress, subtotal: frontendSubtotal, shipping: frontendShipping } = req.body;
 
-    if (!amount || amount <= 0) {
-      return res.status(400).json({ error: 'Invalid amount' });
+    // Handle simple amount-only requests (from your current frontend)
+    if (amount && !items) {
+      console.log('📝 Processing simple amount-only request');
+      
+      if (typeof amount !== 'number' || amount <= 0) {
+        console.log('❌ Invalid amount:', amount);
+        return res.status(400).json({
+          success: false,
+          error: 'Valid amount is required'
+        });
+      }
+
+      // FIXED: Calculate shipping based on subtotal from frontend
+      let calculatedShipping = 0;
+      let calculatedSubtotal = frontendSubtotal;
+
+      if (frontendSubtotal !== undefined) {
+        // Use the subtotal sent from frontend to calculate shipping
+        calculatedShipping = frontendSubtotal < 500 ? 50 : 0;
+        console.log('📦 Calculated shipping based on frontend subtotal:', { 
+          frontendSubtotal, 
+          calculatedShipping,
+          expectedTotal: frontendSubtotal + calculatedShipping
+        });
+      } else {
+        // Fallback: assume shipping based on total amount (less reliable)
+        calculatedSubtotal = amount - 50; // Assume 50 shipping initially
+        if (calculatedSubtotal >= 500) {
+          calculatedShipping = 0;
+          calculatedSubtotal = amount; // No shipping needed
+        } else {
+          calculatedShipping = 50;
+        }
+        console.log('📦 Fallback shipping calculation:', { 
+          amount, 
+          calculatedSubtotal, 
+          calculatedShipping 
+        });
+      }
+
+      // Verify the total matches
+      const expectedTotal = calculatedSubtotal + calculatedShipping;
+      if (Math.abs(expectedTotal - amount) > 0.01) {
+        console.log('❌ Amount mismatch in simple request:', {
+          calculatedSubtotal,
+          calculatedShipping,
+          expectedTotal,
+          receivedAmount: amount
+        });
+        return res.status(400).json({
+          success: false,
+          error: `Amount mismatch. Expected: ₹${expectedTotal}, Received: ₹${amount}`
+        });
+      }
+      
+      console.log('✅ Creating Razorpay order for amount:', amount);
+      
+      // Create Razorpay order
+      const options = {
+        amount: amount * 100, // Amount in paise
+        currency: "INR",
+        receipt: `order_${Date.now()}`,
+        payment_capture: 1
+      };
+
+      const razorpayOrder = await razorpay.orders.create(options);
+      console.log('✅ Razorpay order created:', razorpayOrder.id);
+
+      // Store transaction info with shipping details
+      const transaction = new RazorpayTransaction({
+        userId: req.user.userId,
+        razorpayOrderId: razorpayOrder.id,
+        amount: amount,
+        currency: "INR",
+        status: 'created',
+        paymentMethod: 'razorpay',
+        metadata: {
+          receipt: options.receipt,
+          created_at: new Date(),
+          orderType: 'simple',
+          subtotal: calculatedSubtotal,
+          shippingCharge: calculatedShipping,
+          totalAmount: amount
+        }
+      });
+
+      await transaction.save();
+      console.log('✅ Transaction saved with shipping info');
+
+      return res.json({
+        success: true,
+        orderId: razorpayOrder.id,
+        amount: razorpayOrder.amount,
+        currency: razorpayOrder.currency,
+        metadata: {
+          shippingCharge: calculatedShipping,
+          subtotal: calculatedSubtotal
+        }
+      });
     }
 
+    // Handle full order details with items
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      console.log('❌ Cart is empty or invalid');
+      return res.status(400).json({ 
+        success: false,
+        error: 'Cart is empty or invalid. Please provide either amount or items.' 
+      });
+    }
+
+    console.log('📝 Processing full order with items validation');
+
+    // Step 1: Validate products and calculate subtotal
+    let subtotal = 0;
+
+    for (const item of items) {
+      const product = await Product.findById(item.product);
+      if (!product) {
+        console.log('❌ Product not found:', item.product);
+        return res.status(404).json({ 
+          success: false,
+          error: `Product not found: ${item.product}` 
+        });
+      }
+
+      if (product.stock < item.quantity) {
+        console.log('❌ Insufficient stock:', { product: product.name, requested: item.quantity, available: product.stock });
+        return res.status(400).json({ 
+          success: false,
+          error: `Insufficient stock for ${product.name}` 
+        });
+      }
+
+      subtotal += product.price * item.quantity;
+    }
+
+    // Step 2: Calculate shipping charge (consistent with verifyPayment)
+    const shippingCharge = subtotal < 500 ? 50 : 0;
+
+    // Step 3: Total payable amount
+    const totalAmount = subtotal + shippingCharge;
+
+    console.log('=== ORDER CALCULATION ===');
+    console.log('Subtotal:', subtotal);
+    console.log('Shipping charge:', shippingCharge);
+    console.log('Total amount:', totalAmount);
+    console.log('Free shipping eligible:', subtotal >= 500);
+
+    // Step 4: Create Razorpay order
     const options = {
-      amount: amount * 100, // Razorpay expects amount in paise
+      amount: totalAmount * 100, // Amount in paise
       currency: "INR",
       receipt: `order_${Date.now()}`,
       payment_capture: 1
     };
 
-    // Create Razorpay order first
     const razorpayOrder = await razorpay.orders.create(options);
-    console.log('Razorpay order created:', razorpayOrder);
+    console.log('✅ Razorpay order created:', razorpayOrder.id);
 
-    // Then create our transaction record
+    // Step 5: Store transaction metadata
     const transaction = new RazorpayTransaction({
       userId: req.user.userId,
       razorpayOrderId: razorpayOrder.id,
-      amount: razorpayOrder.amount / 100, // Convert back to rupees for storage
-      currency: razorpayOrder.currency,
+      amount: totalAmount,
+      currency: "INR",
       status: 'created',
       paymentMethod: 'razorpay',
-      metadata: { // Store any additional data we might need later
+      metadata: {
         receipt: options.receipt,
-        created_at: new Date()
+        created_at: new Date(),
+        items,
+        shippingAddress,
+        shippingCharge,
+        subtotal,
+        orderType: 'full'
       }
     });
 
     await transaction.save();
-    console.log('Transaction record created:', transaction._id);
+    console.log('✅ Transaction saved with full details');
 
     res.json({
+      success: true,
       orderId: razorpayOrder.id,
       amount: razorpayOrder.amount,
-      currency: razorpayOrder.currency
+      currency: razorpayOrder.currency,
+      metadata: {
+        shippingCharge,
+        subtotal,
+        totalAmount
+      }
     });
+
   } catch (error) {
-    console.error('Razorpay order creation error:', error);
+    console.error('❌ Razorpay order creation error:', error);
     res.status(500).json({
-      error: 'Failed to create payment order',
+      success: false,
+      error: 'Failed to create Razorpay order',
       details: error.message
     });
-  }console.log('req.user:', req.user);
-
+  }
 };
 
+
 // Verify Razorpay payment
+// Enhanced verifyPayment function with extensive debugging
 exports.verifyPayment = async (req, res) => {
   try {
+    console.log('🚀 === PAYMENT VERIFICATION STARTED ===');
+    console.log('📦 Request body received:', JSON.stringify(req.body, null, 2));
+    
     const {
       razorpay_order_id,
       razorpay_payment_id,
@@ -435,7 +631,7 @@ exports.verifyPayment = async (req, res) => {
 
     // Validate required fields
     if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature || !order_details) {
-      console.error('Missing required fields:', {
+      console.error('❌ Missing required fields:', {
         hasOrderId: !!razorpay_order_id,
         hasPaymentId: !!razorpay_payment_id,
         hasSignature: !!razorpay_signature,
@@ -444,22 +640,19 @@ exports.verifyPayment = async (req, res) => {
       return res.status(400).json({ error: 'Missing required payment details' });
     }
 
-    console.log('Verifying payment with details:', {
-      orderId: razorpay_order_id,
-      paymentId: razorpay_payment_id,
-      hasSignature: !!razorpay_signature,
-      orderDetails: !!order_details
-    });
+    console.log('✅ All required fields present');
+    console.log('🔍 Looking for transaction with Razorpay Order ID:', razorpay_order_id);
 
     // Find the transaction record first
     const transaction = await RazorpayTransaction.findOne({
       razorpayOrderId: razorpay_order_id
     });
 
-    console.log('Found transaction:', transaction ? {
+    console.log('📋 Transaction found:', transaction ? {
       id: transaction._id,
       status: transaction.status,
-      amount: transaction.amount
+      amount: transaction.amount,
+      metadata: transaction.metadata
     } : 'Not found');
 
     if (!transaction) {
@@ -469,6 +662,8 @@ exports.verifyPayment = async (req, res) => {
       });
     }
 
+    console.log('🔐 Starting signature verification...');
+    
     // Verify signature
     const sign = razorpay_order_id + "|" + razorpay_payment_id;
     const expectedSign = crypto
@@ -476,13 +671,14 @@ exports.verifyPayment = async (req, res) => {
       .update(sign)
       .digest("hex");
 
-    console.log('Signature verification:', {
+    console.log('🔐 Signature verification:', {
       matches: razorpay_signature === expectedSign,
       received: razorpay_signature.slice(0, 10) + '...',
       expected: expectedSign.slice(0, 10) + '...'
     });
 
     if (razorpay_signature !== expectedSign) {
+      console.error('❌ Signature verification failed');
       // Update transaction status to failed
       transaction.status = 'failed';
       transaction.errorDescription = 'Invalid payment signature';
@@ -494,37 +690,51 @@ exports.verifyPayment = async (req, res) => {
       });
     }
 
+    console.log('✅ Signature verification passed');
+    console.log('📝 Validating order details...');
+
     // Validate order details
     const { items, shippingAddress } = order_details;
+    console.log('📦 Order details received:', {
+      hasItems: !!items,
+      itemsCount: items ? items.length : 0,
+      hasShippingAddress: !!shippingAddress,
+      shippingFromOrderDetails: order_details.shipping
+    });
+
     if (!items || !Array.isArray(items) || !shippingAddress) {
-      console.error('Invalid order details:', { items, shippingAddress });
+      console.error('❌ Invalid order details:', { 
+        hasItems: !!items, 
+        isArray: Array.isArray(items), 
+        itemsLength: items ? items.length : 0,
+        hasShippingAddress: !!shippingAddress 
+      });
       return res.status(400).json({ error: 'Invalid order details provided' });
     }
 
-    // Calculate total and validate stock
-    let totalAmount = 0;
-    for (const item of items) {
-      // Detailed item validation
-      console.log('Validating item:', item);
+    console.log('✅ Order details validation passed');
+    console.log('💰 Starting subtotal calculation...');
+
+    // Calculate subtotal and validate stock
+    let subtotal = 0;
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      console.log(`📦 Processing item ${i + 1}/${items.length}:`, {
+        productId: item.product,
+        quantity: item.quantity,
+        priceFromFrontend: item.price
+      });
       
       if (!item) {
-        console.error('Item is null or undefined');
+        console.error('❌ Item is null or undefined at index:', i);
         return res.status(400).json({ 
           error: 'Invalid item details',
           details: 'Item cannot be null or undefined'
         });
       }
 
-      if (typeof item !== 'object') {
-        console.error('Item is not an object:', typeof item);
-        return res.status(400).json({ 
-          error: 'Invalid item details',
-          details: 'Item must be an object'
-        });
-      }
-
       if (!item.product) {
-        console.error('Missing product ID in item:', item);
+        console.error('❌ Missing product ID in item:', item);
         return res.status(400).json({ 
           error: 'Invalid item details',
           details: 'Product ID is required for each item'
@@ -532,7 +742,7 @@ exports.verifyPayment = async (req, res) => {
       }
 
       if (!item.quantity || typeof item.quantity !== 'number' || item.quantity <= 0) {
-        console.error('Invalid quantity in item:', item);
+        console.error('❌ Invalid quantity in item:', item);
         return res.status(400).json({ 
           error: 'Invalid item details',
           details: 'Valid quantity is required for each item'
@@ -542,15 +752,22 @@ exports.verifyPayment = async (req, res) => {
       try {
         const product = await Product.findById(item.product);
         if (!product) {
-          console.error('Product not found:', item.product);
+          console.error('❌ Product not found:', item.product);
           return res.status(404).json({ 
             error: 'Product not found',
             details: `Product with ID ${item.product} does not exist`
           });
         }
 
+        console.log(`✅ Product found:`, {
+          id: product._id,
+          name: product.name,
+          price: product.price,
+          stock: product.stock
+        });
+
         if (product.stock < item.quantity) {
-          console.error('Insufficient stock:', {
+          console.error('❌ Insufficient stock:', {
             product: product._id,
             productName: product.name,
             requested: item.quantity,
@@ -562,23 +779,27 @@ exports.verifyPayment = async (req, res) => {
           });
         }
 
-        // Set the price from the product
+        // Set the price from the product (server-side price, not frontend price)
         item.price = product.price;
-        totalAmount += product.price * item.quantity;
+        const itemTotal = product.price * item.quantity;
+        subtotal += itemTotal;
+
+        console.log(`💰 Item calculation:`, {
+          productName: product.name,
+          serverPrice: product.price,
+          quantity: item.quantity,
+          itemTotal: itemTotal,
+          runningSubtotal: subtotal
+        });
 
         // Update product stock
         await Product.findByIdAndUpdate(item.product, {
           $inc: { stock: -item.quantity }
         });
         
-        console.log('Item validated successfully:', {
-          productId: product._id,
-          price: item.price,
-          quantity: item.quantity,
-          subtotal: item.price * item.quantity
-        });
+        console.log(`📦 Stock updated for ${product.name}: ${product.stock} -> ${product.stock - item.quantity}`);
       } catch (error) {
-        console.error('Error processing item:', error);
+        console.error('❌ Error processing item:', error);
         return res.status(400).json({ 
           error: 'Error processing item',
           details: error.message
@@ -586,29 +807,61 @@ exports.verifyPayment = async (req, res) => {
       }
     }
 
-    // Add shipping cost to total amount
-    totalAmount += order_details.shipping || 0;
+    console.log('✅ All items processed successfully');
+
+    // Calculate shipping charge based on subtotal (server-side calculation)
+    const shippingCharge = subtotal < 500 ? 50 : 0;
+    
+    // Calculate total amount (server-side calculation)
+    const totalAmount = subtotal + shippingCharge;
+
+    console.log('=== 💰 FINAL CALCULATION SUMMARY ===');
+    console.log('📊 Subtotal (calculated from products):', subtotal);
+    console.log('🚚 Shipping charge (calculated):', shippingCharge);
+    console.log('💸 Total amount (calculated):', totalAmount);
+    console.log('💳 Transaction amount (from Razorpay):', transaction.amount);
+    console.log('🚚 Frontend shipping (order_details.shipping):', order_details.shipping);
+    console.log('✅ Free shipping eligible:', subtotal >= 500);
+    console.log('📋 Transaction metadata:', transaction.metadata);
 
     // Verify amount matches with a small tolerance for floating-point differences
     const amountDifference = Math.abs(totalAmount - transaction.amount);
+    console.log('🔍 Amount difference:', amountDifference);
+    
     if (amountDifference > 0.01) {  // 1 paisa tolerance
-      console.error('Amount mismatch:', {
-        calculated: totalAmount,
-        transaction: transaction.amount,
+      console.error('❌ AMOUNT MISMATCH - Details:', {
+        calculatedTotal: totalAmount,
+        transactionAmount: transaction.amount,
         difference: amountDifference,
-        shipping: order_details.shipping || 0
+        subtotal,
+        calculatedShipping: shippingCharge,
+        frontendShipping: order_details.shipping,
+        transactionMetadata: transaction.metadata
       });
+      
+      // More detailed error message
       return res.status(400).json({ 
         error: 'Order amount mismatch',
-        details: 'Calculated order amount does not match payment amount'
+        details: `Calculated total (₹${totalAmount}) doesn't match payment amount (₹${transaction.amount}). Please refresh and try again.`,
+        debug: {
+          subtotal,
+          calculatedShipping: shippingCharge,
+          calculatedTotal: totalAmount,
+          paidAmount: transaction.amount,
+          itemsCount: items.length
+        }
       });
     }
+    
+    console.log('✅ Amount verification passed');
+    console.log('💾 Creating order in database...');
 
     // Create order in database
     const order = new Order({
       user: req.user.userId,
       items,
       totalAmount,
+      shippingCharge,  // Add shipping charge to order
       shippingAddress,
       paymentMethod: 'razorpay',
       paymentStatus: 'completed',
@@ -620,7 +873,9 @@ exports.verifyPayment = async (req, res) => {
     });
 
     await order.save();
-    console.log('Order created successfully:', order._id);
+    console.log('✅ Order created successfully in database:', order._id);
+
+    console.log('📝 Updating transaction record...');
 
     // Update transaction record with order details
     transaction.orderId = order._id;
@@ -634,11 +889,15 @@ exports.verifyPayment = async (req, res) => {
         quantity: item.quantity,
         price: item.price
       })),
+      subtotal,
+      shippingCharge,
       captured_at: new Date()
     };
     
     await transaction.save();
-    console.log('Transaction updated successfully');
+    console.log('✅ Transaction updated successfully');
+
+    console.log('🎉 === PAYMENT VERIFICATION COMPLETED SUCCESSFULLY ===');
 
     res.status(201).json({
       success: true,
@@ -646,10 +905,9 @@ exports.verifyPayment = async (req, res) => {
       message: 'Payment verified and order created successfully'
     });
   } catch (error) {
-    console.error('Payment verification error:', {
-      message: error.message,
-      stack: error.stack
-    });
+    console.error('💥 === PAYMENT VERIFICATION ERROR ===');
+    console.error('Error message:', error.message);
+    console.error('Error stack:', error.stack);
     
     // Update transaction status if it exists
     if (req.body?.razorpay_order_id) {
@@ -662,8 +920,9 @@ exports.verifyPayment = async (req, res) => {
             errorDescription: error.message
           }
         );
+        console.log('📝 Transaction status updated to failed');
       } catch (updateError) {
-        console.error('Error updating transaction status:', updateError);
+        console.error('❌ Error updating transaction status:', updateError);
       }
     }
     

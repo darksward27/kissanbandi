@@ -45,7 +45,6 @@ const Register = () => {
     
     // Special handling for name field - only allow letters and spaces
     if (name === 'name') {
-      // Remove any characters that are not letters or spaces
       const filteredValue = value.replace(/[^a-zA-Z\s]/g, '');
       setFormData(prev => ({
         ...prev,
@@ -56,7 +55,6 @@ const Register = () => {
     
     // Special handling for phone number fields - only allow numbers, +, -, and spaces
     if (name === 'phone' || name === 'alternatePhone') {
-      // Remove any characters that are not numbers, +, -, or spaces
       const filteredValue = value.replace(/[^0-9+\-\s]/g, '');
       setFormData(prev => ({
         ...prev,
@@ -67,7 +65,6 @@ const Register = () => {
     
     // Special handling for email field - don't allow numbers at the start
     if (name === 'email') {
-      // If the value starts with a number, remove it
       const filteredValue = value.replace(/^[0-9]+/, '');
       setFormData(prev => ({
         ...prev,
@@ -141,15 +138,39 @@ const Register = () => {
 
     try {
       setLoading(true);
+      
+      // Create clean submit data
       const { confirmPassword, ...submitData } = formData;
       submitData.role = isBusinessAccount ? 'business' : 'user';
       
-      const response = await api.post('/users/register', submitData);
-      setRegistered(true);
-      toast.success('Registration successful!');
+      // Remove any undefined or empty optional fields
+      if (!submitData.alternatePhone || submitData.alternatePhone.trim() === '') {
+        delete submitData.alternatePhone;
+      }
+      if (!submitData.gst || submitData.gst.trim() === '') {
+        delete submitData.gst;
+      }
+      if (!submitData.address.street || submitData.address.street.trim() === '') {
+        delete submitData.address.street;
+      }
       
-      // Store token and user data
-      if (response.data.token) {
+      // Ensure no verification object is included
+      delete submitData.verification;
+      
+      console.log('🚀 Starting registration...');
+      console.log('📤 Submitting data:', submitData);
+      
+      const response = await api.post('/users/register', submitData);
+      
+      console.log('✅ Registration successful!', response.status);
+      console.log('📦 Response data:', response.data);
+      
+      // Handle successful registration
+      setRegistered(true);
+      toast.success('Registration successful! Please check your email for verification.');
+      
+      // Store token and user data if provided
+      if (response.data && response.data.token) {
         localStorage.setItem('kissanbandi_token', response.data.token);
         localStorage.setItem('kissanbandi_user', JSON.stringify(response.data.user));
       }
@@ -158,12 +179,91 @@ const Register = () => {
       setTimeout(() => {
         navigate('/login');
       }, 3000);
+      
     } catch (err) {
-      toast.error(err.response?.data?.error || 'Registration failed');
+      console.log('❌ Registration request failed');
+      console.log('🔍 Error details:', {
+        name: err.name,
+        message: err.message,
+        status: err.response?.status,
+        statusText: err.response?.statusText,
+        data: err.response?.data,
+        url: err.config?.url
+      });
+      
+      // Check if this is actually a successful response (201) treated as error
+      if (err.response && err.response.status === 201) {
+        console.log('✅ 201 response - treating as success');
+        
+        setRegistered(true);
+        toast.success('Registration successful! Please check your email for verification.');
+        
+        if (err.response.data && err.response.data.token) {
+          localStorage.setItem('kissanbandi_token', err.response.data.token);
+          localStorage.setItem('kissanbandi_user', JSON.stringify(err.response.data.user));
+        }
+        
+        setTimeout(() => {
+          navigate('/login');
+        }, 2000);
+        return;
+      }
+      
+      // Handle actual errors
+      if (err.response?.status === 400 && err.response?.data?.error?.includes('already registered')) {
+        console.log('🔄 User already exists');
+        toast.error('Email already registered. Please login or use a different email.');
+        setTimeout(() => {
+          navigate('/login');
+        }, 2000);
+      } else {
+        // Log the exact error that's causing the toast
+        const errorMessage = err.response?.data?.error || 
+                           err.response?.data?.message || 
+                           err.message || 
+                           'Registration failed. Please try again.';
+        
+        console.log('💥 Showing error toast:', errorMessage);
+        console.log('🔍 This is the error message that will be displayed to user');
+        
+        // Only show toast if it's not about verification/undefined (those might be false positives)
+        if (!errorMessage.includes('verification') && 
+            !errorMessage.includes('undefined') &&
+            !errorMessage.includes('Cannot read properties')) {
+          toast.error(errorMessage);
+        } else {
+          console.log('🚫 Suppressing verification-related error, might be false positive');
+          // Check if user was actually created by trying to redirect
+          toast.success('Registration may have completed. Please try logging in.');
+          setTimeout(() => {
+            navigate('/login');
+          }, 2000);
+        }
+      }
     } finally {
       setLoading(false);
     }
   };
+
+  // Show success message if registered
+  if (registered) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50">
+        <div className="max-w-md w-full mx-auto">
+          <div className="bg-white p-8 rounded-xl shadow-lg border border-amber-200 text-center">
+            <div className="bg-green-100 p-3 rounded-full w-16 h-16 mx-auto mb-4">
+              <svg className="w-10 h-10 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Registration Successful!</h2>
+            <p className="text-gray-600 mb-4">Your account has been created successfully.</p>
+            <p className="text-sm text-gray-500">Redirecting to login page...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex">

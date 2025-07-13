@@ -33,6 +33,7 @@ import SeasonalVegetables from '../pages/vegetables/SeasonalVegetables';
 import AllProductsPage from '../pages/home/allProducts';
 import FruitsVeg from '../pages/vegetables/FruitsVeg';
 import RefundPolicy from '../pages/orderRefundPolicy/RefundPolicy';
+import ProductReviewPage from '../pages/vegetables/Feedback/ProductReviewPage';
 
 const AppRoutes = () => {
   return (
@@ -58,11 +59,12 @@ const AppRoutes = () => {
         <Route path="category/fruits/organic-fruits" element={<OrganicFruits />} />
         
         <Route path="category/vegetables/organic-vegetables" element={<OrganicVegetables />} />
-        <Route path="/products" element={<FreshVegetables />} />        
+        <Route path="/products" element={<FreshVegetables />} />       
         <Route path="category/vegetables/seasonal-vegetables" element={<SeasonalVegetables />} />
         <Route path="category/vegetables/root-vegetables" element={<RootVegetables/>} />
         <Route path="category/vegetables/fruits-veg" element={<FruitsVeg />} />
         <Route path="products" element={<AllProductsPage />} />
+        <Route path="/write-review" element ={<ProductReviewPage/>} />
         {/* Protected Routes */}
         <Route
           path="profile"

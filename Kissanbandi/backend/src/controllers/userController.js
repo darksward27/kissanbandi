@@ -59,6 +59,9 @@ exports.register = async (req, res) => {
   }
 };
 
+
+
+
 // Login user
 exports.login = async (req, res) => {
   try {
@@ -231,30 +234,208 @@ exports.verifyEmail = async (req, res) => {
 };
 
 // Request password reset
+const { sendPasswordResetEmail } = require('../utils/email');
+
 exports.forgotPassword = async (req, res) => {
   try {
-    const user = await User.findOne({ email: req.body.email });
-    if (!user) {
-      return res.status(404).json({ error: 'No user found with this email' });
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ 
+        success: false,
+        error: 'Email is required' 
+      });
     }
 
+    // Find user by email
+    const user = await User.findOne({ email: email.toLowerCase() });
+    if (!user) {
+      return res.status(404).json({ 
+        success: false,
+        error: 'No user found with this email address' 
+      });
+    }
+
+    // Generate reset token
     const resetToken = user.generatePasswordResetToken();
+    await user.save({ validateBeforeSave: false });
+
+    try {
+      // Send password reset email using utility function
+      await sendPasswordResetEmail(user, resetToken);
+
+      res.status(200).json({
+        success: true,
+        message: 'Password reset link sent to your email'
+      });
+
+    } catch (emailError) {
+      console.error('Email sending failed:', emailError);
+      
+      // Reset the token fields if email fails
+      user.passwordResetToken = undefined;
+      user.passwordResetExpires = undefined;
+      await user.save({ validateBeforeSave: false });
+
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to send email. Please try again later.'
+      });
+    }
+
+  } catch (error) {
+    console.error('Forgot password error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error'
+    });
+  }
+};
+
+// Reset password
+exports.resetPassword = async (req, res) => {
+  try {
+    const { token } = req.params;
+    const { password, confirmPassword } = req.body;
+
+    // Validate input
+    if (!password || !confirmPassword) {
+      return res.status(400).json({
+        success: false,
+        error: 'Password and confirm password are required'
+      });
+    }
+
+    if (password !== confirmPassword) {
+      return res.status(400).json({
+        success: false,
+        error: 'Passwords do not match'
+      });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({
+        success: false,
+        error: 'Password must be at least 6 characters long'
+      });
+    }
+
+    // Hash the token and find user
+    const hashedToken = crypto
+      .createHash('sha256')
+      .update(token)
+      .digest('hex');
+
+    const user = await User.findOne({
+      passwordResetToken: hashedToken,
+      passwordResetExpires: { $gt: Date.now() }
+    });
+
+    if (!user) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid or expired reset token'
+      });
+    }
+
+    // Set new password
+    user.password = password;
+    user.passwordResetToken = undefined;
+    user.passwordResetExpires = undefined;
     await user.save();
 
-    const resetURL = `${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
-    const emailTemplate = emailTemplates.passwordReset(user.name, resetURL);
-    
-    await sendEmail({
-      email: user.email,
-      subject: emailTemplate.subject,
-      html: emailTemplate.html
+    // Send confirmation email
+    try {
+      const confirmationTemplate = {
+        subject: 'Password Successfully Changed',
+        html: `
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Password Changed</title>
+            <style>
+              body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }
+              .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+              .header { 
+                background: linear-gradient(135deg, #10b981, #059669); 
+                color: white; 
+                padding: 30px; 
+                text-align: center; 
+                border-radius: 10px 10px 0 0; 
+              }
+              .content { 
+                background: #f9fafb; 
+                padding: 30px; 
+                border-radius: 0 0 10px 10px; 
+                border: 1px solid #e5e7eb;
+              }
+              .success { 
+                background: #d1fae5; 
+                border: 1px solid #a7f3d0; 
+                padding: 15px; 
+                border-radius: 8px; 
+                margin: 20px 0;
+                color: #065f46;
+              }
+              .footer { 
+                text-align: center; 
+                margin-top: 30px; 
+                color: #6b7280; 
+                font-size: 14px; 
+              }
+            </style>
+          </head>
+          <body>
+            <div class="container">
+              <div class="header">
+                <h1>✅ Password Changed Successfully</h1>
+              </div>
+              <div class="content">
+                <h2>Hello ${user.name},</h2>
+                
+                <div class="success">
+                  <strong>✅ Success!</strong> Your password has been successfully changed.
+                </div>
+                
+                <p>Your account password was successfully updated on ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}.</p>
+                
+                <p>If you did not make this change, please contact our support team immediately.</p>
+                
+                <p>For security reasons, you may need to log in again with your new password.</p>
+              </div>
+              <div class="footer">
+                <p>Best regards,<br>
+                <strong>${process.env.APP_NAME || 'Your App'} Team</strong></p>
+              </div>
+            </div>
+          </body>
+          </html>
+        `
+      };
+
+      await sendEmail({
+        email: user.email,
+        subject: confirmationTemplate.subject,
+        html: confirmationTemplate.html
+      });
+    } catch (emailError) {
+      console.error('Confirmation email failed:', emailError);
+      // Don't fail the request if confirmation email fails
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Password reset successful'
     });
 
-    res.json({
-      message: 'Password reset link sent to email'
-    });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('Reset password error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error'
+    });
   }
 };
 
@@ -681,3 +862,4 @@ exports.updateCustomerProfile = async (req, res) => {
     res.status(500).json({ error: 'Failed to update profile' });
   }
 }; 
+

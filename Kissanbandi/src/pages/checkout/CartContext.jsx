@@ -1,31 +1,50 @@
 import React, { createContext, useContext, useReducer, useEffect, useState } from 'react';
-import  {useAuth}  from './AuthProvider';
+import { useAuth } from './AuthProvider';
+import toast from 'react-hot-toast';
+
 const CartContext = createContext();
 
 const cartReducer = (state, action) => {
   switch (action.type) {
     case 'ADD_TO_CART':
-       console.log("Adding to cart:", action.payload);
-  const existingItem = state.items.find(item =>
-  (item.id || item._id) === action.payload.id &&
-  item.size === action.payload.size &&
-  item.color === action.payload.color
-);
-      if (existingItem) {
-        return {
-          ...state,
-      items: state.items.map(item =>
-        (item.id || item._id) === action.payload.id &&
+      console.log("Adding to cart:", action.payload);
+      
+      const existingItem = state.items.find(item =>
+        (item.id || item._id) === (action.payload.id || action.payload._id) &&
         item.size === action.payload.size &&
         item.color === action.payload.color
-          ? { ...item, quantity: item.quantity + 1 }
-          : item
-      ),
-        };
+      );
+
+      if (existingItem) {
+        // Check stock limit before incrementing
+        const maxQty = existingItem.stock ?? Infinity;
+        const newQuantity = existingItem.quantity + (action.payload.quantity || 1);
+        
+        if (newQuantity <= maxQty) {
+          return {
+            ...state,
+            items: state.items.map(item =>
+              (item.id || item._id) === (action.payload.id || action.payload._id) &&
+              item.size === action.payload.size &&
+              item.color === action.payload.color
+                ? { ...item, quantity: newQuantity }
+                : item
+            ),
+          };
+        } else {
+          // Show toast for stock limit exceeded
+          toast.error(`Only ${maxQty} items available in stock`);
+          return state;
+        }
       }
+      
+      // New item - add to cart with specified quantity or default to 1
       return {
         ...state,
-        items: [...state.items, { ...action.payload, quantity: 1 }],
+        items: [...state.items, { 
+          ...action.payload, 
+          quantity: action.payload.quantity || 1 
+        }],
       };
 
     case 'INIT_CART':
@@ -34,32 +53,52 @@ const cartReducer = (state, action) => {
         items: action.payload,
       };
 
-      case 'REMOVE_FROM_CART':
-        if (
-          !action.payload ||
-          typeof action.payload !== 'object' ||
-          !('id' in action.payload)
-        ) {
-          console.error("Invalid REMOVE_FROM_CART payload:", action.payload);
-          return state;
-        }
+    case 'REMOVE_FROM_CART':
+      if (
+        !action.payload ||
+        typeof action.payload !== 'object' ||
+        !('id' in action.payload)
+      ) {
+        console.error("Invalid REMOVE_FROM_CART payload:", action.payload);
+        return state;
+      }
 
-        return {
-          ...state,
-          items: state.items.filter(item =>
-            !(
-              (item.id||item._id) === action.payload.id &&
-              item.size === action.payload.size &&
-              item.color === action.payload.color
-            )
-          ),
-        };
+      return {
+        ...state,
+        items: state.items.filter(item =>
+          !(
+            (item.id || item._id) === action.payload.id &&
+            item.size === action.payload.size &&
+            item.color === action.payload.color
+          )
+        ),
+      };
 
     case 'UPDATE_QUANTITY':
+      // Validate quantity before updating
+      const targetItem = state.items.find(item =>
+        (item.id || item._id) === action.payload.id &&
+        item.size === action.payload.size &&
+        item.color === action.payload.color
+      );
+
+      if (targetItem) {
+        const maxQty = targetItem.stock ?? Infinity;
+        
+        if (action.payload.quantity > maxQty) {
+          toast.error(`Only ${maxQty} items available in stock`);
+          return state;
+        }
+        
+        if (action.payload.quantity < 1) {
+          return state;
+        }
+      }
+
       return {
         ...state,
         items: state.items.map(item =>
-          (item.id || item._id)=== action.payload.id &&
+          (item.id || item._id) === action.payload.id &&
           item.size === action.payload.size &&
           item.color === action.payload.color
             ? { ...item, quantity: action.payload.quantity }
@@ -93,15 +132,15 @@ export const CartProvider = ({ children }) => {
   const loading = auth?.loading;
   const userId = auth?.user?._id || 'guest';
 
-const [state, dispatch] = useReducer(
-  cartReducer,
-  undefined,
-  () => getInitialCart(userId)
-);
+  const [state, dispatch] = useReducer(
+    cartReducer,
+    undefined,
+    () => getInitialCart(userId)
+  );
+  
   const [initialized, setInitialized] = useState(false);
-  // Re-initialize cart when userId changes
 
-  // ✅ Load cart when auth or userId changes
+  // Load cart when auth or userId changes
   useEffect(() => {
     if (!loading) {
       try {
@@ -109,15 +148,17 @@ const [state, dispatch] = useReducer(
         const parsed = storedCart ? JSON.parse(storedCart) : { items: [] };
         console.log("Loaded cart for:", userId, parsed);
         dispatch({ type: 'INIT_CART', payload: parsed.items });
+        setInitialized(true);
       } catch (error) {
         console.error("Error loading cart:", error);
+        setInitialized(true);
       }
     }
   }, [userId, loading]);
 
-  // ✅ Save cart on change
+  // Save cart on change (only after initialization)
   useEffect(() => {
-    if (!loading) {
+    if (!loading && initialized) {
       try {
         localStorage.setItem(`cart_${userId}`, JSON.stringify({ items: state.items }));
         console.log("Saved cart for:", userId, state.items);
@@ -125,7 +166,7 @@ const [state, dispatch] = useReducer(
         console.error("Error saving cart:", error);
       }
     }
-  }, [state.items, userId, loading]);
+  }, [state.items, userId, loading, initialized]);
 
   if (loading) return <div>Loading cart...</div>;
 
