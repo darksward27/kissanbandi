@@ -30,10 +30,10 @@ const ProductReviewPage = () => {
     const nodeEnv = import.meta.env.VITE_NODE_ENV;
     
     if (nodeEnv === 'production') {
-      return 'https://bogat.onrender.com/api';
+      return 'http://localhost:5000/api';
     }
     
-    return apiUrl || 'https://bogat.onrender.com/api';
+    return apiUrl || 'http://localhost:5000/api';
   };
 
   // Redirect to login if not authenticated

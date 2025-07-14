@@ -97,7 +97,7 @@ const Login = () => {
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="mt-1 appearance-none block w-full px-3 py-2 border border-amber-200 rounded-md shadow-sm placeholder-black focus:outline-none focus:ring-amber-500 focus:border-amber-500 sm:text-sm hover:border-amber-300 transition-colors duration-200"
+                    className="mt-1 appearance-none block w-full px-3 py-2 border border-amber-200 rounded-md shadow-sm placeholder-gray-600 focus:outline-none focus:ring-amber-500 focus:border-amber-500 sm:text-sm hover:border-amber-300 transition-colors duration-200"
                     placeholder="Enter your email"
                   />
                 </div>
@@ -112,7 +112,7 @@ const Login = () => {
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="mt-1 appearance-none block w-full px-3 py-2 border border-amber-200 rounded-md shadow-sm placeholder-black focus:outline-none focus:ring-amber-500 focus:border-amber-500 sm:text-sm pr-10 hover:border-amber-300 transition-colors duration-200"
+                    className="mt-1 appearance-none block w-full px-3 py-2 border border-amber-200 rounded-md shadow-sm placeholder-gray-600 focus:outline-none focus:ring-amber-500 focus:border-amber-500 sm:text-sm pr-10 hover:border-amber-300 transition-colors duration-200"
                     placeholder="Enter your password"
                   />
                   <button

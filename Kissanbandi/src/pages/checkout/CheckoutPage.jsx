@@ -437,9 +437,6 @@ const CheckoutPage = () => {
                         <div className="bg-gradient-to-r from-amber-700 to-orange-700 bg-clip-text text-transparent font-bold text-lg">
                           ₹{item.price}/{item.unit}
                         </div>
-                        <div className="text-sm text-gray-600 mt-1">
-                          GST: ₹{((item.price * item.quantity * GST_RATES.CGST * 2) / 100).toFixed(2)}
-                        </div>
                       </div>
 
                       <div className="flex items-center space-x-6">

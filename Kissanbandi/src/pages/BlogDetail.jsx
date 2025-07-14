@@ -32,7 +32,7 @@ const BlogDetail = () => {
   const [showShareMenu, setShowShareMenu] = useState(false);
 
   // API Base URL
-  const API_BASE_URL =  'https://bogat.onrender.com/api';
+  const API_BASE_URL =  'http://localhost:5000/api';
 
   // Fetch blog details
   useEffect(() => {
@@ -104,20 +104,20 @@ const BlogDetail = () => {
     // If it's a local file path with full system path, extract filename
     if (imagePath.includes('uploads/blog/') || imagePath.includes('uploads\\blog\\')) {
       const filename = imagePath.split(/[/\\]/).pop(); // Handle both / and \ separators
-      const imageUrl = `https://bogat.onrender.com/uploads/blog/${filename}`;
+      const imageUrl = `http://localhost:5000/uploads/blog/${filename}`;
       console.log('Converted image URL:', imageUrl); // Debug log
       return imageUrl;
     }
     
     // If it's just a filename, construct full URL
     if (!imagePath.includes('/') && !imagePath.includes('\\')) {
-      const imageUrl = `https://bogat.onrender.com/uploads/blog/${imagePath}`;
+      const imageUrl = `http://localhost:5000/uploads/blog/${imagePath}`;
       console.log('Filename to URL:', imageUrl); // Debug log
       return imageUrl;
     }
     
     // Default case - assume it's a relative path
-    const imageUrl = `https://bogat.onrender.com/${imagePath}`;
+    const imageUrl = `http://localhost:5000/${imagePath}`;
     console.log('Default case URL:', imageUrl); // Debug log
     return imageUrl;
   };
@@ -233,7 +233,7 @@ const BlogDetail = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 flex items-center justify-center pt-20">
         <div className="text-center">
           <Loader className="w-12 h-12 text-amber-600 animate-spin mx-auto mb-4" />
           <p className="text-amber-800 text-lg font-medium">Loading article...</p>
@@ -244,7 +244,7 @@ const BlogDetail = () => {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 flex items-center justify-center pt-20">
         <div className="text-center max-w-md mx-auto p-8">
           <div className="bg-red-50 border border-red-200 rounded-xl p-6">
             <h2 className="text-xl font-bold text-red-800 mb-2">Oops! Something went wrong</h2>
@@ -263,7 +263,7 @@ const BlogDetail = () => {
 
   if (!blog) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 flex items-center justify-center pt-20">
         <div className="text-center">
           <h2 className="text-2xl font-bold text-amber-900 mb-4">Blog not found</h2>
           <button
@@ -278,22 +278,20 @@ const BlogDetail = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50">
-      {/* Header with Back Button */}
-      <div className="bg-white/80 backdrop-blur-sm border-b border-amber-200 sticky top-0 z-50">
-        <div className="container mx-auto px-4 py-4">
+    <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 pt-20">
+      {/* Article Content */}
+      <article className="container mx-auto px-4 py-8 max-w-4xl">
+        {/* Back Button - Now inline with content */}
+        <div className="mb-8">
           <button
             onClick={() => navigate('/blogs')}
-            className="flex items-center space-x-2 text-amber-600 hover:text-amber-800 transition-colors"
+            className="flex items-center space-x-2 text-amber-600 hover:text-amber-800 transition-colors bg-white/60 backdrop-blur-sm px-4 py-2 rounded-lg border border-amber-200 hover:border-amber-300 shadow-sm hover:shadow-md"
           >
             <ArrowLeft className="w-4 h-4" />
             <span className="font-medium">Back to Blog</span>
           </button>
         </div>
-      </div>
 
-      {/* Article Content */}
-      <article className="container mx-auto px-4 py-8 max-w-4xl">
         {/* Hero Image */}
         <div className="relative h-64 md:h-96 rounded-2xl overflow-hidden mb-8 shadow-2xl">
           <img
@@ -506,13 +504,7 @@ const BlogDetail = () => {
         </div>
       </section>
 
-      {/* Back to Top Button */}
-      <button
-        onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-        className="fixed bottom-8 right-8 bg-amber-600 text-white p-3 rounded-full shadow-lg hover:bg-amber-700 transition-colors z-50"
-      >
-        <ChevronRight className="w-5 h-5 transform -rotate-90" />
-      </button>
+
     </div>
   );
 };

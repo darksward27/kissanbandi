@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useAuth } from '../checkout/AuthProvider';
 import { toast } from 'react-hot-toast';
-import { Package, Clock, MapPin, IndianRupee, Loader, Search, AlertCircle, RefreshCw, Filter, Calendar, CheckCircle, Download } from 'lucide-react';
+import { Package, Clock, MapPin, IndianRupee, Loader, Search, AlertCircle, RefreshCw, Filter, Calendar, CheckCircle, Download, ChevronDown } from 'lucide-react';
 import api from '../../services/api';
 
 // Constants
@@ -432,7 +432,7 @@ const Orders = () => {
                         <!-- Invoice Header -->
                         <div class="invoice-header">
                             <div class="company-info">
-                                <h1>BOGAT</h1>
+                                <h1>SRI BOGAT</h1>
                                 <p>Premium Quality Products</p>
                                 <p class="gst-number">GSTIN: 27AABCU9603R1ZM</p>
                             </div>
@@ -722,11 +722,11 @@ const Orders = () => {
                                     <Search className="w-5 h-5 text-amber-400 absolute left-4 top-4 group-focus-within:text-amber-600 transition-colors" />
                                 </div>
                                 
-                                <div className="relative">
+                                <div className="relative group">
                                     <select
                                         value={filter}
                                         onChange={(e) => setFilter(e.target.value)}
-                                        className="appearance-none pl-10 pr-8 py-3 border-2 border-amber-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 bg-white/80 backdrop-blur-sm transition-all duration-300 hover:border-amber-300"
+                                        className="appearance-none pl-10 pr-10 py-3 border-2 border-amber-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 bg-white/80 backdrop-blur-sm transition-all duration-300 hover:border-amber-300 cursor-pointer"
                                     >
                                         <option value="all">All Orders</option>
                                         <option value="pending">Pending</option>
@@ -735,7 +735,8 @@ const Orders = () => {
                                         <option value="delivered">Delivered</option>
                                         <option value="cancelled">Cancelled</option>
                                     </select>
-                                    <Filter className="w-5 h-5 text-amber-400 absolute left-3 top-4 pointer-events-none" />
+                                    <Filter className="w-5 h-5 text-amber-400 absolute left-3 top-4 pointer-events-none group-focus-within:text-amber-600 transition-colors" />
+                                    <ChevronDown className="w-5 h-5 text-amber-400 absolute right-3 top-4 pointer-events-none group-focus-within:text-amber-600 transition-colors" />
                                 </div>
                                 
                                 <button

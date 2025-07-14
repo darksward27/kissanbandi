@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   Star, User, ThumbsUp, ShoppingBag, CheckCircle, Filter, SortAsc, 
-  Loader2, AlertCircle, Eye, ChevronLeft, ChevronRight, X, Edit3
+  Loader2, AlertCircle, Eye, ChevronLeft, ChevronRight, X, Edit3, ChevronDown
 } from 'lucide-react';
 
 const VerifiedReviewsSection = ({ productId = null, showProductInfo = false }) => {
@@ -245,20 +245,23 @@ const VerifiedReviewsSection = ({ productId = null, showProductInfo = false }) =
           </div>
           
           <div className="flex items-center gap-2">
-            <Filter className="w-5 h-5 text-amber-600" />
             <label className="text-sm font-medium text-gray-700">Filter:</label>
-            <select
-              value={filterRating}
-              onChange={(e) => setFilterRating(e.target.value)}
-              className="px-3 py-2 border border-amber-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 bg-white"
-            >
-              <option value="all">All Ratings</option>
-              <option value="5">5 Stars</option>
-              <option value="4">4 Stars</option>
-              <option value="3">3 Stars</option>
-              <option value="2">2 Stars</option>
-              <option value="1">1 Star</option>
-            </select>
+            <div className="relative">
+              <select
+                value={filterRating}
+                onChange={(e) => setFilterRating(e.target.value)}
+                className="appearance-none pl-10 pr-8 py-2 border border-amber-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 bg-white cursor-pointer"
+              >
+                <option value="all">All Ratings</option>
+                <option value="5">5 Stars</option>
+                <option value="4">4 Stars</option>
+                <option value="3">3 Stars</option>
+                <option value="2">2 Stars</option>
+                <option value="1">1 Star</option>
+              </select>
+              <Filter className="w-4 h-4 text-amber-600 absolute left-3 top-3 pointer-events-none" />
+              <ChevronDown className="w-4 h-4 text-amber-600 absolute right-2 top-3 pointer-events-none" />
+            </div>
           </div>
         </div>
       </div>
