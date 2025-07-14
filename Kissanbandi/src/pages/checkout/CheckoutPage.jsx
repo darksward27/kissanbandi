@@ -361,26 +361,26 @@ const CheckoutPage = () => {
   if (state.items.length === 0) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50">
-        <div className="container mx-auto px-4 py-8 pt-32">
+        <div className="container mx-auto px-4 py-6 sm:py-8 pt-24 sm:pt-32">
           <div className="max-w-md mx-auto text-center">
-            <div className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-xl border border-amber-200 p-8 transform hover:scale-105 transition-all duration-500">
-              <div className="text-amber-300 mb-6 animate-bounce">
-                <ShoppingBag className="w-24 h-24 mx-auto" />
+            <div className="bg-white/80 backdrop-blur-sm rounded-2xl sm:rounded-3xl shadow-xl border border-amber-200 p-6 sm:p-8 transform hover:scale-105 transition-all duration-500">
+              <div className="text-amber-300 mb-4 sm:mb-6 animate-bounce">
+                <ShoppingBag className="w-16 h-16 sm:w-24 sm:h-24 mx-auto" />
               </div>
-              <h2 className="text-3xl font-bold bg-gradient-to-r from-amber-700 to-orange-700 bg-clip-text text-transparent mb-4">
+              <h2 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-amber-700 to-orange-700 bg-clip-text text-transparent mb-3 sm:mb-4">
                 Your cart is empty
               </h2>
-              <p className="text-gray-600 mb-8 leading-relaxed">
+              <p className="text-gray-600 mb-6 sm:mb-8 leading-relaxed text-sm sm:text-base">
                 Looks like you haven't added any items to your cart yet.
                 Start shopping to add items to your cart.
               </p>
               <button
                 onClick={() => navigate('/products')}
-                className="group bg-gradient-to-r from-amber-600 to-orange-700 text-white px-8 py-4 rounded-2xl font-medium hover:from-amber-700 hover:to-orange-800 transition-all duration-300 inline-flex items-center transform hover:scale-105 hover:shadow-lg"
+                className="group bg-gradient-to-r from-amber-600 to-orange-700 text-white px-6 sm:px-8 py-3 sm:py-4 rounded-xl sm:rounded-2xl font-medium hover:from-amber-700 hover:to-orange-800 transition-all duration-300 inline-flex items-center transform hover:scale-105 hover:shadow-lg text-sm sm:text-base"
               >
-                <ShoppingBag className="w-5 h-5 mr-2 group-hover:animate-pulse" />
+                <ShoppingBag className="w-4 h-4 sm:w-5 sm:h-5 mr-2 group-hover:animate-pulse" />
                 Continue Shopping
-                <ChevronRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
+                <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5 ml-2 group-hover:translate-x-1 transition-transform" />
               </button>
             </div>
           </div>
@@ -392,67 +392,67 @@ const CheckoutPage = () => {
   // Regular checkout view with items
   return (
     <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50">
-      <div className="container mx-auto px-4 py-8 pt-32">
-        <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-amber-700 to-orange-700 bg-clip-text text-transparent mb-2">
+      <div className="container mx-auto px-4 py-6 sm:py-8 pt-24 sm:pt-32">
+        <div className="text-center mb-8 sm:mb-12">
+          <h1 className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-amber-700 to-orange-700 bg-clip-text text-transparent mb-2">
             Checkout
           </h1>
-          <div className="w-24 h-1 bg-gradient-to-r from-amber-600 to-orange-700 mx-auto rounded-full"></div>
+          <div className="w-16 sm:w-24 h-1 bg-gradient-to-r from-amber-600 to-orange-700 mx-auto rounded-full"></div>
         </div>
         
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
           {/* Cart Items */}
           <div className="lg:col-span-2">
-            <div className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-xl border border-amber-200 p-8 hover:shadow-2xl transition-all duration-500">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold text-gray-800">
+            <div className="bg-white/80 backdrop-blur-sm rounded-2xl sm:rounded-3xl shadow-xl border border-amber-200 p-4 sm:p-8 hover:shadow-2xl transition-all duration-500">
+              <div className="flex items-center justify-between mb-4 sm:mb-6">
+                <h2 className="text-xl sm:text-2xl font-bold text-gray-800">
                   Cart Items
                 </h2>
-                <div className="bg-gradient-to-r from-amber-100 to-orange-100 text-amber-700 px-4 py-2 rounded-full text-sm font-semibold">
+                <div className="bg-gradient-to-r from-amber-100 to-orange-100 text-amber-700 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-semibold">
                   {state.items.length} {state.items.length === 1 ? 'item' : 'items'}
                 </div>
               </div>
               
-              <div className="space-y-4">
+              <div className="space-y-3 sm:space-y-4">
                 {state.items.map((item, index) => (
                   <div 
                     key={item._id} 
-                    className={`group bg-gradient-to-r from-white to-amber-50/50 rounded-2xl p-6 border border-amber-200 hover:border-amber-300 hover:shadow-lg transition-all duration-300 transform hover:scale-[1.02] ${itemsLoaded ? 'animate-fade-in-up' : 'opacity-0'}`}
+                    className={`group bg-gradient-to-r from-white to-amber-50/50 rounded-xl sm:rounded-2xl p-4 sm:p-6 border border-amber-200 hover:border-amber-300 hover:shadow-lg transition-all duration-300 transform hover:scale-[1.02] ${itemsLoaded ? 'animate-fade-in-up' : 'opacity-0'}`}
                     style={{ animationDelay: `${index * 100}ms` }}
                   >
-                    <div className="flex items-center">
-                      <div className="relative overflow-hidden rounded-xl">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-4 sm:space-y-0">
+                      <div className="relative overflow-hidden rounded-lg sm:rounded-xl w-full sm:w-auto">
                         <img
                           src={item.image}
                           alt={item.name}
-                          className="w-24 h-24 object-cover transition-transform duration-300 group-hover:scale-110"
+                          className="w-full sm:w-20 md:w-24 h-48 sm:h-20 md:h-24 object-cover transition-transform duration-300 group-hover:scale-110"
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                       </div>
                       
-                      <div className="ml-6 flex-1">
-                        <h3 className="font-bold text-gray-800 text-lg group-hover:text-amber-700 transition-colors">
+                      <div className="sm:ml-4 md:ml-6 flex-1 w-full sm:w-auto">
+                        <h3 className="font-bold text-gray-800 text-base sm:text-lg group-hover:text-amber-700 transition-colors">
                           {item.name}
                         </h3>
-                        <div className="bg-gradient-to-r from-amber-700 to-orange-700 bg-clip-text text-transparent font-bold text-lg">
+                        <div className="bg-gradient-to-r from-amber-700 to-orange-700 bg-clip-text text-transparent font-bold text-base sm:text-lg">
                           ₹{item.price}/{item.unit}
                         </div>
                       </div>
 
-                      <div className="flex items-center space-x-6">
-                        <div className="flex items-center bg-white rounded-xl border-2 border-amber-200 shadow-sm hover:shadow-md transition-all duration-200">
+                      <div className="flex items-center justify-between w-full sm:w-auto sm:space-x-4 md:space-x-6">
+                        <div className="flex items-center bg-white rounded-lg sm:rounded-xl border-2 border-amber-200 shadow-sm hover:shadow-md transition-all duration-200">
                           <button
                             onClick={() => updateQuantity(item, item.quantity - 1)}
-                            className="px-4 py-2 text-amber-600 hover:bg-amber-50 rounded-l-xl transition-colors duration-200 font-bold text-lg"
+                            className="px-3 sm:px-4 py-2 text-amber-600 hover:bg-amber-50 rounded-l-lg sm:rounded-l-xl transition-colors duration-200 font-bold text-base sm:text-lg"
                           >
                             −
                           </button>
-                          <span className="px-4 py-2 border-x-2 border-amber-200 font-bold text-gray-700 min-w-[3rem] text-center">
+                          <span className="px-3 sm:px-4 py-2 border-x-2 border-amber-200 font-bold text-gray-700 min-w-[2.5rem] sm:min-w-[3rem] text-center text-sm sm:text-base">
                             {item.quantity}
                           </span>
                           <button
                             onClick={() => updateQuantity(item, item.quantity + 1)}
-                            className="px-4 py-2 text-amber-600 hover:bg-amber-50 rounded-r-xl transition-colors duration-200 font-bold text-lg"
+                            className="px-3 sm:px-4 py-2 text-amber-600 hover:bg-amber-50 rounded-r-lg sm:rounded-r-xl transition-colors duration-200 font-bold text-base sm:text-lg"
                             disabled={item.quantity >= item.stock}
                           >
                             +
@@ -461,9 +461,9 @@ const CheckoutPage = () => {
                         
                         <button
                           onClick={() => removeItem(item)}
-                          className="p-3 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all duration-200 transform hover:scale-110"
+                          className="p-2 sm:p-3 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg sm:rounded-xl transition-all duration-200 transform hover:scale-110"
                         >
-                          <Trash2 className="w-5 h-5" />
+                          <Trash2 className="w-4 h-4 sm:w-5 sm:h-5" />
                         </button>
                       </div>
                     </div>
@@ -475,22 +475,22 @@ const CheckoutPage = () => {
 
           {/* Order Summary */}
           <div className="lg:col-span-1">
-            <div className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-xl border border-amber-200 p-8 sticky top-24 hover:shadow-2xl transition-all duration-500">
-              <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center">
-                <CheckCircle className="w-6 h-6 text-amber-600 mr-2" />
+            <div className="bg-white/80 backdrop-blur-sm rounded-2xl sm:rounded-3xl shadow-xl border border-amber-200 p-4 sm:p-8 sticky top-20 sm:top-24 hover:shadow-2xl transition-all duration-500">
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-800 mb-4 sm:mb-6 flex items-center">
+                <CheckCircle className="w-5 h-5 sm:w-6 sm:h-6 text-amber-600 mr-2" />
                 Order Summary
               </h2>
               
-              <div className="space-y-4 mb-8">
-                <div className="flex justify-between text-gray-600 text-lg">
+              <div className="space-y-3 sm:space-y-4 mb-6 sm:mb-8">
+                <div className="flex justify-between text-gray-600 text-base sm:text-lg">
                   <span>Subtotal</span>
                   <span className="font-semibold">₹{subtotal.toFixed(2)}</span>
                 </div>
                 
                 {/* GST Breakdown */}
-                <div className="bg-amber-50/50 rounded-xl p-4 border border-amber-200">
+                <div className="bg-amber-50/50 rounded-lg sm:rounded-xl p-3 sm:p-4 border border-amber-200">
                   <div className="text-sm font-medium text-gray-700 mb-2">GST Breakdown:</div>
-                  <div className="space-y-1 text-sm">
+                  <div className="space-y-1 text-xs sm:text-sm">
                     <div className="flex justify-between text-gray-600">
                       <span>CGST @ {GST_RATES.CGST}%</span>
                       <span>₹{gstCalculation.cgst.toFixed(2)}</span>
@@ -506,16 +506,16 @@ const CheckoutPage = () => {
                   </div>
                 </div>
                 
-                <div className="flex justify-between text-gray-600 text-lg items-center">
+                <div className="flex justify-between text-gray-600 text-base sm:text-lg items-center">
                   <span className="flex items-center">
-                    <Truck className="w-4 h-4 mr-1" />
+                    <Truck className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
                     Shipping
                   </span>
                   <span className={`font-semibold ${shipping === 0 ? 'text-amber-600' : ''}`}>
                     {shipping === 0 ? 'Free' : `₹${shipping}`}
                   </span>
                 </div>
-                <div className="border-t-2 border-amber-200 pt-4 flex justify-between font-bold text-xl">
+                <div className="border-t-2 border-amber-200 pt-3 sm:pt-4 flex justify-between font-bold text-lg sm:text-xl">
                   <span className="text-gray-800">Total</span>
                   <span className="bg-gradient-to-r from-amber-700 to-orange-700 bg-clip-text text-transparent">
                     ₹{total.toFixed(2)}
@@ -524,32 +524,32 @@ const CheckoutPage = () => {
               </div>
 
               {/* Shipping Address */}
-              <div className="mb-8">
-                <h3 className="font-bold text-gray-800 mb-4 flex items-center">
-                  <MapPin className="w-5 h-5 text-amber-600 mr-2" />
+              <div className="mb-6 sm:mb-8">
+                <h3 className="font-bold text-gray-800 mb-3 sm:mb-4 flex items-center text-base sm:text-lg">
+                  <MapPin className="w-4 h-4 sm:w-5 sm:h-5 text-amber-600 mr-2" />
                   Shipping Address
                 </h3>
                 
                 <div className="space-y-3">
                   {/* Registered Address Option */}
                   {user?.address && (
-                    <label className="group flex items-start space-x-3 p-4 rounded-xl border-2 border-amber-200 hover:border-amber-300 cursor-pointer transition-all duration-200 hover:bg-amber-50/50">
+                    <label className="group flex items-start space-x-3 p-3 sm:p-4 rounded-lg sm:rounded-xl border-2 border-amber-200 hover:border-amber-300 cursor-pointer transition-all duration-200 hover:bg-amber-50/50">
                       <input
                         type="radio"
                         name="address"
                         value="registered"
                         checked={useRegisteredAddress}
                         onChange={() => setUseRegisteredAddress(true)}
-                        className="text-amber-600 focus:ring-amber-500 w-5 h-5 mt-1"
+                        className="text-amber-600 focus:ring-amber-500 w-4 h-4 sm:w-5 sm:h-5 mt-1"
                       />
                       <div className="flex-1">
                         <div className="flex items-center mb-2">
-                          <MapPin className="w-4 h-4 text-amber-600 mr-2" />
-                          <span className="font-medium text-gray-700 group-hover:text-amber-700">
+                          <MapPin className="w-3 h-3 sm:w-4 sm:h-4 text-amber-600 mr-2" />
+                          <span className="font-medium text-gray-700 group-hover:text-amber-700 text-sm sm:text-base">
                             Registered Address
                           </span>
                         </div>
-                        <div className="text-sm text-gray-600 leading-relaxed">
+                        <div className="text-xs sm:text-sm text-gray-600 leading-relaxed">
                           {formatAddress(user.address)}
                         </div>
                       </div>
@@ -557,19 +557,19 @@ const CheckoutPage = () => {
                   )}
 
                   {/* Custom Address Option */}
-                  <label className="group flex items-start space-x-3 p-4 rounded-xl border-2 border-amber-200 hover:border-amber-300 cursor-pointer transition-all duration-200 hover:bg-amber-50/50">
+                  <label className="group flex items-start space-x-3 p-3 sm:p-4 rounded-lg sm:rounded-xl border-2 border-amber-200 hover:border-amber-300 cursor-pointer transition-all duration-200 hover:bg-amber-50/50">
                     <input
                       type="radio"
                       name="address"
                       value="custom"
                       checked={!useRegisteredAddress}
                       onChange={() => setUseRegisteredAddress(false)}
-                      className="text-amber-600 focus:ring-amber-500 w-5 h-5 mt-1"
+                      className="text-amber-600 focus:ring-amber-500 w-4 h-4 sm:w-5 sm:h-5 mt-1"
                     />
                     <div className="flex-1">
                       <div className="flex items-center mb-2">
-                        <Plus className="w-4 h-4 text-amber-600 mr-2" />
-                        <span className="font-medium text-gray-700 group-hover:text-amber-700">
+                        <Plus className="w-3 h-3 sm:w-4 sm:h-4 text-amber-600 mr-2" />
+                        <span className="font-medium text-gray-700 group-hover:text-amber-700 text-sm sm:text-base">
                           Add New Address
                         </span>
                       </div>
@@ -578,24 +578,24 @@ const CheckoutPage = () => {
 
                   {/* Custom Address Form */}
                   {!useRegisteredAddress && (
-                    <div className="space-y-4 p-4 bg-amber-50/50 rounded-xl border border-amber-200">
+                    <div className="space-y-3 sm:space-y-4 p-3 sm:p-4 bg-amber-50/50 rounded-lg sm:rounded-xl border border-amber-200">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-2">
                           Address *
                         </label>
                         <textarea
                           value={customAddress.address}
                           onChange={(e) => handleCustomAddressChange('address', e.target.value)}
                           placeholder="Enter your full address"
-                          className="w-full px-3 py-2 border border-amber-200 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-colors"
+                          className="w-full px-3 py-2 border border-amber-200 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-colors text-sm sm:text-base"
                           rows="3"
                           required
                         />
                       </div>
                       
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                          <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-2">
                             City *
                           </label>
                           <input
@@ -603,13 +603,13 @@ const CheckoutPage = () => {
                             value={customAddress.city}
                             onChange={(e) => handleCustomAddressChange('city', e.target.value)}
                             placeholder="City"
-                            className="w-full px-3 py-2 border border-amber-200 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-colors"
+                            className="w-full px-3 py-2 border border-amber-200 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-colors text-sm sm:text-base"
                             required
                           />
                         </div>
                         
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                          <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-2">
                             State *
                           </label>
                           <input
@@ -617,15 +617,15 @@ const CheckoutPage = () => {
                             value={customAddress.state}
                             onChange={(e) => handleCustomAddressChange('state', e.target.value)}
                             placeholder="State"
-                            className="w-full px-3 py-2 border border-amber-200 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-colors"
+                            className="w-full px-3 py-2 border border-amber-200 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-colors text-sm sm:text-base"
                             required
                           />
                         </div>
                       </div>
                       
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                          <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-2">
                             Pincode *
                           </label>
                           <input
@@ -634,13 +634,13 @@ const CheckoutPage = () => {
                             onChange={(e) => handleCustomAddressChange('pincode', e.target.value)}
                             placeholder="6-digit pincode"
                             maxLength="6"
-                            className="w-full px-3 py-2 border border-amber-200 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-colors"
+                            className="w-full px-3 py-2 border border-amber-200 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-colors text-sm sm:text-base"
                             required
                           />
                         </div>
                         
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                          <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-2">
                             Phone
                           </label>
                           <input
@@ -648,7 +648,7 @@ const CheckoutPage = () => {
                             value={customAddress.phone}
                             onChange={(e) => handleCustomAddressChange('phone', e.target.value)}
                             placeholder="Phone number"
-                            className="w-full px-3 py-2 border border-amber-200 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-colors"
+                            className="w-full px-3 py-2 border border-amber-200 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-colors text-sm sm:text-base"
                           />
                         </div>
                       </div>
@@ -658,24 +658,24 @@ const CheckoutPage = () => {
               </div>
 
               {/* Payment Methods */}
-              <div className="mb-8">
-                <h3 className="font-bold text-gray-800 mb-4 flex items-center">
-                  <CreditCard className="w-5 h-5 text-amber-600 mr-2" />
+              <div className="mb-6 sm:mb-8">
+                <h3 className="font-bold text-gray-800 mb-3 sm:mb-4 flex items-center text-base sm:text-lg">
+                  <CreditCard className="w-4 h-4 sm:w-5 sm:h-5 text-amber-600 mr-2" />
                   Payment Method
                 </h3>
                 <div className="space-y-3">
-                  <label className="group flex items-center space-x-3 p-4 rounded-xl border-2 border-amber-200 hover:border-amber-300 cursor-pointer transition-all duration-200 hover:bg-amber-50/50">
+                  <label className="group flex items-center space-x-3 p-3 sm:p-4 rounded-lg sm:rounded-xl border-2 border-amber-200 hover:border-amber-300 cursor-pointer transition-all duration-200 hover:bg-amber-50/50">
                     <input
                       type="radio"
                       name="payment"
                       value="razorpay"
                       checked={paymentMethod === 'razorpay'}
                       onChange={(e) => setPaymentMethod(e.target.value)}
-                      className="text-amber-600 focus:ring-amber-500 w-5 h-5"
+                      className="text-amber-600 focus:ring-amber-500 w-4 h-4 sm:w-5 sm:h-5"
                     />
                     <div className="flex items-center">
-                      <CreditCard className="w-5 h-5 text-amber-600 mr-2" />
-                      <span className="font-medium text-gray-700 group-hover:text-amber-700">
+                      <CreditCard className="w-4 h-4 sm:w-5 sm:h-5 text-amber-600 mr-2" />
+                      <span className="font-medium text-gray-700 group-hover:text-amber-700 text-sm sm:text-base">
                         Online Payment (RazorPay)
                       </span>
                     </div>
@@ -686,24 +686,24 @@ const CheckoutPage = () => {
               <button 
                 onClick={handleProceedToPayment}
                 disabled={isProcessing}
-                className="group w-full bg-gradient-to-r from-amber-600 to-orange-700 text-white py-4 rounded-2xl font-bold hover:from-amber-700 hover:to-orange-800 transition-all duration-300 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed transform hover:scale-105 hover:shadow-xl flex items-center justify-center text-lg"
+                className="group w-full bg-gradient-to-r from-amber-600 to-orange-700 text-white py-3 sm:py-4 rounded-xl sm:rounded-2xl font-bold hover:from-amber-700 hover:to-orange-800 transition-all duration-300 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed transform hover:scale-105 hover:shadow-xl flex items-center justify-center text-base sm:text-lg"
               >
                 {isProcessing ? (
                   <>
-                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                    <div className="animate-spin rounded-full h-4 w-4 sm:h-5 sm:w-5 border-b-2 border-white mr-2"></div>
                     Processing...
                   </>
                 ) : (
                   <>
                     Proceed to Payment
-                    <ChevronRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
+                    <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5 ml-2 group-hover:translate-x-1 transition-transform" />
                   </>
                 )}
               </button>
 
-              <div className="mt-6 text-center">
-                <div className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-amber-100 to-orange-100 text-amber-700 text-sm font-medium rounded-full">
-                  <Truck className="w-4 h-4 mr-2" />
+              <div className="mt-4 sm:mt-6 text-center">
+                <div className="inline-flex items-center px-3 sm:px-4 py-2 bg-gradient-to-r from-amber-100 to-orange-100 text-amber-700 text-xs sm:text-sm font-medium rounded-full">
+                  <Truck className="w-3 h-3 sm:w-4 sm:h-4 mr-2" />
                   Free delivery on orders above ₹500
                 </div>
               </div>
