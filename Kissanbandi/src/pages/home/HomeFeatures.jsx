@@ -69,7 +69,7 @@ const HomeFeatures = () => {
             className="text-4xl md:text-5xl font-bold mb-4"
             style={{ color: '#823000' }}
           >
-            Why Choose BOGAT?
+            Why Choose SRI BOGAT?
           </h2>
           
           <p 

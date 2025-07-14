@@ -24,6 +24,18 @@ const ProductReviewPage = () => {
   const [imagePreviews, setImagePreviews] = useState([]);
   const [uploadError, setUploadError] = useState('');
 
+  // API URL helper - same as VerifiedReviewsSection
+  const getApiUrl = () => {
+    const apiUrl = import.meta.env.VITE_API_URL;
+    const nodeEnv = import.meta.env.VITE_NODE_ENV;
+    
+    if (nodeEnv === 'production') {
+      return 'https://bogat.onrender.com/api';
+    }
+    
+    return apiUrl || 'http://localhost:5000/api';
+  };
+
   // Redirect to login if not authenticated
   useEffect(() => {
     if (!isAuthenticated) {
@@ -38,14 +50,16 @@ const ProductReviewPage = () => {
            localStorage.getItem('authToken');
   };
 
-  // Fetch products
+  // Fetch products - FIXED API CALL
   useEffect(() => {
     const fetchProducts = async () => {
       try {
         setLoading(true);
         setError(null);
 
+        const API_BASE_URL = getApiUrl();
         const token = getAuthToken();
+        
         const headers = {
           'Content-Type': 'application/json'
         };
@@ -54,7 +68,11 @@ const ProductReviewPage = () => {
           headers['Authorization'] = `Bearer ${token}`;
         }
 
-        const response = await fetch('/api/products', { headers });
+        // FIXED: Use full API URL instead of relative path
+        const endpoint = `${API_BASE_URL}/products`;
+        console.log('🔍 Fetching products from:', endpoint);
+
+        const response = await fetch(endpoint, { headers });
 
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
@@ -62,8 +80,9 @@ const ProductReviewPage = () => {
 
         const data = await response.json();
         setProducts(data.products || data);
+        console.log('✅ Products loaded successfully:', data.products?.length || data.length);
       } catch (err) {
-        console.error('Error fetching products:', err);
+        console.error('💥 Error fetching products:', err);
         setError(err.message);
         // Fallback to dummy data for testing
         setProducts([
@@ -166,6 +185,7 @@ const ProductReviewPage = () => {
     setRating(starValue);
   };
 
+  // FIXED: Submit review with proper API URL
   const handleSubmitReview = async () => {
     if (!selectedProduct || rating === 0 || !reviewText.trim()) {
       alert('Please provide a rating and review text');
@@ -174,6 +194,7 @@ const ProductReviewPage = () => {
 
     setIsSubmitting(true);
     try {
+      const API_BASE_URL = getApiUrl();
       const token = getAuthToken();
 
       if (!token) {
@@ -196,7 +217,11 @@ const ProductReviewPage = () => {
         formData.append('images', file);
       });
 
-      const response = await fetch('/api/reviews', {
+      // FIXED: Use full API URL instead of relative path
+      const endpoint = `${API_BASE_URL}/reviews`;
+      console.log('🔍 Submitting review to:', endpoint);
+
+      const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -211,14 +236,14 @@ const ProductReviewPage = () => {
       }
 
       const result = await response.json();
-      console.log('Review submitted successfully:', result);
+      console.log('✅ Review submitted successfully:', result);
       
       setShowSuccess(true);
       setTimeout(() => {
         closeModal();
       }, 3000);
     } catch (err) {
-      console.error('Submit review error:', err);
+      console.error('💥 Submit review error:', err);
       alert(`Error submitting review: ${err.message}`);
     } finally {
       setIsSubmitting(false);
@@ -276,6 +301,11 @@ const ProductReviewPage = () => {
           {user && (
             <p className="text-amber-600 mt-2">Welcome, {user.name || user.email}!</p>
           )}
+          {/* Debug info */}
+          <div className="mt-2 text-xs text-gray-500">
+            <p>API URL: {getApiUrl()}</p>
+            <p>Environment: {import.meta.env.VITE_NODE_ENV}</p>
+          </div>
         </div>
 
         <div className="bg-white rounded-2xl shadow-xl p-8 border border-amber-100">
@@ -295,6 +325,7 @@ const ProductReviewPage = () => {
                 <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
                 <p className="text-red-600 mb-2">Failed to load products: {error}</p>
                 <p className="text-amber-600 text-sm">Showing sample products for testing</p>
+                <p className="text-xs text-gray-500 mt-2">API: {getApiUrl()}/products</p>
               </div>
             </div>
           ) : products.length === 0 ? (

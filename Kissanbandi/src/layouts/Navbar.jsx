@@ -87,7 +87,7 @@ const Navbar = () => {
                   <div className={`font-bold tracking-wider transition-all duration-300 text-transparent bg-clip-text bg-gradient-to-r from-[#4B2E2B] to-[#dd9941] ${
                     isScrolled ? 'text-lg md:text-xl' : 'text-xl md:text-2xl'
                   }`}>
-                    BOGAT
+                    SRI BOGAT
                   </div>
                 </div>
               </Link>

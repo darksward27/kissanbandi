@@ -17,11 +17,24 @@ const VerifiedReviewsSection = ({ productId = null, showProductInfo = false }) =
   const [imageModalOpen, setImageModalOpen] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
-  // Fetch verified reviews
+  // Fixed API URL handling
+  const getApiUrl = () => {
+    const apiUrl = import.meta.env.VITE_API_URL;
+    const nodeEnv = import.meta.env.VITE_NODE_ENV;
+    
+    if (nodeEnv === 'production') {
+      return 'https://bogat.onrender.com/api';
+    }
+    
+    return apiUrl || 'http://localhost:5000/api';
+  };
+
   const fetchVerifiedReviews = async (page = 1) => {
     try {
       setLoading(true);
       setError(null);
+
+      const API_BASE_URL = getApiUrl();
 
       const params = new URLSearchParams({
         page: page.toString(),
@@ -34,15 +47,21 @@ const VerifiedReviewsSection = ({ productId = null, showProductInfo = false }) =
         params.append('productId', productId);
       }
 
-      // Choose endpoint based on whether we want all verified or product-specific
+      // Build full URL correctly
       const endpoint = productId 
-        ? `/api/reviews/verified/product/${productId}?${params}`
-        : `/api/reviews/verified?${params}`;
+        ? `${API_BASE_URL}/reviews/verified/product/${productId}?${params}`
+        : `${API_BASE_URL}/reviews/verified?${params}`;
+
+      console.log('🔍 Fetching from:', endpoint);
+      console.log('🌍 Environment:', import.meta.env.VITE_NODE_ENV);
+      console.log('🔗 API Base URL:', API_BASE_URL);
 
       const response = await fetch(endpoint);
       
       if (!response.ok) {
-        throw new Error(`Failed to fetch verified reviews: ${response.status}`);
+        const errorText = await response.text();
+        console.log('❌ Error response:', errorText);
+        throw new Error(`Failed to fetch verified reviews: ${response.status} - ${response.statusText}`);
       }
 
       const data = await response.json();
@@ -55,11 +74,12 @@ const VerifiedReviewsSection = ({ productId = null, showProductInfo = false }) =
           setCurrentPage(data.pagination.currentPage);
           setTotalPages(data.pagination.totalPages);
         }
+        console.log('✅ Reviews loaded successfully:', data.reviews?.length || 0);
       } else {
         throw new Error(data.error || 'Failed to fetch verified reviews');
       }
     } catch (err) {
-      console.error('Error fetching verified reviews:', err);
+      console.error('💥 Error fetching verified reviews:', err);
       setError(err.message);
       setReviews([]);
     } finally {
@@ -67,7 +87,16 @@ const VerifiedReviewsSection = ({ productId = null, showProductInfo = false }) =
     }
   };
 
-  // Image modal functions
+  useEffect(() => {
+    fetchVerifiedReviews(1);
+  }, [productId, sortBy, filterRating]);
+
+  useEffect(() => {
+    if (currentPage > 1) {
+      fetchVerifiedReviews(currentPage);
+    }
+  }, [currentPage]);
+
   const openImageModal = (images, startIndex = 0) => {
     setSelectedImages(images);
     setCurrentImageIndex(startIndex);
@@ -92,23 +121,6 @@ const VerifiedReviewsSection = ({ productId = null, showProductInfo = false }) =
     );
   };
 
-  // Handle write review redirect
-  const handleWriteReview = () => {
-    window.location.href = '/write-review';
-  };
-
-  // Load reviews when component mounts or filters change
-  useEffect(() => {
-    fetchVerifiedReviews(1);
-  }, [productId, sortBy, filterRating]);
-
-  // Load different page
-  useEffect(() => {
-    if (currentPage > 1) {
-      fetchVerifiedReviews(currentPage);
-    }
-  }, [currentPage]);
-
   const renderStars = (rating, size = 'w-5 h-5') => (
     <div className="flex">
       {[1, 2, 3, 4, 5].map((star) => (
@@ -126,6 +138,10 @@ const VerifiedReviewsSection = ({ productId = null, showProductInfo = false }) =
       month: 'long',
       day: 'numeric'
     });
+  };
+
+  const handleWriteReview = () => {
+    window.location.href = '/write-review';
   };
 
   const handlePageChange = (page) => {
@@ -152,6 +168,9 @@ const VerifiedReviewsSection = ({ productId = null, showProductInfo = false }) =
             <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
             <h3 className="text-lg font-semibold text-gray-900 mb-2">Failed to Load Verified Reviews</h3>
             <p className="text-gray-600 mb-4">{error}</p>
+            <p className="text-sm text-gray-500 mb-4">
+              API URL: {getApiUrl()}
+            </p>
             <button
               onClick={() => fetchVerifiedReviews(currentPage)}
               className="bg-amber-600 text-white px-4 py-2 rounded-lg hover:bg-amber-700 transition-colors"
@@ -178,7 +197,6 @@ const VerifiedReviewsSection = ({ productId = null, showProductInfo = false }) =
             </h2>
           </div>
           
-          {/* Write Review Button */}
           <button
             onClick={handleWriteReview}
             className="flex items-center gap-2 bg-amber-600 text-white px-6 py-3 rounded-lg hover:bg-amber-700 transition-colors font-medium shadow-md hover:shadow-lg"
@@ -296,32 +314,6 @@ const VerifiedReviewsSection = ({ productId = null, showProductInfo = false }) =
                 </div>
               </div>
 
-              {/* Product Info (if showing all verified reviews) */}
-              {showProductInfo && review.product && (
-                <div className="bg-amber-50 rounded-lg p-3 mb-4 border border-amber-200">
-                  <div className="flex items-center gap-3">
-                    {review.product.image && (
-                      <img 
-                        src={review.product.image.startsWith('http') ? review.product.image : 
-                              review.product.image.startsWith('/') ? review.product.image : 
-                              `/uploads/products/${review.product.image}`}
-                        alt={review.product.name}
-                        className="w-12 h-12 object-cover rounded-lg"
-                        onError={(e) => {
-                          e.target.src = 'https://via.placeholder.com/100x100/d4a574/ffffff?text=Product';
-                        }}
-                      />
-                    )}
-                    <div>
-                      <h5 className="font-medium text-gray-900">{review.product.name}</h5>
-                      {review.product.price && (
-                        <span className="text-sm text-gray-600">${review.product.price}</span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )}
-
               {/* Review Title */}
               {review.title && (
                 <h5 className="font-semibold text-gray-900 text-lg mb-3">{review.title}</h5>
@@ -336,30 +328,26 @@ const VerifiedReviewsSection = ({ productId = null, showProductInfo = false }) =
                   <p className="text-sm font-medium text-gray-700 mb-3">Photos from this review:</p>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                     {review.images.map((imageUrl, idx) => {
-                      // Get the filename from the database path
                       const filename = imageUrl.split('/').pop();
+                      const baseApiUrl = getApiUrl().replace('/api', '');
                       
-                      // Try different server configurations for backend images
                       const possiblePaths = [
-                        `https://bogat.onrender.com${imageUrl}`, // Backend server with original path
-                        `https://bogat.onrender.com/uploads/reviews/${filename}`, // Backend with direct path
-                        `http://localhost:3000${imageUrl}`, // Alternative backend port
-                        `http://localhost:3000/uploads/reviews/${filename}`, // Alternative port with direct path
-                        `/api/uploads/reviews/${filename}`, // API proxy route
-                        imageUrl, // Original path (frontend serving)
-                        // Brown-themed fallback
+                        `${baseApiUrl}${imageUrl}`,
+                        `${baseApiUrl}/uploads/reviews/${filename}`,
+                        imageUrl,
                         `https://via.placeholder.com/200x200/8B4513/ffffff?text=Review+Photo`
                       ];
 
                       return (
                         <div
                           key={idx}
-className="relative group cursor-pointer w-24 h-24"                          onClick={() => openImageModal(review.images, idx)}
+                          className="relative group cursor-pointer w-24 h-24"
+                          onClick={() => openImageModal(review.images, idx)}
                         >
                           <img
                             src={possiblePaths[0]}
                             alt={`Review image ${idx + 1}`}
-className="w-24 h-24 object-cover rounded-lg border border-amber-200 hover:opacity-80 transition-opacity"
+                            className="w-24 h-24 object-cover rounded-lg border border-amber-200 hover:opacity-80 transition-opacity"
                             onError={(e) => {
                               const img = e.target;
                               const currentSrc = img.src;
@@ -369,12 +357,9 @@ className="w-24 h-24 object-cover rounded-lg border border-amber-200 hover:opaci
                               
                               if (currentIndex >= 0 && currentIndex < possiblePaths.length - 1) {
                                 const nextPath = possiblePaths[currentIndex + 1];
-                                console.log(`Trying path ${currentIndex + 2}/${possiblePaths.length}:`, nextPath);
+                                console.log(`Trying image path ${currentIndex + 2}/${possiblePaths.length}:`, nextPath);
                                 img.src = nextPath;
                               }
-                            }}
-                            onLoad={(e) => {
-                              console.log(`✅ Image loaded from:`, e.target.src);
                             }}
                           />
                           
@@ -389,8 +374,6 @@ className="w-24 h-24 object-cover rounded-lg border border-amber-200 hover:opaci
                       );
                     })}
                   </div>
-                  
-                 
                 </div>
               )}
 
@@ -407,22 +390,6 @@ className="w-24 h-24 object-cover rounded-lg border border-amber-200 hover:opaci
                   Verified Purchase
                 </span>
               </div>
-
-              {/* Admin Reply */}
-              {review.reply && (
-                <div className="mt-4 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-lg p-4">
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className="w-6 h-6 bg-amber-600 rounded-full flex items-center justify-center">
-                      <span className="text-white text-xs font-bold">S</span>
-                    </div>
-                    <span className="font-semibold text-amber-900">Store Response</span>
-                    <span className="text-sm text-gray-500">
-                      {formatDate(review.reply.date)}
-                    </span>
-                  </div>
-                  <p className="text-gray-700 pl-8">{review.reply.text}</p>
-                </div>
-              )}
             </div>
           ))
         )}
@@ -470,7 +437,6 @@ className="w-24 h-24 object-cover rounded-lg border border-amber-200 hover:opaci
       {imageModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50">
           <div className="relative max-w-4xl max-h-4xl w-full h-full p-4">
-            {/* Close Button */}
             <button
               onClick={closeImageModal}
               className="absolute top-4 right-4 z-10 w-10 h-10 bg-white rounded-full flex items-center justify-center hover:bg-gray-100 transition-colors"
@@ -478,7 +444,6 @@ className="w-24 h-24 object-cover rounded-lg border border-amber-200 hover:opaci
               <X className="w-6 h-6 text-gray-800" />
             </button>
 
-            {/* Navigation Buttons */}
             {selectedImages.length > 1 && (
               <>
                 <button
@@ -496,7 +461,6 @@ className="w-24 h-24 object-cover rounded-lg border border-amber-200 hover:opaci
               </>
             )}
 
-            {/* Image */}
             <div className="w-full h-full flex items-center justify-center">
               <img
                 src={selectedImages[currentImageIndex]}
@@ -509,7 +473,6 @@ className="w-24 h-24 object-cover rounded-lg border border-amber-200 hover:opaci
               />
             </div>
 
-            {/* Image Counter */}
             {selectedImages.length > 1 && (
               <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-black bg-opacity-50 text-white px-3 py-1 rounded-full text-sm">
                 {currentImageIndex + 1} of {selectedImages.length}

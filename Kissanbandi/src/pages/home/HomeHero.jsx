@@ -147,7 +147,7 @@ const BOGATHero = () => {
         {/* Header */}
         <div className="text-center mb-6 md:mb-12">
         <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold mb-2 md:mb-4 drop-shadow-2xl text-shimmer">
-  BOGAT
+ SRI BOGAT
 </h1>
 <p className="text-base md:text-lg lg:text-xl max-w-2xl mx-auto font-medium drop-shadow-lg text-shimmer">
   Premium Spices & Coffee - From Our Farm to Your Kitchen
