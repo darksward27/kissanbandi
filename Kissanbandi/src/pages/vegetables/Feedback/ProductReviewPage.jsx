@@ -33,7 +33,7 @@ const ProductReviewPage = () => {
       return 'https://bogat.onrender.com/api';
     }
     
-    return apiUrl || 'http://localhost:5000/api';
+    return apiUrl || 'https://bogat.onrender.com/api';
   };
 
   // Redirect to login if not authenticated

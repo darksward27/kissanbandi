@@ -27,7 +27,7 @@ const BlogsPage = () => {
   const navigate = useNavigate();
 
   // API Base URL
-  const API_BASE_URL = 'http://localhost:5000/api';
+  const API_BASE_URL = 'https://bogat.onrender.com/api';
 
   // Fetch published blogs
   useEffect(() => {
@@ -74,20 +74,20 @@ const BlogsPage = () => {
     // If it's a local file path with full system path, extract filename
     if (imagePath.includes('uploads/blog/') || imagePath.includes('uploads\\blog\\')) {
       const filename = imagePath.split(/[/\\]/).pop(); // Handle both / and \ separators
-      const imageUrl = `http://localhost:5000/uploads/blog/${filename}`;
+      const imageUrl = `https://bogat.onrender.com/uploads/blog/${filename}`;
       console.log('Converted image URL:', imageUrl); // Debug log
       return imageUrl;
     }
     
     // If it's just a filename, construct full URL
     if (!imagePath.includes('/') && !imagePath.includes('\\')) {
-      const imageUrl = `http://localhost:5000/uploads/blog/${imagePath}`;
+      const imageUrl = `https://bogat.onrender.com/uploads/blog/${imagePath}`;
       console.log('Filename to URL:', imageUrl); // Debug log
       return imageUrl;
     }
     
     // Default case - assume it's a relative path
-    const imageUrl = `http://localhost:5000/${imagePath}`;
+    const imageUrl = `https://bogat.onrender.com/${imagePath}`;
     console.log('Default case URL:', imageUrl); // Debug log
     return imageUrl;
   };
@@ -204,7 +204,7 @@ const BlogsPage = () => {
           <div className="text-center max-w-4xl mx-auto">
             <div className="inline-flex items-center space-x-2 bg-white/10 backdrop-blur-sm rounded-full px-6 py-2 mb-6">
               <Sparkles className="w-5 h-5 text-yellow-300" />
-              <span className="text-sm font-semibold text-white">BOGAT Stories</span>
+              <span className="text-sm font-semibold text-white">SRI BOGAT Stories</span>
             </div>
             
             <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold mb-6 text-white drop-shadow-2xl">

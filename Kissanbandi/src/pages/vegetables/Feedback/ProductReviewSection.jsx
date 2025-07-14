@@ -26,7 +26,7 @@ const VerifiedReviewsSection = ({ productId = null, showProductInfo = false }) =
       return 'https://bogat.onrender.com/api';
     }
     
-    return apiUrl || 'http://localhost:5000/api';
+    return apiUrl || 'https://bogat.onrender.com/api';
   };
 
   const fetchVerifiedReviews = async (page = 1) => {
