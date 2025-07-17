@@ -101,18 +101,60 @@ exports.createOrder = async (req, res) => {
 };
 
 // Get all orders (admin)
+// Updated getAllOrders function to support all the frontend filters
 exports.getAllOrders = async (req, res) => {
   try {
-    const { status, page = 1, limit = 10 } = req.query;
+    const { 
+      status, 
+      page = 1, 
+      limit = 10, 
+      startDate, 
+      endDate, 
+      search, 
+      sortField = 'createdAt', 
+      sortOrder = 'desc' 
+    } = req.query;
+
     const query = {};
-    if (status) query.status = status;
+
+    // Status filter
+    if (status) {
+      query.status = status;
+    }
+
+    // Date range filter
+    if (startDate && endDate) {
+      query.createdAt = {
+        $gte: new Date(startDate),
+        $lte: new Date(endDate)
+      };
+    }
+
+    // Search functionality
+    if (search) {
+      const searchRegex = new RegExp(search, 'i');
+      query.$or = [
+        { '_id': { $regex: searchRegex } },
+        { 'user.name': { $regex: searchRegex } },
+        { 'user.email': { $regex: searchRegex } },
+        { 'user.phone': { $regex: searchRegex } }
+      ];
+    }
+
+    // Build sort object
+    const sortObj = {};
+    if (sortField === 'user.name') {
+      sortObj['user.name'] = sortOrder === 'asc' ? 1 : -1;
+    } else {
+      sortObj[sortField] = sortOrder === 'asc' ? 1 : -1;
+    }
 
     const orders = await Order.find(query)
-      .populate('user', 'name email')
+      .populate('user', 'name email phone')
       .populate('items.product', 'name price image')
-      .sort({ createdAt: -1 })
+      .sort(sortObj)
       .skip((page - 1) * limit)
-      .limit(limit);
+      .limit(parseInt(limit));
 
     const total = await Order.countDocuments(query);
 
@@ -123,6 +165,7 @@ exports.getAllOrders = async (req, res) => {
       totalPages: Math.ceil(total / limit)
     });
   } catch (error) {
+    console.error('Error in getAllOrders:', error);
     res.status(500).json({ error: error.message });
   }
 };
@@ -270,7 +313,7 @@ exports.getOrdersByDateRange = async (req, res) => {
 // Export orders
 exports.exportOrders = async (req, res) => {
   try {
-    const { startDate, endDate, status } = req.query;
+    const { startDate, endDate, status, search } = req.query;
     const query = {};
 
     if (startDate && endDate) {
@@ -282,6 +325,16 @@ exports.exportOrders = async (req, res) => {
 
     if (status) {
       query.status = status;
+    }
+
+    if (search) {
+      const searchRegex = new RegExp(search, 'i');
+      query.$or = [
+        { '_id': { $regex: searchRegex } },
+        { 'user.name': { $regex: searchRegex } },
+        { 'user.email': { $regex: searchRegex } },
+        { 'user.phone': { $regex: searchRegex } }
+      ];
     }
 
     console.log('Export query:', query);
@@ -296,7 +349,7 @@ exports.exportOrders = async (req, res) => {
       return res.status(404).json({ error: 'No orders found for the specified criteria' });
     }
 
-    // Create CSV content
+    // Create CSV content with admin notes
     const csvRows = [];
     const headers = [
       'Order ID',
@@ -312,7 +365,8 @@ exports.exportOrders = async (req, res) => {
       'Status',
       'Payment Status',
       'Payment Method',
-      'Shipping Address'
+      'Shipping Address',
+      'Admin Note' // Added admin note column
     ];
 
     csvRows.push(headers.join(','));
@@ -347,7 +401,8 @@ exports.exportOrders = async (req, res) => {
             order.shippingAddress.pincode
           ].filter(Boolean).join(', ').replace(/"/g, '""')
           : 'Address not available'
-        }"`
+        }"`,
+        `"${(order.adminNote || '').replace(/"/g, '""')}"` // Added admin note to export
       ];
       
       csvRows.push(row.join(','));
@@ -1330,7 +1385,7 @@ exports.updateAdminNote = async (req, res) => {
     if (req.user.role !== 'admin') {
       return res.status(403).json({ 
         success: false,
-        error: 'Admin access required. Only administrators can add cancellation notes.' 
+        error: 'Admin access required. Only administrators can add/edit admin notes.' 
       });
     }
 
@@ -1350,7 +1405,7 @@ exports.updateAdminNote = async (req, res) => {
       });
     }
 
-    // Find the order first to check if it exists and is cancelled
+    // Find the order first to check if it exists
     const existingOrder = await Order.findById(orderId);
     
     if (!existingOrder) {
@@ -1360,13 +1415,8 @@ exports.updateAdminNote = async (req, res) => {
       });
     }
 
-    // Optional: Only allow notes on cancelled orders
-    if (existingOrder.status !== 'cancelled') {
-      return res.status(400).json({ 
-        success: false,
-        error: 'Admin notes can only be added to cancelled orders' 
-      });
-    }
+    // Allow notes on ALL orders (removed the cancelled-only restriction)
+    console.log(`Adding admin note to ${existingOrder.status} order`);
 
     // Update the order with admin note
     const updatedOrder = await Order.findByIdAndUpdate(
