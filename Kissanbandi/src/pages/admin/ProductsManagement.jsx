@@ -34,11 +34,11 @@ const ProductsManagement = () => {
     }
     
     if (imagePath.startsWith('/uploads')) {
-      return `http://localhost:5000${imagePath}`;
+      return `https://bogat.onrender.com${imagePath}`;
     }
     
     const filename = imagePath.split('/').pop();
-    return `http://localhost:5000/uploads/product/${filename}`;
+    return `https://bogat.onrender.com/uploads/product/${filename}`;
   };
 
   const getProductImages = (product) => {

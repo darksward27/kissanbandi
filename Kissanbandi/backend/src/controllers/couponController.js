@@ -370,12 +370,13 @@ exports.getActiveCouponsPublic = async (req, res) => {
 // @access  Private
 exports.getAvailableCoupons = async (req, res) => {
   try {
+    console.log("vaibhav says", req.user);
     console.log('🎫 getAvailableCoupons called');
     console.log('🔑 req.user:', req.user ? 'Present' : 'Missing');
-    console.log('🔑 userId:', req.user?._id);
+    console.log('🔑 userId:', req.user?.userId);
     console.log('💰 cartTotal:', req.query.cartTotal);
 
-    const userId = req.user._id;
+    const userId = req.user?.userId;
     const { cartTotal = 0 } = req.query;
 
     if (!userId) {
@@ -752,8 +753,8 @@ const updateCouponUsage = async (req, res) => {
 
     // Check if this order has already been recorded (prevent double counting)
     const existingUsage = coupon.usageHistory.find(
-      usage => usage.orderId && usage.orderId.toString() === orderId.toString()
-    );
+  usage => usage.orderId.toString() === orderId.toString()
+);
 
     if (existingUsage) {
       return res.status(409).json({
@@ -791,8 +792,8 @@ const updateCouponUsage = async (req, res) => {
 
     // Check user usage limit
     const userUsageCount = coupon.usageHistory.filter(
-      usage => usage.userId && usage.userId.toString() === userId.toString()
-    ).length;
+  usage => usage.user.toString() === userId.toString()
+).length;
 
     if (userUsageCount >= coupon.usagePerUser) {
       return res.status(400).json({
@@ -806,13 +807,13 @@ const updateCouponUsage = async (req, res) => {
     }
 
     // Create usage record
-    const usageRecord = {
-      userId,
-      orderId,
-      discountAmount: parseFloat(discountAmount),
-      orderTotal: parseFloat(orderTotal),
-      usedAt: usedAt ? new Date(usedAt) : new Date()
-    };
+  const usageRecord = {
+  user: userId,
+  orderId,
+  orderValue: parseFloat(orderTotal),
+  discountGiven: parseFloat(discountAmount),
+  usedAt: usedAt ? new Date(usedAt) : new Date()
+};
 
     // Update coupon with atomic operations
     const updatedCoupon = await Coupon.findByIdAndUpdate(

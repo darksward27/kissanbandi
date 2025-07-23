@@ -2,12 +2,12 @@
 const couponApi = {
   async getAvailableCoupons(cartTotal) {
     try {
-      const token = sessionStorage.getItem('kissanbandi_token');
+  const token = sessionStorage.getItem('kissanbandi_token'); // ✅ FIXED
       if (!token) {
         throw new Error('Authentication required');
       }
 
-      const response = await fetch(`http://localhost:5000/api/coupons/available?cartTotal=${cartTotal}`, {
+      const response = await fetch(`https://bogat.onrender.com/api/coupons/available?cartTotal=${cartTotal}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -33,7 +33,7 @@ const couponApi = {
         throw new Error('Authentication required');
       }
 
-      const response = await fetch('http://localhost:5000/api/coupons/validate', {
+      const response = await fetch('https://bogat.onrender.com/api/coupons/validate', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -62,7 +62,7 @@ const couponApi = {
         throw new Error('Authentication required');
       }
 
-      const response = await fetch('http://localhost:5000/api/coupons/suggestions', {
+      const response = await fetch('https://bogat.onrender.com/api/coupons/suggestions', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -91,7 +91,7 @@ const couponApi = {
         throw new Error('Authentication required');
       }
 
-      const response = await fetch(`http://localhost:5000/api/coupons/${couponId}/usage`, {
+      const response = await fetch(`https://bogat.onrender.com/api/coupons/${couponId}/usage`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -128,7 +128,7 @@ const couponApi = {
         throw new Error('Authentication required');
       }
 
-      const response = await fetch(`http://localhost:5000/api/coupons/${couponId}/stats`, {
+      const response = await fetch(`https://bogat.onrender.com/api/coupons/${couponId}/stats`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -155,7 +155,7 @@ const couponApi = {
         throw new Error('Authentication required');
       }
 
-      const response = await fetch(`http://localhost:5000/api/coupons/${couponId}/reserve`, {
+      const response = await fetch(`https://bogat.onrender.com/api/coupons/${couponId}/reserve`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -190,7 +190,7 @@ const couponApi = {
         throw new Error('Authentication required');
       }
 
-      const response = await fetch(`http://localhost:5000/api/coupons/${couponId}/release`, {
+      const response = await fetch(`https://bogat.onrender.com/api/coupons/${couponId}/release`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,

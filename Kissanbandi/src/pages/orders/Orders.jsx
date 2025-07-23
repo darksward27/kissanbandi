@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useAuth } from '../checkout/AuthProvider';
 import { toast } from 'react-hot-toast';
-import { Package, Clock, MapPin, IndianRupee, Loader, Search, AlertCircle, RefreshCw, Filter, Calendar, CheckCircle, Download, ChevronDown } from 'lucide-react';
+import { Package, Clock, MapPin, IndianRupee, Loader, Search, AlertCircle, RefreshCw, Filter, Calendar, CheckCircle, Download, ChevronDown, Gift, Tag } from 'lucide-react';
 import api from '../../services/api';
 
 // Constants
@@ -16,31 +16,154 @@ const STATUS_COLORS = {
 
 const FALLBACK_IMAGE = '/images/product-placeholder.jpg';
 
-// GST rates configuration (should match backend)
-const GST_RATES = {
-    CGST: 2.5, // 2.5%
-    SGST: 2.5, // 2.5%
-    IGST: 5.0  // 5% (for inter-state)
-};
-
-// Helper function to calculate GST breakdown
-const calculateGSTBreakdown = (subtotal, totalGST) => {
-    // If we have total GST from order, split it equally between CGST and SGST
-    if (totalGST && totalGST > 0) {
+// Helper function to get actual GST breakdown from order data
+const calculateGSTBreakdown = (orderData, subtotalAfterDiscount) => {
+    console.log('🧮 Calculating GST breakdown:', { 
+        orderData: {
+            gstAmount: orderData?.gstAmount,
+            discountedSubtotal: orderData?.discountedSubtotal,
+            subtotal: orderData?.subtotal,
+            discount: orderData?.discount
+        }, 
+        subtotalAfterDiscount 
+    });
+    
+    // First, try to get GST breakdown from order data
+    if (orderData?.gstBreakdown && Array.isArray(orderData.gstBreakdown)) {
+        let totalCGST = 0;
+        let totalSGST = 0;
+        let totalGST = 0;
+        let effectiveRate = 0;
+        
+        orderData.gstBreakdown.forEach(gst => {
+            totalCGST += gst.cgst || 0;
+            totalSGST += gst.sgst || 0;
+            totalGST += gst.gstAmount || 0;
+            
+            // Calculate effective rate from the first GST entry
+            if (effectiveRate === 0 && gst.rate) {
+                effectiveRate = gst.rate;
+            }
+        });
+        
+        console.log('✅ Using order GST breakdown:', { totalCGST, totalSGST, totalGST, effectiveRate });
+        
         return {
-            cgst: totalGST / 2,
-            sgst: totalGST / 2,
-            totalGST: totalGST
+            cgst: Math.round(totalCGST * 100) / 100,
+            sgst: Math.round(totalSGST * 100) / 100,
+            totalGST: Math.round(totalGST * 100) / 100,
+            cgstRate: effectiveRate / 2,
+            sgstRate: effectiveRate / 2,
+            totalRate: effectiveRate
         };
     }
     
-    // Fallback calculation
-    const cgst = (subtotal * GST_RATES.CGST) / 100;
-    const sgst = (subtotal * GST_RATES.SGST) / 100;
+    // Second, try to get from itemwise GST data
+    if (orderData?.itemwiseGST && Array.isArray(orderData.itemwiseGST)) {
+        let totalCGST = 0;
+        let totalSGST = 0;
+        let totalGST = 0;
+        let effectiveRate = 0;
+        
+        orderData.itemwiseGST.forEach(item => {
+            totalCGST += item.cgst || 0;
+            totalSGST += item.sgst || 0;
+            totalGST += item.gstAmount || 0;
+            
+            // Get GST rate from first item
+            if (effectiveRate === 0 && item.gstRate) {
+                effectiveRate = item.gstRate;
+            }
+        });
+        
+        console.log('✅ Using itemwise GST data:', { totalCGST, totalSGST, totalGST, effectiveRate });
+        
+        return {
+            cgst: Math.round(totalCGST * 100) / 100,
+            sgst: Math.round(totalSGST * 100) / 100,
+            totalGST: Math.round(totalGST * 100) / 100,
+            cgstRate: effectiveRate / 2,
+            sgstRate: effectiveRate / 2,
+            totalRate: effectiveRate
+        };
+    }
+    
+    // Third, calculate from total GST amount and discounted subtotal (MAIN CASE)
+    if (orderData?.gstAmount && orderData.gstAmount > 0) {
+        const totalGST = orderData.gstAmount;
+        const cgst = totalGST / 2;
+        const sgst = totalGST / 2;
+        
+        // Use discountedSubtotal if available, otherwise calculate it
+        const taxableAmount = orderData?.discountedSubtotal || subtotalAfterDiscount;
+        console.log('🧮 GST Calculation Base:', { taxableAmount, totalGST });
+        
+        // Calculate effective rate from taxable amount
+        const effectiveRate = taxableAmount > 0 ? (totalGST / taxableAmount) * 100 : 0;
+        
+        console.log('✅ Using total GST amount:', { 
+            totalGST, 
+            cgst, 
+            sgst, 
+            effectiveRate: effectiveRate.toFixed(1),
+            taxableAmount 
+        });
+        
+        return {
+            cgst: Math.round(cgst * 100) / 100,
+            sgst: Math.round(sgst * 100) / 100,
+            totalGST: Math.round(totalGST * 100) / 100,
+            cgstRate: Math.round((effectiveRate / 2) * 10) / 10, // Round to 1 decimal
+            sgstRate: Math.round((effectiveRate / 2) * 10) / 10, // Round to 1 decimal
+            totalRate: Math.round(effectiveRate * 10) / 10
+        };
+    }
+    
+    // Fourth, try to get GST rate from items
+    if (orderData?.items && Array.isArray(orderData.items)) {
+        let totalCGST = 0;
+        let totalSGST = 0;
+        let totalGST = 0;
+        let commonGSTRate = null;
+        
+        orderData.items.forEach(item => {
+            const itemTotal = (item.price || 0) * (item.quantity || 0);
+            const gstRate = item.product?.gst || item.gst || 0;
+            
+            if (commonGSTRate === null) {
+                commonGSTRate = gstRate;
+            }
+            
+            const itemGST = (itemTotal * gstRate) / 100;
+            const itemCGST = itemGST / 2;
+            const itemSGST = itemGST / 2;
+            
+            totalCGST += itemCGST;
+            totalSGST += itemSGST;
+            totalGST += itemGST;
+        });
+        
+        console.log('✅ Calculated from items GST rates:', { totalCGST, totalSGST, totalGST, commonGSTRate });
+        
+        return {
+            cgst: Math.round(totalCGST * 100) / 100,
+            sgst: Math.round(totalSGST * 100) / 100,
+            totalGST: Math.round(totalGST * 100) / 100,
+            cgstRate: (commonGSTRate || 0) / 2,
+            sgstRate: (commonGSTRate || 0) / 2,
+            totalRate: commonGSTRate || 0
+        };
+    }
+    
+    // Fallback: No GST data found
+    console.log('❌ No GST data found, using zero values');
     return {
-        cgst: Math.round(cgst * 100) / 100,
-        sgst: Math.round(sgst * 100) / 100,
-        totalGST: Math.round((cgst + sgst) * 100) / 100
+        cgst: 0,
+        sgst: 0,
+        totalGST: 0,
+        cgstRate: 0,
+        sgstRate: 0,
+        totalRate: 0
     };
 };
 
@@ -150,19 +273,34 @@ const Orders = () => {
             }
 
             // Calculate subtotal from items
-            const subtotal = (orderData.items || []).reduce((sum, item) => sum + (item.price * item.quantity), 0);
+            const itemsSubtotal = (orderData.items || []).reduce((sum, item) => sum + (item.price * item.quantity), 0);
+            
+            // Get discount and coupon details
+            const couponDiscount = orderData.discount || 0;
+            const couponCode = orderData.couponCode || null;
+            const couponDetails = orderData.couponDetails || null;
+            
+            // Calculate subtotal after discount
+            const subtotalAfterDiscount = itemsSubtotal - couponDiscount;
             
             // Get GST amount from order or calculate it
             const gstAmount = orderData.gstAmount || 0;
-            const gstBreakdown = calculateGSTBreakdown(subtotal, gstAmount);
+            const gstBreakdown = calculateGSTBreakdown(orderData, subtotalAfterDiscount);
+            
+            console.log('🧾 Invoice GST Details:', {
+                originalGSTAmount: gstAmount,
+                calculatedBreakdown: gstBreakdown,
+                subtotalAfterDiscount
+            });
             
             // Calculate shipping
-            const shipping = orderData.shippingCharge || (subtotal >= 500 ? 0 : 50);
+            const shipping = orderData.shippingCharge || (subtotalAfterDiscount >= 500 ? 0 : 50);
 
-            // Create PDF content with GST breakdown
+            // ✅ Enhanced single-page invoice with company logo and coupon details
             const invoiceContent = `
                 <html>
                 <head>
+                    <meta charset="utf-8">
                     <title>Invoice - ${orderData._id}</title>
                     <style>
                         * {
@@ -172,269 +310,378 @@ const Orders = () => {
                         }
                         
                         body {
-                            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-                            line-height: 1.6;
+                            font-family: 'Arial', sans-serif;
+                            line-height: 1.4;
                             color: #333;
-                            background: #f8f9fa;
+                            background: white;
+                            font-size: 12px;
                         }
                         
                         .invoice-container {
-                            max-width: 800px;
-                            margin: 20px auto;
+                            max-width: 210mm;
+                            min-height: 297mm;
+                            margin: 0 auto;
+                            padding: 15mm;
                             background: white;
-                            padding: 40px;
-                            border-radius: 12px;
-                            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+                            display: flex;
+                            flex-direction: column;
                         }
                         
                         .invoice-header {
                             display: flex;
                             justify-content: space-between;
+                            align-items: flex-start;
+                            margin-bottom: 20px;
+                            padding-bottom: 15px;
+                            border-bottom: 2px solid #f59e0b;
+                        }
+                        
+                        .company-section {
+                            display: flex;
                             align-items: center;
-                            margin-bottom: 40px;
-                            padding-bottom: 20px;
-                            border-bottom: 3px solid #f59e0b;
+                            flex: 1;
+                        }
+                        
+                        .company-logo {
+                            width: 60px;
+                            height: 60px;
+                            background: linear-gradient(135deg, #f59e0b, #f97316);
+                            border-radius: 12px;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            margin-right: 15px;
+                            flex-shrink: 0;
+                        }
+                        
+                        .company-logo-text {
+                            color: white;
+                            font-size: 20px;
+                            font-weight: bold;
+                            text-align: center;
+                            line-height: 1;
                         }
                         
                         .company-info h1 {
                             color: #f59e0b;
-                            font-size: 36px;
+                            font-size: 24px;
                             font-weight: bold;
-                            margin-bottom: 5px;
+                            margin-bottom: 3px;
                         }
                         
                         .company-info p {
                             color: #666;
-                            font-size: 16px;
+                            font-size: 11px;
+                            margin: 1px 0;
                         }
                         
                         .company-info .gst-number {
-                            color: #666;
-                            font-size: 12px;
+                            color: #333;
+                            font-size: 10px;
                             font-weight: bold;
                             margin-top: 5px;
                         }
                         
                         .invoice-details {
                             text-align: right;
+                            min-width: 200px;
                         }
                         
                         .invoice-details h2 {
-                            color: #333;
-                            font-size: 28px;
-                            margin-bottom: 10px;
+                            color: #f59e0b;
+                            font-size: 20px;
+                            margin-bottom: 8px;
                         }
                         
                         .invoice-details p {
-                            margin: 5px 0;
-                            font-size: 14px;
+                            margin: 3px 0;
+                            font-size: 11px;
                         }
                         
                         .invoice-info {
                             display: grid;
                             grid-template-columns: 1fr 1fr;
-                            gap: 40px;
-                            margin-bottom: 40px;
+                            gap: 20px;
+                            margin-bottom: 20px;
                         }
                         
                         .section-title {
                             color: #f59e0b;
-                            font-size: 18px;
+                            font-size: 13px;
                             font-weight: bold;
-                            margin-bottom: 15px;
+                            margin-bottom: 8px;
                             text-transform: uppercase;
-                            letter-spacing: 1px;
+                            letter-spacing: 0.5px;
                         }
                         
                         .info-block {
-                            background: #f8f9fa;
-                            padding: 20px;
-                            border-radius: 8px;
-                            border-left: 4px solid #f59e0b;
+                            background: #fef3c7;
+                            padding: 12px;
+                            border-radius: 6px;
+                            border-left: 3px solid #f59e0b;
+                            font-size: 11px;
                         }
                         
                         .info-block p {
-                            margin: 5px 0;
-                            font-size: 14px;
+                            margin: 3px 0;
+                        }
+                        
+                        .status-section {
+                            margin-bottom: 15px;
+                            display: flex;
+                            align-items: center;
+                            gap: 15px;
                         }
                         
                         .status-badge {
                             display: inline-block;
-                            padding: 6px 12px;
-                            border-radius: 20px;
-                            font-size: 12px;
+                            padding: 4px 10px;
+                            border-radius: 15px;
+                            font-size: 10px;
                             font-weight: bold;
                             text-transform: uppercase;
                             letter-spacing: 0.5px;
                         }
                         
-                        .status-pending {
-                            background: #fef3c7;
-                            color: #f59e0b;
+                        .status-pending { background: #fef3c7; color: #f59e0b; }
+                        .status-processing { background: #dbeafe; color: #3b82f6; }
+                        .status-shipped { background: #e0e7ff; color: #7c3aed; }
+                        .status-delivered { background: #d1fae5; color: #10b981; }
+                        .status-cancelled { background: #fee2e2; color: #ef4444; }
+                        
+                        /* ✅ Coupon Section Styles */
+                        .coupon-section {
+                            background: linear-gradient(135deg, #ecfdf5, #d1fae5);
+                            border: 2px dashed #10b981;
+                            border-radius: 8px;
+                            padding: 12px;
+                            margin-bottom: 15px;
+                            position: relative;
                         }
                         
-                        .status-processing {
-                            background: #dbeafe;
-                            color: #3b82f6;
+                        .coupon-header {
+                            display: flex;
+                            align-items: center;
+                            gap: 8px;
+                            margin-bottom: 6px;
                         }
                         
-                        .status-shipped {
-                            background: #e0e7ff;
-                            color: #7c3aed;
+                        .coupon-icon {
+                            width: 16px;
+                            height: 16px;
+                            background: #10b981;
+                            border-radius: 50%;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            color: white;
+                            font-size: 10px;
+                            font-weight: bold;
                         }
                         
-                        .status-delivered {
-                            background: #d1fae5;
-                            color: #10b981;
+                        .coupon-title {
+                            color: #065f46;
+                            font-weight: bold;
+                            font-size: 12px;
                         }
                         
-                        .status-cancelled {
-                            background: #fee2e2;
-                            color: #ef4444;
+                        .coupon-details {
+                            display: grid;
+                            grid-template-columns: 1fr 1fr;
+                            gap: 8px;
+                            font-size: 10px;
+                            color: #047857;
                         }
                         
                         .items-table {
                             width: 100%;
                             border-collapse: collapse;
-                            margin-bottom: 30px;
-                            background: white;
-                            border-radius: 8px;
-                            overflow: hidden;
-                            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+                            margin-bottom: 15px;
+                            font-size: 11px;
                         }
                         
                         .items-table th {
                             background: #f59e0b;
                             color: white;
-                            padding: 15px;
+                            padding: 8px 6px;
                             text-align: left;
                             font-weight: bold;
-                            font-size: 14px;
+                            font-size: 10px;
                             text-transform: uppercase;
-                            letter-spacing: 0.5px;
                         }
                         
                         .items-table td {
-                            padding: 15px;
+                            padding: 8px 6px;
                             border-bottom: 1px solid #e5e7eb;
-                            font-size: 14px;
+                            font-size: 10px;
                         }
                         
-                        .items-table tbody tr:hover {
-                            background: #f9fafb;
-                        }
-                        
-                        .items-table tbody tr:last-child td {
-                            border-bottom: none;
-                        }
-                        
-                        .total-section {
-                            background: #f8f9fa;
-                            padding: 25px;
-                            border-radius: 8px;
-                            margin-top: 30px;
-                            border: 2px solid #f59e0b;
-                        }
-                        
-                        .total-row {
-                            display: flex;
-                            justify-content: space-between;
-                            margin: 10px 0;
-                            font-size: 16px;
-                        }
-                        
-                        .gst-section {
+                        .items-table tbody tr:nth-child(even) {
                             background: #fef3c7;
-                            padding: 20px;
-                            border-radius: 8px;
-                            margin: 20px 0;
-                            border: 2px solid #f59e0b;
+                        }
+                        
+                        .totals-section {
+                            margin-top: auto;
+                            padding-top: 15px;
+                        }
+                        
+                        .totals-grid {
+                            display: grid;
+                            grid-template-columns: 2fr 1fr;
+                            gap: 15px;
+                            align-items: start;
+                        }
+                        
+                        .gst-breakdown {
+                            background: #fef3c7;
+                            padding: 12px;
+                            border-radius: 6px;
+                            border: 1px solid #f59e0b;
                         }
                         
                         .gst-title {
                             color: #f59e0b;
-                            font-size: 18px;
+                            font-size: 12px;
                             font-weight: bold;
-                            margin-bottom: 15px;
+                            margin-bottom: 8px;
                             text-align: center;
                         }
                         
                         .gst-row {
                             display: flex;
                             justify-content: space-between;
-                            margin: 8px 0;
-                            font-size: 14px;
+                            margin: 4px 0;
+                            font-size: 10px;
                         }
                         
                         .gst-total {
                             font-weight: bold;
                             color: #f59e0b;
                             border-top: 1px solid #f59e0b;
-                            padding-top: 10px;
-                            margin-top: 10px;
+                            padding-top: 6px;
+                            margin-top: 6px;
+                        }
+                        
+                        .total-calculation {
+                            background: #f8f9fa;
+                            padding: 12px;
+                            border-radius: 6px;
+                            border: 2px solid #f59e0b;
+                        }
+                        
+                        .total-row {
+                            display: flex;
+                            justify-content: space-between;
+                            margin: 4px 0;
+                            font-size: 11px;
+                        }
+                        
+                        .total-row.discount {
+                            color: #10b981;
+                            font-weight: bold;
                         }
                         
                         .total-row.grand-total {
-                            font-size: 20px;
+                            font-size: 14px;
                             font-weight: bold;
                             color: #f59e0b;
-                            padding-top: 15px;
+                            padding-top: 8px;
                             border-top: 2px solid #f59e0b;
-                            margin-top: 15px;
+                            margin-top: 8px;
+                        }
+                        
+                        .amount-words {
+                            background: #f8f9fa;
+                            padding: 10px;
+                            border-radius: 6px;
+                            margin: 10px 0;
+                            font-size: 10px;
+                            font-weight: bold;
                         }
                         
                         .payment-info {
                             background: #f0f9ff;
-                            padding: 20px;
-                            border-radius: 8px;
-                            border-left: 4px solid #3b82f6;
-                            margin-top: 30px;
+                            padding: 10px;
+                            border-radius: 6px;
+                            border-left: 3px solid #3b82f6;
+                            margin: 10px 0;
+                            font-size: 10px;
                         }
                         
                         .payment-info h3 {
                             color: #3b82f6;
-                            margin-bottom: 10px;
+                            margin-bottom: 6px;
+                            font-size: 11px;
                         }
                         
                         .footer {
                             text-align: center;
-                            margin-top: 40px;
-                            padding-top: 20px;
+                            margin-top: 15px;
+                            padding-top: 10px;
                             border-top: 1px solid #e5e7eb;
                             color: #666;
-                            font-size: 14px;
+                            font-size: 9px;
+                        }
+                        
+                        .gst-declaration {
+                            background: #fef3c7;
+                            padding: 8px;
+                            border-radius: 6px;
+                            margin: 10px 0;
+                            border: 1px solid #f59e0b;
+                            font-size: 9px;
+                            color: #92400e;
+                            text-align: center;
                         }
                         
                         .thank-you {
                             background: linear-gradient(135deg, #f59e0b, #f97316);
                             color: white;
-                            padding: 20px;
-                            border-radius: 8px;
+                            padding: 12px;
+                            border-radius: 6px;
                             text-align: center;
-                            margin-top: 30px;
+                            margin: 10px 0;
+                        }
+                        
+                        .thank-you h3 {
+                            font-size: 13px;
+                            margin-bottom: 4px;
+                        }
+                        
+                        .thank-you p {
+                            font-size: 10px;
                         }
                         
                         @media print {
-                            body {
-                                background: white;
+                            body { margin: 0; padding: 0; }
+                            .invoice-container { 
+                                margin: 0; 
+                                padding: 15mm;
+                                min-height: 297mm;
                             }
-                            
-                            .invoice-container {
-                                margin: 0;
-                                box-shadow: none;
-                                border-radius: 0;
-                            }
+                        }
+                        
+                        @page {
+                            size: A4;
+                            margin: 0;
                         }
                     </style>
                 </head>
                 <body>
                     <div class="invoice-container">
-                        <!-- Invoice Header -->
+                        <!-- Header -->
                         <div class="invoice-header">
-                            <div class="company-info">
-                                <h1>SRI BOGAT</h1>
-                                <p>Premium Quality Products</p>
-                                <p class="gst-number">GSTIN: 27AABCU9603R1ZM</p>
+                            <div class="company-section">
+                                <div class="company-logo">
+                                    <div class="company-logo-text">SB</div>
+                                </div>
+                                <div class="company-info">
+                                    <h1>SRI BOGAT</h1>
+                                    <p>Premium Quality Products</p>
+                                    <p>Email: support@bogat.com</p>
+                                    <p>Website: www.bogat.com</p>
+                                    <p class="gst-number">GSTIN: 27AABCU9603R1ZM</p>
+                                </div>
                             </div>
                             <div class="invoice-details">
                                 <h2>TAX INVOICE</h2>
@@ -466,21 +713,46 @@ const Orders = () => {
                         </div>
 
                         <!-- Order Status -->
-                        <div style="margin-bottom: 30px;">
-                            <h3 class="section-title">Order Status</h3>
-                            <div style="display: flex; gap: 15px; align-items: center;">
-                                <span class="status-badge status-${orderData.status || 'pending'}">${orderData.status || 'Pending'}</span>
-                                <span style="color: #666;">Payment: ${orderData.paymentStatus || 'Pending'}</span>
-                                <span style="color: #666;">Method: ${orderData.paymentMethod || 'N/A'}</span>
+                        <div class="status-section">
+                            <span class="status-badge status-${orderData.status || 'pending'}">${orderData.status || 'Pending'}</span>
+                            <span style="color: #666; font-size: 10px;">Payment: ${orderData.paymentStatus || 'Pending'}</span>
+                            <span style="color: #666; font-size: 10px;">Method: ${orderData.paymentMethod || 'Online'}</span>
+                        </div>
+
+                        ${couponCode ? `
+                        <!-- ✅ Coupon Section -->
+                        <div class="coupon-section">
+                            <div class="coupon-header">
+                                <div class="coupon-icon">🎁</div>
+                                <div class="coupon-title">Coupon Applied Successfully!</div>
+                            </div>
+                            <div class="coupon-details">
+                                <div>
+                                    <strong>Coupon Code:</strong> ${couponCode}
+                                </div>
+                                <div>
+                                    <strong>Discount Amount:</strong> ₹${couponDiscount.toFixed(2)}
+                                </div>
+                                ${couponDetails?.title ? `
+                                <div style="grid-column: 1 / -1;">
+                                    <strong>Offer:</strong> ${couponDetails.title}
+                                </div>
+                                ` : ''}
+                                ${couponDetails?.description ? `
+                                <div style="grid-column: 1 / -1;">
+                                    <strong>Description:</strong> ${couponDetails.description}
+                                </div>
+                                ` : ''}
                             </div>
                         </div>
+                        ` : ''}
 
                         <!-- Items Table -->
                         <table class="items-table">
                             <thead>
                                 <tr>
                                     <th>Item</th>
-                                    <th>HSN Code</th>
+                                    <th>HSN</th>
                                     <th>Qty</th>
                                     <th>Rate</th>
                                     <th>Amount</th>
@@ -491,73 +763,81 @@ const Orders = () => {
                                     <tr>
                                         <td>
                                             <strong>${item.product?.name || 'Product Name'}</strong>
-                                            <br>
-                                            <small style="color: #666;">${item.product?.description || ''}</small>
+                                            ${item.product?.description ? `<br><small style="color: #666;">${item.product.description}</small>` : ''}
                                         </td>
                                         <td>1234</td>
-                                        <td>${item.quantity || 0}</td>
-                                        <td>₹${(item.price || 0).toFixed(2)}</td>
-                                        <td>₹${((item.price || 0) * (item.quantity || 0)).toFixed(2)}</td>
+                                        <td style="text-align: center;">${item.quantity || 0}</td>
+                                        <td style="text-align: right;">₹${(item.price || 0).toFixed(2)}</td>
+                                        <td style="text-align: right;">₹${((item.price || 0) * (item.quantity || 0)).toFixed(2)}</td>
                                     </tr>
                                 `).join('') || '<tr><td colspan="5">No items found</td></tr>'}
                             </tbody>
                         </table>
 
-                        <!-- Total Section -->
-                        <div class="total-section">
-                            <div class="total-row">
-                                <span>Subtotal (Before Tax):</span>
-                                <span>₹${subtotal.toFixed(2)}</span>
-                            </div>
-                            
-                            <!-- GST Breakdown Section -->
-                            <div class="gst-section">
-                                <div class="gst-title">GST Breakdown</div>
-                                <div class="gst-row">
-                                    <span>CGST @ ${GST_RATES.CGST}%:</span>
-                                    <span>₹${gstBreakdown.cgst.toFixed(2)}</span>
+                        <!-- Totals Section -->
+                        <div class="totals-section">
+                            <div class="totals-grid">
+                                <!-- GST Breakdown -->
+                                <div class="gst-breakdown">
+                                    <div class="gst-title">GST Breakdown</div>
+                                    <div class="gst-row">
+                                        <span>Taxable Amount:</span>
+                                        <span>₹${subtotalAfterDiscount.toFixed(2)}</span>
+                                    </div>
+                                    <div class="gst-row">
+                                        <span>CGST @ ${gstBreakdown.cgstRate.toFixed(1)}%:</span>
+                                        <span>₹${gstBreakdown.cgst.toFixed(2)}</span>
+                                    </div>
+                                    <div class="gst-row">
+                                        <span>SGST @ ${gstBreakdown.sgstRate.toFixed(1)}%:</span>
+                                        <span>₹${gstBreakdown.sgst.toFixed(2)}</span>
+                                    </div>
+                                    <div class="gst-row gst-total">
+                                        <span>Total GST:</span>
+                                        <span>₹${gstBreakdown.totalGST.toFixed(2)}</span>
+                                    </div>
                                 </div>
-                                <div class="gst-row">
-                                    <span>SGST @ ${GST_RATES.SGST}%:</span>
-                                    <span>₹${gstBreakdown.sgst.toFixed(2)}</span>
+                                
+                                <!-- Total Calculation -->
+                                <div class="total-calculation">
+                                    <div class="total-row">
+                                        <span>Subtotal:</span>
+                                        <span>₹${itemsSubtotal.toFixed(2)}</span>
+                                    </div>
+                                    ${couponDiscount > 0 ? `
+                                    <div class="total-row discount">
+                                        <span>Coupon Discount (${couponCode}):</span>
+                                        <span>-₹${couponDiscount.toFixed(2)}</span>
+                                    </div>
+                                    ` : ''}
+                                    <div class="total-row">
+                                        <span>GST:</span>
+                                        <span>₹${gstBreakdown.totalGST.toFixed(2)}</span>
+                                    </div>
+                                    <div class="total-row">
+                                        <span>Shipping:</span>
+                                        <span>${shipping === 0 ? 'Free' : `₹${shipping.toFixed(2)}`}</span>
+                                    </div>
+                                    <div class="total-row grand-total">
+                                        <span>GRAND TOTAL:</span>
+                                        <span>₹${(orderData.totalAmount || 0).toFixed(2)}</span>
+                                    </div>
                                 </div>
-                                <div class="gst-row gst-total">
-                                    <span>Total GST:</span>
-                                    <span>₹${gstBreakdown.totalGST.toFixed(2)}</span>
-                                </div>
-                            </div>
-                            
-                            <div class="total-row">
-                                <span>Shipping & Handling:</span>
-                                <span>₹${shipping.toFixed(2)}</span>
-                            </div>
-                            <div class="total-row grand-total">
-                                <span>GRAND TOTAL:</span>
-                                <span>₹${(orderData.totalAmount || 0).toFixed(2)}</span>
                             </div>
                         </div>
 
                         <!-- Amount in Words -->
-                        <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-top: 20px;">
-                            <p><strong>Amount in Words:</strong> ${convertToWords(orderData.totalAmount || 0)} Rupees Only</p>
+                        <div class="amount-words">
+                            <strong>Amount in Words:</strong> ${convertToWords(orderData.totalAmount || 0)} Rupees Only
                         </div>
 
                         <!-- Payment Information -->
                         <div class="payment-info">
                             <h3>Payment Information</h3>
-                            <p><strong>Payment Method:</strong> ${orderData.paymentMethod || 'N/A'}</p>
-                            <p><strong>Payment Status:</strong> ${orderData.paymentStatus || 'Pending'}</p>
+                            <p><strong>Payment Method:</strong> ${orderData.paymentMethod || 'Online Payment'}</p>
+                            <p><strong>Payment Status:</strong> ${orderData.paymentStatus || 'Completed'}</p>
                             ${orderData.razorpayDetails?.paymentId ? `<p><strong>Transaction ID:</strong> ${orderData.razorpayDetails.paymentId}</p>` : ''}
                         </div>
-
-                        <!-- GST Declaration -->
-                        <div style="background: #fef3c7; padding: 15px; border-radius: 8px; margin-top: 20px; border: 1px solid #f59e0b;">
-                            <p style="font-size: 12px; color: #92400e; text-align: center;">
-                                <strong>GST Registration Number:</strong> 27AABCU9603R1ZM<br>
-                                This is a computer-generated invoice and does not require physical signature.
-                            </p>
-                        </div>
-
                         <!-- Thank You -->
                         <div class="thank-you">
                             <h3>Thank You for Your Order!</h3>
@@ -798,6 +1078,13 @@ const Orders = () => {
                                                             <span className="text-xs font-medium">GST ₹{order.gstAmount.toFixed(2)}</span>
                                                         </div>
                                                     )}
+                                                    {/* ✅ Coupon Badge */}
+                                                    {order.couponCode && (
+                                                        <div className="bg-gradient-to-r from-green-100 to-emerald-100 text-green-700 px-3 py-2 rounded-lg border border-green-200 flex items-center">
+                                                            <Gift className="w-4 h-4 mr-1" />
+                                                            <span className="text-xs font-medium">{order.couponCode} (-₹{order.discount?.toFixed(2) || '0.00'})</span>
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </div>
                                             
@@ -840,7 +1127,7 @@ const Orders = () => {
                                                             <div key={`${order._id}-item-${itemIndex}`} className="group flex items-center space-x-4 bg-white/60 p-4 rounded-xl hover:bg-white transition-all duration-300 hover:shadow-md">
                                                                 <div className="relative w-16 h-16 bg-gradient-to-br from-amber-100 to-orange-100 rounded-xl overflow-hidden">
                                                                     <img
-                                                                        src={item?.product?.image || FALLBACK_IMAGE}
+                                                                        src={"https://bogat.onrender.com"+item?.product?.image || FALLBACK_IMAGE}
                                                                         alt={item?.product?.name || 'Product'}
                                                                         className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
                                                                         onError={handleImageError}
@@ -878,6 +1165,34 @@ const Orders = () => {
                                                         </div>
                                                     </div>
 
+                                                    {/* ✅ Coupon Details Section */}
+                                                    {order.couponCode && (
+                                                        <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-4 rounded-xl border border-green-200">
+                                                            <h5 className="font-bold text-green-800 mb-3 flex items-center">
+                                                                <Gift className="w-4 h-4 text-green-600 mr-2" />
+                                                                Coupon Applied
+                                                            </h5>
+                                                            <div className="space-y-2 text-sm">
+                                                                <div className="flex justify-between text-green-700">
+                                                                    <span className="flex items-center">
+                                                                        <Tag className="w-3 h-3 mr-1" />
+                                                                        Coupon Code:
+                                                                    </span>
+                                                                    <span className="font-bold">{order.couponCode}</span>
+                                                                </div>
+                                                                <div className="flex justify-between text-green-700">
+                                                                    <span>Discount Amount:</span>
+                                                                    <span className="font-bold">-₹{order.discount?.toFixed(2) || '0.00'}</span>
+                                                                </div>
+                                                                {order.couponDetails?.title && (
+                                                                    <div className="text-green-600 text-xs italic">
+                                                                        {order.couponDetails.title}
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    )}
+
                                                     {/* Price Breakdown */}
                                                     <div className="bg-gradient-to-r from-amber-50 to-orange-50 p-4 rounded-xl border border-amber-200">
                                                         <h5 className="font-bold text-gray-800 mb-3 flex items-center">
@@ -886,23 +1201,31 @@ const Orders = () => {
                                                         </h5>
                                                         <div className="space-y-2 text-sm">
                                                             {(() => {
-                                                                const subtotal = (order.items || []).reduce((sum, item) => sum + (item.price * item.quantity), 0);
+                                                                const itemsSubtotal = (order.items || []).reduce((sum, item) => sum + (item.price * item.quantity), 0);
+                                                                const couponDiscount = order.discount || 0;
+                                                                const subtotalAfterDiscount = itemsSubtotal - couponDiscount;
                                                                 const gstAmount = order.gstAmount || 0;
-                                                                const gstBreakdown = calculateGSTBreakdown(subtotal, gstAmount);
+                                                                const gstBreakdown = calculateGSTBreakdown(order, subtotalAfterDiscount);
                                                                 const shipping = order.shippingCharge || 0;
                                                                 
                                                                 return (
                                                                     <>
                                                                         <div className="flex justify-between text-gray-600">
                                                                             <span>Subtotal:</span>
-                                                                            <span>₹{subtotal.toFixed(2)}</span>
+                                                                            <span>₹{itemsSubtotal.toFixed(2)}</span>
                                                                         </div>
+                                                                        {couponDiscount > 0 && (
+                                                                            <div className="flex justify-between text-green-600 font-semibold">
+                                                                                <span>Coupon Discount ({order.couponCode}):</span>
+                                                                                <span>-₹{couponDiscount.toFixed(2)}</span>
+                                                                            </div>
+                                                                        )}
                                                                         <div className="flex justify-between text-gray-600">
-                                                                            <span>CGST @ {GST_RATES.CGST}%:</span>
+                                                                            <span>CGST @ {gstBreakdown.cgstRate.toFixed(1)}%:</span>
                                                                             <span>₹{gstBreakdown.cgst.toFixed(2)}</span>
                                                                         </div>
                                                                         <div className="flex justify-between text-gray-600">
-                                                                            <span>SGST @ {GST_RATES.SGST}%:</span>
+                                                                            <span>SGST @ {gstBreakdown.sgstRate.toFixed(1)}%:</span>
                                                                             <span>₹{gstBreakdown.sgst.toFixed(2)}</span>
                                                                         </div>
                                                                         <div className="flex justify-between font-semibold text-amber-700 border-t border-amber-200 pt-2">

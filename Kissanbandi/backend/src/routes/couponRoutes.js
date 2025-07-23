@@ -1,3 +1,5 @@
+// FIXED: Remove duplicate route definition in routes/coupons.js
+
 const express = require('express');
 const router = express.Router();
 
@@ -65,7 +67,7 @@ router.post('/apply', [
     .withMessage('Discount given must be a positive number')
 ], couponController.applyCoupon);
 
-// ✅ NEW: Update coupon usage after successful payment
+// ✅ FIXED: Single definition of coupon usage update route
 router.post('/:couponId/usage', [
   param('couponId')
     .isMongoId()
@@ -86,31 +88,20 @@ router.post('/:couponId/usage', [
     .optional()
     .isISO8601()
     .withMessage('Used at must be a valid date')
-], couponController.updateCouponUsage);
+], (req, res, next) => {
+  console.log('🎫 === COUPON USAGE ROUTE HIT ===');
+  console.log('🎫 Method:', req.method);
+  console.log('🎫 URL:', req.url);
+  console.log('🎫 Params:', req.params);
+  console.log('🎫 Body:', req.body);
+  console.log('🎫 User:', req.user ? { id: req.user.userId, role: req.user.role } : 'No user');
+  next();
+}, couponController.updateCouponUsage);
 
-// ✅ NEW: Reserve coupon for order (prevents race conditions)
-// router.post('/:couponId/reserve', [
-//   param('couponId')
-//     .isMongoId()
-//     .withMessage('Valid coupon ID is required'),
-//   body('userId')
-//     .isMongoId()
-//     .withMessage('Valid user ID is required'),
-//   body('discountAmount')
-//     .isFloat({ min: 0 })
-//     .withMessage('Discount amount must be a positive number'),
-//   body('orderTotal')
-//     .isFloat({ min: 0 })
-//     .withMessage('Order total must be a positive number'),
-//   body('reservationTimeout')
-//     .optional()
-//     .isInt({ min: 60000, max: 1800000 }) // 1 minute to 30 minutes
-//     .withMessage('Reservation timeout must be between 1 minute and 30 minutes')
-// ], couponController.reserveCoupon);
-
-router.post('/:couponId/usage', [
-  // validation middleware
-], couponController.updateCouponUsage);
+// ❌ REMOVED: Duplicate route definition (this was causing the issue!)
+// router.post('/:couponId/usage', [
+//   // validation middleware
+// ], couponController.updateCouponUsage);
 
 // ✅ NEW: Release coupon reservation
 router.post('/:couponId/release', [
@@ -330,11 +321,6 @@ router.patch('/:id/toggle', [
 ], couponController.toggleCouponStatus);
 
 // Delete coupon
-router.delete('/:id', [
-  param('id')
-    .isMongoId()
-    .withMessage('Invalid coupon ID')
-], couponController.deleteCoupon);
 
 // Get coupon usage history
 router.get('/:id/usage-history', [
@@ -369,3 +355,17 @@ router.get('/:id/report', [
 console.log('✅ All coupon routes loaded successfully');
 
 module.exports = router;
+
+// ✅ QUICK TEST: Add this to test the route registration
+console.log('🎫 Route registration test:');
+console.log('POST /:couponId/usage route should be available at: /api/coupons/:couponId/usage');
+
+// 🔧 DEBUGGING: Add this temporary route to verify controller method exists
+router.get('/debug/methods', (req, res) => {
+  const methods = Object.getOwnPropertyNames(couponController);
+  res.json({
+    availableMethods: methods,
+    hasUpdateCouponUsage: typeof couponController.updateCouponUsage === 'function',
+    updateCouponUsageType: typeof couponController.updateCouponUsage
+  });
+});

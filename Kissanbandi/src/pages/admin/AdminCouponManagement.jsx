@@ -59,11 +59,11 @@ const AdminCouponManagement = () => {
   const [errors, setErrors] = useState({});
 
   // API Base URL - Update this to match your backend
-  const API_BASE_URL = 'http://localhost:5000/api/coupons';
+  const API_BASE_URL = 'https://bogat.onrender.com/api/coupons';
 
   // Get auth token from sessionStorage or your auth context
   const getAuthToken = () => {
-    return sessionStorage.getItem('adminToken') || sessionStorage.getItem('token');
+    return sessionStorage.getItem('adminToken') || sessionStorage.getItem('kissanbandi_token');
   };
 
   // API Helper function
@@ -285,6 +285,7 @@ const AdminCouponManagement = () => {
     if (!window.confirm('Are you sure you want to delete this coupon?')) return;
 
     try {
+      console.log("Vaibhav Says : ", couponId);
       const response = await apiCall(`/${couponId}`, {
         method: 'DELETE'
       });

@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { ordersApi, productsApi } from '../../services/api';
-import couponApi from '../../../backend/src/services/couponApi'; // ✅ Import the couponApi instead of defining it inline
+import couponApi from '../../services/couponApi'; 
 
 const CheckoutPage = () => {
   const { 
@@ -249,7 +249,7 @@ const CheckoutPage = () => {
       }
     } catch (error) {
       console.error('❌ Coupon validation error:', error);
-      toast.error(error.message || 'Invalid coupon code');
+      toast.error('Invalid coupon code');
     } finally {
       setCouponLoading(false);
     }
