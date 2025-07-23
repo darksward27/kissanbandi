@@ -16,6 +16,10 @@ router.get('/verified', reviewController.getVerifiedReviews);
 router.get('/verified/product/:productId', reviewController.getVerifiedProductReviews);
 router.get('/verified/count', reviewController.getVerifiedReviewsCount);
 
+//replies from admin
+router.get('/product/:productId/replies', reviewController.getProductReviewReplies);
+
+
 // 🔐 AUTHENTICATED USER ROUTES
 router.use(auth); // all routes below this line require authentication
 

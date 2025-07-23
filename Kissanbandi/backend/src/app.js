@@ -15,7 +15,7 @@ const analyticsRoutes = require('./routes/analyticsRoutes');
 const blogRoutes = require('./routes/blogRoutes');
 const categoryRoutes = require('./routes/categoryRoutes');
 const reviewRoutes = require('./routes/reviewRoutes'); 
-
+const couponRoutes = require('./routes/couponRoutes')
 
 // Validate required environment variables
 const requiredEnvVars = ['MONGODB_URI', 'JWT_SECRET'];
@@ -64,9 +64,14 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(morgan('dev'));
+app.use('/uploads', (req, res, next) => {
+  console.log('🧩 Static file request:', req.url);
+  next();
+});
 
 // Serve uploaded images
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
 
 
 // Basic route for API health check
@@ -91,6 +96,10 @@ app.use('/api/blogs', blogRoutes);
 app.use('/api/reviews', reviewRoutes);
 // Category routes
 app.use('/api/categories', categoryRoutes);
+
+//Coupons Routes
+app.use('/api/coupons', couponRoutes);  
+app.use('/api/admin/coupons', couponRoutes); 
 
 // Error handling middleware
 app.use((err, req, res, next) => {

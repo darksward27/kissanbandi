@@ -29,7 +29,8 @@ import {
   Save,
   MessageSquare,
   AlertTriangle,
-  Plus
+  Plus,
+  StickyNote
 } from 'lucide-react';
 import DatePicker from 'react-datepicker';
 import "react-datepicker/dist/react-datepicker.css";
@@ -365,29 +366,88 @@ const AdminOrders = () => {
     }
   };
 
+  const getNoteTypeConfig = (status) => {
+    switch (status?.toLowerCase()) {
+      case 'cancelled':
+        return {
+          bgColor: 'bg-red-50',
+          borderColor: 'border-red-200',
+          textColor: 'text-red-800',
+          iconColor: 'text-red-600',
+          buttonColor: 'bg-red-600 hover:bg-red-700',
+          icon: <AlertTriangle className="w-4 h-4" />,
+          title: 'Cancellation Note',
+          placeholder: 'Add cancellation reason...'
+        };
+      case 'processing':
+        return {
+          bgColor: 'bg-yellow-50',
+          borderColor: 'border-yellow-200',
+          textColor: 'text-yellow-800',
+          iconColor: 'text-yellow-600',
+          buttonColor: 'bg-yellow-600 hover:bg-yellow-700',
+          icon: <Clock className="w-4 h-4" />,
+          title: 'Processing Note',
+          placeholder: 'Add processing details...'
+        };
+      case 'shipped':
+        return {
+          bgColor: 'bg-blue-50',
+          borderColor: 'border-blue-200',
+          textColor: 'text-blue-800',
+          iconColor: 'text-blue-600',
+          buttonColor: 'bg-blue-600 hover:bg-blue-700',
+          icon: <TrendingUp className="w-4 h-4" />,
+          title: 'Shipping Note',
+          placeholder: 'Add shipping details...'
+        };
+      case 'delivered':
+        return {
+          bgColor: 'bg-green-50',
+          borderColor: 'border-green-200',
+          textColor: 'text-green-800',
+          iconColor: 'text-green-600',
+          buttonColor: 'bg-green-600 hover:bg-green-700',
+          icon: <Package className="w-4 h-4" />,
+          title: 'Delivery Note',
+          placeholder: 'Add delivery details...'
+        };
+      default:
+        return {
+          bgColor: 'bg-gray-50',
+          borderColor: 'border-gray-200',
+          textColor: 'text-gray-800',
+          iconColor: 'text-gray-600',
+          buttonColor: 'bg-gray-600 hover:bg-gray-700',
+          icon: <StickyNote className="w-4 h-4" />,
+          title: 'Admin Note',
+          placeholder: 'Add admin note...'
+        };
+    }
+  };
+
   const SortIcon = ({ field }) => {
     if (sortField !== field) return <SortAsc className="w-4 h-4 opacity-30" />;
     return sortOrder === 'asc' ? <SortAsc className="w-4 h-4" /> : <SortDesc className="w-4 h-4" />;
   };
 
   const renderAdminNote = (order) => {
-    if (order.status !== 'cancelled') return null;
-
     const isExpanded = expandedNotes.has(order._id);
     const isEditing = editingNote === order._id;
+    const noteConfig = getNoteTypeConfig(order.status);
 
     return (
-      <div className="mt-2 p-3 bg-red-50 border border-red-200 rounded-lg">
+      <div className={`mt-2 p-3 ${noteConfig.bgColor} border ${noteConfig.borderColor} rounded-lg`}>
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center space-x-2">
-            <AlertTriangle className="w-4 h-4 text-red-600" />
-            <span className="text-sm font-medium text-red-800">Cancellation Note</span>
+            <span className={noteConfig.iconColor}>{noteConfig.icon}</span>
+            <span className={`text-sm font-medium ${noteConfig.textColor}`}>{noteConfig.title}</span>
           </div>
           <div className="flex items-center space-x-2">
             {!isEditing && (
               <button
                 onClick={() => handleEditNote(order._id, order.adminNote)}
-                className="text-red-600 hover:text-red-800 transition-colors"
+                className={`${noteConfig.iconColor} hover:opacity-80 transition-colors`}
                 title="Edit note"
               >
                 <Edit3 className="w-4 h-4" />
@@ -396,7 +456,7 @@ const AdminOrders = () => {
             {order.adminNote && (
               <button
                 onClick={() => toggleNoteExpansion(order._id)}
-                className="text-red-600 hover:text-red-800 transition-colors"
+                className={`${noteConfig.iconColor} hover:opacity-80 transition-colors`}
               >
                 {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
               </button>
@@ -409,15 +469,15 @@ const AdminOrders = () => {
             <textarea
               value={noteText}
               onChange={(e) => setNoteText(e.target.value)}
-              placeholder="Add cancellation reason..."
-              className="w-full p-2 text-sm border border-red-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500 resize-none"
+              placeholder={noteConfig.placeholder}
+              className={`w-full p-2 text-sm border ${noteConfig.borderColor} rounded focus:ring-2 focus:ring-amber-500 focus:border-amber-500 resize-none`}
               rows="3"
             />
             <div className="flex items-center space-x-2">
               <button
                 onClick={() => handleSaveNote(order._id)}
                 disabled={savingNote}
-                className="px-3 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700 transition-colors flex items-center space-x-1 disabled:opacity-50"
+                className={`px-3 py-1 text-xs text-white rounded ${noteConfig.buttonColor} transition-colors flex items-center space-x-1 disabled:opacity-50`}
               >
                 {savingNote ? (
                   <Loader className="w-3 h-3 animate-spin" />
@@ -436,7 +496,7 @@ const AdminOrders = () => {
             </div>
           </div>
         ) : (
-          <div className="text-sm text-red-700">
+          <div className={`text-sm ${noteConfig.textColor}`}>
             {order.adminNote ? (
               <div>
                 <p className={isExpanded ? '' : 'line-clamp-2'}>
@@ -445,19 +505,19 @@ const AdminOrders = () => {
                 {!isExpanded && order.adminNote.length > 100 && (
                   <button
                     onClick={() => toggleNoteExpansion(order._id)}
-                    className="text-red-600 hover:text-red-800 text-xs mt-1"
+                    className={`${noteConfig.iconColor} hover:opacity-80 text-xs mt-1`}
                   >
                     Show more...
                   </button>
                 )}
               </div>
             ) : (
-              <div className="flex items-center space-x-2 text-red-600">
+              <div className={`flex items-center space-x-2 ${noteConfig.iconColor}`}>
                 <MessageSquare className="w-4 h-4" />
-                <span className="italic">No cancellation note added yet</span>
+                <span className="italic">No {noteConfig.title.toLowerCase()} added yet</span>
                 <button
                   onClick={() => handleEditNote(order._id, '')}
-                  className="text-red-600 hover:text-red-800"
+                  className={`${noteConfig.iconColor} hover:opacity-80`}
                 >
                   <Plus className="w-4 h-4" />
                 </button>
@@ -596,7 +656,7 @@ const AdminOrders = () => {
                 </div>
               </div>
 
-              {/* Admin Note in Card View */}
+              {/* Admin Note in Card View - Now for all orders */}
               {renderAdminNote(order)}
 
               <div className="flex space-x-2 mt-4">
@@ -747,106 +807,118 @@ const AdminOrders = () => {
                     </div>
                   </td>
                   <td className="px-3 sm:px-6 py-4">
-                    <button
-                      onClick={() => handleViewDetails(order)}
-                      className="text-amber-600 hover:text-amber-900 text-sm font-medium flex items-center space-x-1"
-                    >
-                      <Eye className="w-4 h-4" />
-                      <span className="hidden sm:inline">View</span>
-                    </button>
+                    <div className="flex items-center space-x-2">
+                      <button
+                        onClick={() => handleViewDetails(order)}
+                        className="text-amber-600 hover:text-amber-900 text-sm font-medium flex items-center space-x-1"
+                      >
+                        <Eye className="w-4 h-4" />
+                        <span className="hidden sm:inline">View</span>
+                      </button>
+                      <button
+                        onClick={() => handleEditNote(order._id, order.adminNote)}
+                        className="text-blue-600 hover:text-blue-900 text-sm font-medium flex items-center space-x-1"
+                        title="Add/Edit Note"
+                      >
+                        <StickyNote className="w-4 h-4" />
+                        <span className="hidden sm:inline">Note</span>
+                      </button>
+                    </div>
                   </td>
                 </tr>
                 
-                {/* Admin Note Row for Cancelled Orders */}
-                {order.status === 'cancelled' && (
-                  <tr className="bg-red-50 border-t border-red-200">
-                    <td colSpan="8" className="px-3 sm:px-6 py-3">
-                      <div className="flex items-start space-x-3">
-                        <div className="flex-shrink-0 mt-1">
-                          <AlertTriangle className="w-4 h-4 text-red-600" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between mb-2">
-                            <h4 className="text-sm font-medium text-red-800">Cancellation Note</h4>
-                            {editingNote !== order._id && (
-                              <button
-                                onClick={() => handleEditNote(order._id, order.adminNote)}
-                                className="text-red-600 hover:text-red-800 transition-colors flex items-center space-x-1"
-                                title="Edit cancellation note"
-                              >
-                                <Edit3 className="w-4 h-4" />
-                                <span className="text-xs hidden sm:inline">Edit Note</span>
-                              </button>
-                            )}
-                          </div>
-                          
-                          {editingNote === order._id ? (
-                            <div className="space-y-3">
-                              <textarea
-                                value={noteText}
-                                onChange={(e) => setNoteText(e.target.value)}
-                                placeholder="Enter cancellation reason..."
-                                className="w-full p-3 text-sm border border-red-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 resize-none"
-                                rows="3"
-                              />
-                              <div className="flex items-center space-x-2">
-                                <button
-                                  onClick={() => handleSaveNote(order._id)}
-                                  disabled={savingNote}
-                                  className="px-4 py-2 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center space-x-1 disabled:opacity-50"
-                                >
-                                  {savingNote ? (
-                                    <Loader className="w-4 h-4 animate-spin" />
-                                  ) : (
-                                    <Save className="w-4 h-4" />
-                                  )}
-                                  <span>{savingNote ? 'Saving...' : 'Save Note'}</span>
-                                </button>
-                                <button
-                                  onClick={handleCancelEdit}
-                                  className="px-4 py-2 text-sm bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors flex items-center space-x-1"
-                                >
-                                  <X className="w-4 h-4" />
-                                  <span>Cancel</span>
-                                </button>
-                              </div>
-                            </div>
-                          ) : (
-                            <div className="bg-white/60 p-3 rounded-lg border border-red-200">
-                              {order.adminNote ? (
-                                <div className="text-sm text-black">
-                                  <div className="flex items-start space-x-2">
-                                    <MessageSquare className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                                    <div className="flex-1">
-                                      <p className="leading-relaxed">Reason : {order.adminNote}</p>
-                                      <p className="text-xs text-red-600 mt-1 opacity-75">
-                                        Added by admin
-                                      </p>
-                                    </div>
-                                  </div>
-                                </div>
-                              ) : (
-                                <div className="flex items-center justify-between">
-                                  <div className="flex items-center space-x-2 text-red-600">
-                                    <MessageSquare className="w-4 h-4" />
-                                    <span className="text-sm italic">No cancellation note added yet</span>
-                                  </div>
-                                  <button
-                                    onClick={() => handleEditNote(order._id, '')}
-                                    className="px-3 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700 transition-colors flex items-center space-x-1"
-                                  >
-                                    <Plus className="w-3 h-3" />
-                                    <span>Add Note</span>
-                                  </button>
-                                </div>
-                              )}
-                            </div>
+                {/* Admin Note Row for All Orders */}
+                <tr className={`${getNoteTypeConfig(order.status).bgColor} border-t ${getNoteTypeConfig(order.status).borderColor}`}>
+                  <td colSpan="8" className="px-3 sm:px-6 py-3">
+                    <div className="flex items-start space-x-3">
+                      <div className="flex-shrink-0 mt-1">
+                        <span className={getNoteTypeConfig(order.status).iconColor}>
+                          {getNoteTypeConfig(order.status).icon}
+                        </span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between mb-2">
+                          <h4 className={`text-sm font-medium ${getNoteTypeConfig(order.status).textColor}`}>
+                            {getNoteTypeConfig(order.status).title}
+                          </h4>
+                          {editingNote !== order._id && (
+                            <button
+                              onClick={() => handleEditNote(order._id, order.adminNote)}
+                              className={`${getNoteTypeConfig(order.status).iconColor} hover:opacity-80 transition-colors flex items-center space-x-1`}
+                              title={`Edit ${getNoteTypeConfig(order.status).title.toLowerCase()}`}
+                            >
+                              <Edit3 className="w-4 h-4" />
+                              <span className="text-xs hidden sm:inline">Edit Note</span>
+                            </button>
                           )}
                         </div>
+                        
+                        {editingNote === order._id ? (
+                          <div className="space-y-3">
+                            <textarea
+                              value={noteText}
+                              onChange={(e) => setNoteText(e.target.value)}
+                              placeholder={getNoteTypeConfig(order.status).placeholder}
+                              className={`w-full p-3 text-sm border ${getNoteTypeConfig(order.status).borderColor} rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 resize-none`}
+                              rows="3"
+                            />
+                            <div className="flex items-center space-x-2">
+                              <button
+                                onClick={() => handleSaveNote(order._id)}
+                                disabled={savingNote}
+                                className="px-4 py-2 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center space-x-1 disabled:opacity-50"
+                              >
+                                {savingNote ? (
+                                  <Loader className="w-4 h-4 animate-spin" />
+                                ) : (
+                                  <Save className="w-4 h-4" />
+                                )}
+                                <span>{savingNote ? 'Saving...' : 'Save Note'}</span>
+                              </button>
+                              <button
+                                onClick={handleCancelEdit}
+                                className="px-4 py-2 text-sm bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors flex items-center space-x-1"
+                              >
+                                <X className="w-4 h-4" />
+                                <span>Cancel</span>
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="bg-white/60 p-3 rounded-lg border border-gray-200">
+                            {order.adminNote ? (
+                              <div className="text-sm text-black">
+                                <div className="flex items-start space-x-2">
+                                  <MessageSquare className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                                  <div className="flex-1">
+                                    <p className="leading-relaxed">{order.adminNote}</p>
+                                    <p className="text-xs text-gray-600 mt-1 opacity-75">
+                                      Added by admin
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="flex items-center justify-between">
+                                <div className={`flex items-center space-x-2 ${getNoteTypeConfig(order.status).iconColor}`}>
+                                  <MessageSquare className="w-4 h-4" />
+                                  <span className="text-sm italic">No {getNoteTypeConfig(order.status).title.toLowerCase()} added yet</span>
+                                </div>
+                                <button
+                                  onClick={() => handleEditNote(order._id, '')}
+                                  className={`px-3 py-1 text-xs text-white rounded hover:opacity-80 transition-colors flex items-center space-x-1 ${getNoteTypeConfig(order.status).buttonColor}`}
+                                >
+                                  <Plus className="w-3 h-3" />
+                                  <span>Add Note</span>
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
-                    </td>
-                  </tr>
-                )}
+                    </div>
+                  </td>
+                </tr>
               </React.Fragment>
             ))}
           </tbody>

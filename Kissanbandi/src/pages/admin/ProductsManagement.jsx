@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Search, Plus, Pencil, Trash2, X, Filter, Grid, List, Eye, Package, TrendingUp, AlertCircle, CheckCircle, Slash, Circle, FolderPlus } from 'lucide-react';
+import { Search, Plus, Pencil, Trash2, X, Filter, Grid, List, Eye, Package, TrendingUp, AlertCircle, CheckCircle, Slash, Circle, FolderPlus, Image, ImageIcon, ArrowLeft, ArrowRight } from 'lucide-react';
 import ProductForm from '../../components/ProductForm';
 import CategoryManagementModal from './CategoryManagement';
 import { toast } from 'react-hot-toast';
@@ -15,24 +15,80 @@ const ProductsManagement = () => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
-  const [viewMode, setViewMode] = useState('table'); // 'table' or 'grid'
+  const [viewMode, setViewMode] = useState('table');
   const [filterCategory, setFilterCategory] = useState('all');
   const [sortBy, setSortBy] = useState('name');
-  const [selectedProducts, setSelectedProducts] = useState([]);
-  const [showFilters, setShowFilters] = useState(false);
   const [statusFilter, setStatusFilter] = useState('all');
+  const [showImageModal, setShowImageModal] = useState(false);
+  const [selectedProductImages, setSelectedProductImages] = useState(null);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
-  useEffect(() => {
-    products.forEach((p) => {
-      if (p.stock === 0 && p.status !== 'inactive') {
-        handleToggleProductStatus(p._id, 'inactive', {
-          confirm: false,
-          toast: false,
-          reload: false,
-        });
-      }
+  // ✅ FIXED: Image processing functions
+  const getProductImage = (imagePath) => {
+    if (!imagePath) {
+      return 'https://via.placeholder.com/300x200/f3f4f6/9ca3af?text=No+Image';
+    }
+
+    if (imagePath.startsWith('http')) {
+      return imagePath;
+    }
+    
+    if (imagePath.startsWith('/uploads')) {
+      return `http://localhost:5000${imagePath}`;
+    }
+    
+    const filename = imagePath.split('/').pop();
+    return `http://localhost:5000/uploads/product/${filename}`;
+  };
+
+  const getProductImages = (product) => {
+    if (product.images && Array.isArray(product.images) && product.images.length > 0) {
+      return product.images.map(img => getProductImage(img));
+    }
+    if (product.image) {
+      return [getProductImage(product.image)];
+    }
+    return ['https://via.placeholder.com/300x200/f3f4f6/9ca3af?text=No+Image'];
+  };
+
+  const debugProductImages = () => {
+    console.log('=== PRODUCTS MANAGEMENT IMAGES DEBUG ===');
+    products.slice(0, 3).forEach((product, index) => {
+      const processedImages = getProductImages(product);
+      console.log(`Product ${index + 1}: ${product.name}`);
+      console.log('- Raw images array:', product.images);
+      console.log('- Raw single image:', product.image);
+      console.log('- Processed images:', processedImages);
+      console.log('- First processed image:', processedImages[0]);
     });
-  }, [products]);
+    console.log('=== END DEBUG ===');
+  };
+
+  const handleShowImages = (product) => {
+    const images = getProductImages(product);
+    setSelectedProductImages({
+      product: product,
+      images: images
+    });
+    setCurrentImageIndex(0);
+    setShowImageModal(true);
+  };
+
+  const nextImage = () => {
+    if (selectedProductImages && selectedProductImages.images.length > 1) {
+      setCurrentImageIndex((prev) => 
+        prev === selectedProductImages.images.length - 1 ? 0 : prev + 1
+      );
+    }
+  };
+
+  const prevImage = () => {
+    if (selectedProductImages && selectedProductImages.images.length > 1) {
+      setCurrentImageIndex((prev) => 
+        prev === 0 ? selectedProductImages.images.length - 1 : prev - 1
+      );
+    }
+  };
 
   useEffect(() => {
     loadProducts();
@@ -42,16 +98,8 @@ const ProductsManagement = () => {
   const loadProducts = async () => {
     try {
       setLoading(true);
-      console.log('Fetching products...');
       const productsData = await productsApi.getAllProducts();
-      console.log("Received statuses:", productsData.map(p => p.status));
-      console.log('Products received:', {
-        data: productsData,
-        isArray: Array.isArray(productsData),
-        length: productsData?.length
-      });
       
-      // Ensure we're setting an array
       if (!Array.isArray(productsData)) {
         console.warn('Products data is not an array:', productsData);
         setProducts([]);
@@ -60,21 +108,10 @@ const ProductsManagement = () => {
       }
       
       setProducts(productsData);
-      setError(null); // Clear any previous errors
-      
-      // Log the state update
-      console.log('Products state updated:', {
-        count: productsData.length,
-        firstProduct: productsData[0]
-      });
+      setError(null);
       
     } catch (err) {
-      console.error('Error loading products:', {
-        error: err,
-        message: err.message,
-        response: err.response?.data,
-        status: err.response?.status
-      });
+      console.error('Error loading products:', err);
       setError(err.message);
       toast.error('Failed to load products');
     } finally {
@@ -85,8 +122,6 @@ const ProductsManagement = () => {
   const loadCategories = async () => {
     try {
       setCategoriesLoading(true);
-      console.log('Fetching categories...');
-      
       const response = await fetch('/api/categories');
       
       if (!response.ok) {
@@ -94,9 +129,7 @@ const ProductsManagement = () => {
       }
       
       const categoriesData = await response.json();
-      console.log('Categories received:', categoriesData);
       
-      // Ensure we're setting an array
       if (!Array.isArray(categoriesData)) {
         console.warn('Categories data is not an array:', categoriesData);
         setCategories([]);
@@ -106,28 +139,21 @@ const ProductsManagement = () => {
       setCategories(categoriesData);
       
     } catch (err) {
-      console.error('Error loading categories:', {
-        error: err,
-        message: err.message
-      });
+      console.error('Error loading categories:', err);
       toast.error('Failed to load categories');
-      setCategories([]); // Set empty array as fallback
+      setCategories([]);
     } finally {
       setCategoriesLoading(false);
     }
   };
 
-  // Filter and sort products
   const filteredProducts = useMemo(() => {
-    console.log('Filtering products:', { products, searchQuery });
     if (!Array.isArray(products)) {
-      console.warn('Products is not an array:', products);
       return [];
     }
     
     let filtered = products;
     
-    // Filter by search query
     if (searchQuery) {
       filtered = filtered.filter(product => 
         product?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -135,7 +161,6 @@ const ProductsManagement = () => {
       );
     }
     
-    // Filter by category
     if (filterCategory !== 'all') {
       filtered = filtered.filter(product => 
         product?.category?.toLowerCase() === filterCategory.toLowerCase()
@@ -148,7 +173,6 @@ const ProductsManagement = () => {
       );
     }
     
-    // Sort products
     filtered.sort((a, b) => {
       switch (sortBy) {
         case 'name':
@@ -170,12 +194,8 @@ const ProductsManagement = () => {
   const handleAddProduct = async (productData) => {
     try {
       console.log('Creating new product:', productData);
-      const result = await productsApi.createProduct(productData);
-      console.log('Product created successfully:', result);
-      
-      // Force immediate reload of products
+      await productsApi.createProduct(productData);
       await loadProducts();
-      
       toast.success('Product added successfully!');
       setShowAddModal(false);
     } catch (err) {
@@ -186,7 +206,6 @@ const ProductsManagement = () => {
 
   const handleEditProduct = async (productData) => {
     try {
-      console.log('Updating product:', productData);
       const productId = productData.id || productData._id;
       
       if (!productId) {
@@ -194,47 +213,28 @@ const ProductsManagement = () => {
       }
       
       await productsApi.updateProduct(productId, productData);
-      console.log('Product updated successfully');
-      
       toast.success('Product updated successfully!');
       setEditingProduct(null);
-      await loadProducts(); // Reload products list
+      await loadProducts();
     } catch (err) {
       console.error('Error updating product:', err);
       toast.error(err.response?.data?.message || 'Failed to update product');
     }
   };
 
-  const handleToggleProductStatus = async (
-    productId,
-    newStatus,
-    options = { confirm: true, toast: true, reload: true }
-  ) => {
+  const handleToggleProductStatus = async (productId, newStatus) => {
     if (!productId) return toast.error('Invalid product ID');
 
     const action = newStatus === 'active' ? 'activate' : 'deactivate';
 
-    if (!options.confirm || window.confirm(`Are you sure you want to ${action} this product?`)) {
+    if (window.confirm(`Are you sure you want to ${action} this product?`)) {
       try {
-        const updated = await productsApi.updateProduct(productId, { status: newStatus });
-
-        if (options.toast) {
-          toast.success(`Product marked as ${newStatus}`);
-        }
-
-        if (options.reload) {
-          await loadProducts();
-        } else {
-          // 🔁 Update product locally
-          setProducts((prev) =>
-            prev.map((p) => (p._id === productId ? { ...p, status: updated.status } : p))
-          );
-        }
+        await productsApi.updateProduct(productId, { status: newStatus });
+        toast.success(`Product marked as ${newStatus}`);
+        await loadProducts();
       } catch (err) {
         console.error(`Error changing product status:`, err);
-        if (options.toast !== false) {
-          toast.error(err.response?.data?.error || `Failed to ${action} product`);
-        }
+        toast.error(err.response?.data?.error || `Failed to ${action} product`);
       }
     }
   };
@@ -248,7 +248,7 @@ const ProductsManagement = () => {
     try {
       await productsApi.deleteProduct(productId);
       toast.success('Product deleted successfully');
-      await loadProducts(); // Refresh the product list
+      await loadProducts();
     } catch (err) {
       console.error('Failed to delete product:', err);
       toast.error(err.response?.data?.message || 'Failed to delete product');
@@ -266,7 +266,6 @@ const ProductsManagement = () => {
     return cats;
   }, [products]);
 
-  // Handler for when categories are updated in the modal
   const handleCategoriesUpdated = () => {
     loadCategories();
   };
@@ -277,7 +276,6 @@ const ProductsManagement = () => {
         <div className="flex justify-center items-center h-64">
           <div className="relative">
             <div className="animate-spin rounded-full h-16 w-16 border-4 border-amber-200 border-t-amber-600"></div>
-            <div className="absolute inset-0 animate-pulse rounded-full h-16 w-16 border-4 border-amber-300 opacity-20"></div>
             <Package className="absolute inset-0 m-auto w-6 h-6 text-amber-600 animate-bounce" />
           </div>
         </div>
@@ -307,6 +305,7 @@ const ProductsManagement = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50">
       <div className="p-6 space-y-8">
+     
         {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
@@ -367,8 +366,7 @@ const ProductsManagement = () => {
           ].map((stat, index) => (
             <div 
               key={index}
-              className="group bg-white rounded-2xl shadow-lg hover:shadow-xl p-6 transform hover:scale-105 transition-all duration-300 animate-fade-in border border-amber-100"
-              style={{ animationDelay: `${index * 100}ms` }}
+              className="group bg-white rounded-2xl shadow-lg hover:shadow-xl p-6 transform hover:scale-105 transition-all duration-300 border border-amber-100"
             >
               <div className="flex items-center justify-between">
                 <div>
@@ -392,7 +390,6 @@ const ProductsManagement = () => {
         {/* Controls */}
         <div className="bg-white rounded-2xl shadow-lg p-6 border border-amber-100">
           <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
-            {/* Search Bar */}
             <div className="relative flex-1 max-w-md">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
               <input
@@ -404,9 +401,7 @@ const ProductsManagement = () => {
               />
             </div>
 
-            {/* Controls */}
             <div className="flex items-center gap-3">
-              {/* Category Filter */}
               <select
                 value={filterCategory}
                 onChange={(e) => setFilterCategory(e.target.value)}
@@ -419,7 +414,7 @@ const ProductsManagement = () => {
                   </option>
                 ))}
               </select>
-              {/* Status Filter */}
+
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
@@ -430,7 +425,6 @@ const ProductsManagement = () => {
                 <option value="inactive">Inactive</option>
               </select>
 
-              {/* Sort */}
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
@@ -442,7 +436,6 @@ const ProductsManagement = () => {
                 <option value="category">Sort by Category</option>
               </select>
 
-              {/* View Toggle */}
               <div className="flex items-center bg-amber-100 rounded-xl p-1">
                 <button
                   onClick={() => setViewMode('table')}
@@ -471,7 +464,6 @@ const ProductsManagement = () => {
 
         {/* Products Display */}
         {viewMode === 'table' ? (
-          // Table View
           <div className="bg-white rounded-2xl shadow-lg overflow-hidden border border-amber-100">
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
@@ -479,6 +471,9 @@ const ProductsManagement = () => {
                   <tr>
                     <th className="px-6 py-4 text-left text-xs font-bold text-amber-700 uppercase tracking-wider">
                       Product
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-amber-700 uppercase tracking-wider">
+                      Images
                     </th>
                     <th className="px-6 py-4 text-left text-xs font-bold text-amber-700 uppercase tracking-wider">
                       Price
@@ -500,27 +495,62 @@ const ProductsManagement = () => {
                 <tbody className="bg-white divide-y divide-gray-200">
                   {filteredProducts.map((product, index) => {
                     const stockStatus = getStockStatus(product.stock);
+                    const productImages = getProductImages(product);
                     return (
                       <tr 
                         key={product._id || product.id} 
-                        className="hover:bg-amber-50 transition-all duration-200 animate-fade-in"
-                        style={{ animationDelay: `${index * 50}ms` }}
+                        className="hover:bg-amber-50 transition-all duration-200"
                       >
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center">
                             <div className="relative group">
                               <img
-                                src={product.image}
+                                src={productImages[0]}
                                 alt={product.name}
                                 className="w-12 h-12 rounded-xl object-cover shadow-md group-hover:scale-110 transition-transform duration-200"
+                                onError={(e) => {
+                                  console.error('❌ Product image failed to load:', e.target.src);
+                                  e.target.src = 'https://via.placeholder.com/300x200/f3f4f6/9ca3af?text=No+Image';
+                                }}
+                                onLoad={() => {
+                                  console.log('✅ Product image loaded successfully:', productImages[0]);
+                                }}
                               />
-                              <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 rounded-xl transition-all duration-200"></div>
                             </div>
                             <div className="ml-4">
                               <div className="text-sm font-bold text-gray-900">
                                 {product.name}
                               </div>
                             </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center space-x-2">
+                            <div className="flex -space-x-2">
+                              {productImages.slice(0, 3).map((img, idx) => (
+                                <img
+                                  key={idx}
+                                  src={img}
+                                  alt={`${product.name} ${idx + 1}`}
+                                  className="w-8 h-8 rounded-full object-cover border-2 border-white shadow-sm"
+                                  onError={(e) => {
+                                    e.target.src = 'https://via.placeholder.com/100x100/f3f4f6/9ca3af?text=No+Image';
+                                  }}
+                                />
+                              ))}
+                            </div>
+                            {productImages.length > 3 && (
+                              <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+                                +{productImages.length - 3}
+                              </span>
+                            )}
+                            <button
+                              onClick={() => handleShowImages(product)}
+                              className="p-1 text-amber-600 hover:text-amber-900 hover:bg-amber-100 rounded-lg transition-all duration-200"
+                              title="View all images"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </button>
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
@@ -539,7 +569,7 @@ const ProductsManagement = () => {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${product.status === 'inactive' ? 'bg-yellow-100 text-yellow-700' : 'bg-amber-100 text-amber-700'}`}>
-                            {product.status}
+                            {product.status || 'active'}
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
@@ -547,22 +577,24 @@ const ProductsManagement = () => {
                             <button
                               onClick={() => setEditingProduct(product)}
                               className="p-2 text-blue-600 hover:text-blue-900 hover:bg-blue-100 rounded-lg transition-all duration-200"
+                              title="Edit Product"
                             >
                               <Pencil className="w-4 h-4" />
                             </button>
                             <button
                               onClick={() => handleDeleteProduct(product._id || product.id)}
                               className="p-2 text-red-600 hover:text-red-900 hover:bg-red-100 rounded-lg transition-all duration-200"
+                              title="Delete Product"
                             >
                               <Trash2 className="w-4 h-4" />
                             </button>
-                            {product.status === 'active' ? (
+                            {(product.status || 'active') === 'active' ? (
                               <button
                                 onClick={() => handleToggleProductStatus(product._id, 'inactive')}
                                 className="p-2 text-yellow-600 hover:text-yellow-900 hover:bg-yellow-100 rounded-lg transition-all duration-200"
                                 title="Mark as Inactive"
                               >
-                                <CheckCircle className="w-4 h-4 text-amber-100 fill-amber-600" />
+                                <CheckCircle className="w-4 h-4" />
                               </button>
                             ) : (
                               <button
@@ -570,7 +602,7 @@ const ProductsManagement = () => {
                                 className="p-2 text-amber-600 hover:text-amber-900 hover:bg-amber-100 rounded-lg transition-all duration-200"
                                 title="Mark as Active"
                               >
-                                <Circle className="w-4 h-4 text-red-400 fill-red-600" />
+                                <Circle className="w-4 h-4" />
                               </button>
                             )}
                           </div>
@@ -583,27 +615,46 @@ const ProductsManagement = () => {
             </div>
           </div>
         ) : (
-          // Grid View
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {filteredProducts.map((product, index) => {
               const stockStatus = getStockStatus(product.stock);
+              const productImages = getProductImages(product);
               return (
                 <div 
                   key={product._id || product.id}
-                  className="group bg-white rounded-2xl shadow-lg hover:shadow-xl p-6 transform hover:scale-105 transition-all duration-300 animate-fade-in border border-amber-100"
-                  style={{ animationDelay: `${index * 100}ms` }}
+                  className="group bg-white rounded-2xl shadow-lg hover:shadow-xl p-6 transform hover:scale-105 transition-all duration-300 border border-amber-100"
                 >
                   <div className="relative mb-4">
                     <img
-                      src={product.image}
+                      src={productImages[0]}
                       alt={product.name}
                       className="w-full h-40 object-cover rounded-xl"
+                      onError={(e) => {
+                        e.target.src = 'https://via.placeholder.com/300x200/f3f4f6/9ca3af?text=No+Image';
+                      }}
                     />
                     <div className="absolute top-2 right-2">
                       <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${stockStatus.color}`}>
                         <stockStatus.icon className="w-3 h-3 mr-1" />
                         {product.stock}
                       </span>
+                    </div>
+                    {productImages.length > 1 && (
+                      <div className="absolute top-2 left-2">
+                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-black bg-opacity-60 text-white">
+                          <ImageIcon className="w-3 h-3 mr-1" />
+                          {productImages.length}
+                        </span>
+                      </div>
+                    )}
+                    <div className="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-30 rounded-xl transition-all duration-200 flex items-center justify-center opacity-0 group-hover:opacity-100">
+                      <button
+                        onClick={() => handleShowImages(product)}
+                        className="bg-white bg-opacity-90 text-gray-800 px-3 py-2 rounded-lg font-medium flex items-center space-x-2 transform scale-95 hover:scale-100 transition-transform"
+                      >
+                        <Eye className="w-4 h-4" />
+                        <span>View Images</span>
+                      </button>
                     </div>
                   </div>
                   
@@ -623,23 +674,25 @@ const ProductsManagement = () => {
                         <button
                           onClick={() => setEditingProduct(product)}
                           className="p-2 text-blue-600 hover:text-blue-900 hover:bg-blue-100 rounded-lg transition-all duration-200"
+                          title="Edit Product"
                         >
                           <Pencil className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => handleDeleteProduct(product._id || product.id)}
                           className="p-2 text-red-600 hover:text-red-900 hover:bg-red-100 rounded-lg transition-all duration-200"
+                          title="Delete Product"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
-                      {product.status === 'active' ? (
+                      {(product.status || 'active') === 'active' ? (
                         <button
                           onClick={() => handleToggleProductStatus(product._id, 'inactive')}
                           className="p-2 text-yellow-600 hover:text-yellow-900 hover:bg-yellow-100 rounded-lg transition-all duration-200"
                           title="Mark as Inactive"
                         >
-                          <CheckCircle className="w-4 h-4 text-amber-100 fill-amber-600" />
+                          <CheckCircle className="w-4 h-4" />
                         </button>
                       ) : (
                         <button
@@ -647,7 +700,7 @@ const ProductsManagement = () => {
                           className="p-2 text-amber-600 hover:text-amber-900 hover:bg-amber-100 rounded-lg transition-all duration-200"
                           title="Mark as Active"
                         >
-                          <Circle className="w-4 h-4 text-red-400 fill-red-600" />
+                          <Circle className="w-4 h-4" />
                         </button>
                       )}
                     </div>
@@ -667,10 +720,91 @@ const ProductsManagement = () => {
           </div>
         )}
 
+        {/* Image Viewer Modal */}
+        {showImageModal && selectedProductImages && (
+          <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4">
+            <div className="relative bg-white rounded-2xl max-w-4xl max-h-[90vh] w-full overflow-hidden">
+              <div className="flex justify-between items-center p-6 border-b border-gray-200">
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-900">
+                    {selectedProductImages.product.name}
+                  </h2>
+                  <p className="text-gray-600">
+                    {currentImageIndex + 1} of {selectedProductImages.images.length} images
+                  </p>
+                </div>
+                <button
+                  onClick={() => setShowImageModal(false)}
+                  className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-xl transition-all duration-200"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+
+              <div className="relative bg-gray-100">
+                <img
+                  src={selectedProductImages.images[currentImageIndex]}
+                  alt={`${selectedProductImages.product.name} ${currentImageIndex + 1}`}
+                  className="w-full h-96 object-contain"
+                  onError={(e) => {
+                    console.error('❌ Modal image failed to load:', e.target.src);
+                    e.target.src = 'https://via.placeholder.com/600x400/f3f4f6/9ca3af?text=Image+Not+Found';
+                  }}
+                  onLoad={() => {
+                    console.log('✅ Modal image loaded successfully:', selectedProductImages.images[currentImageIndex]);
+                  }}
+                />
+                
+                {selectedProductImages.images.length > 1 && (
+                  <>
+                    <button
+                      onClick={prevImage}
+                      className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-white bg-opacity-80 hover:bg-opacity-100 p-3 rounded-full shadow-lg transition-all duration-200"
+                    >
+                      <ArrowLeft className="w-6 h-6 text-gray-800" />
+                    </button>
+                    <button
+                      onClick={nextImage}
+                      className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-white bg-opacity-80 hover:bg-opacity-100 p-3 rounded-full shadow-lg transition-all duration-200"
+                    >
+                      <ArrowRight className="w-6 h-6 text-gray-800" />
+                    </button>
+                  </>
+                )}
+              </div>
+
+              {selectedProductImages.images.length > 1 && (
+                <div className="p-6">
+                  <div className="flex space-x-2 overflow-x-auto">
+                    {selectedProductImages.images.map((img, index) => (
+                      <button
+                        key={index}
+                        onClick={() => setCurrentImageIndex(index)}
+                        className={`flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 transition-all ${
+                          currentImageIndex === index ? 'border-amber-500' : 'border-gray-200 hover:border-gray-300'
+                        }`}
+                      >
+                        <img
+                          src={img}
+                          alt={`Thumbnail ${index + 1}`}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            e.target.src = 'https://via.placeholder.com/100x100/f3f4f6/9ca3af?text=No+Image';
+                          }}
+                        />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Add/Edit Product Modal */}
         {(showAddModal || editingProduct) && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-2xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl animate-modal-enter">
+            <div className="bg-white rounded-2xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl">
               <div className="flex justify-between items-center mb-6">
                 <h2 className="text-2xl font-bold bg-gradient-to-r from-amber-600 to-orange-600 bg-clip-text text-transparent">
                   {editingProduct ? 'Edit Product' : 'Add New Product'}
@@ -704,38 +838,6 @@ const ProductsManagement = () => {
           />
         )}
       </div>
-
-      <style jsx>{`
-        @keyframes fade-in {
-          from {
-            opacity: 0;
-            transform: translateY(20px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-        
-        @keyframes modal-enter {
-          from {
-            opacity: 0;
-            transform: scale(0.95) translateY(-20px);
-          }
-          to {
-            opacity: 1;
-            transform: scale(1) translateY(0);
-          }
-        }
-        
-        .animate-fade-in {
-          animation: fade-in 0.6s ease-out forwards;
-        }
-        
-        .animate-modal-enter {
-          animation: modal-enter 0.3s ease-out forwards;
-        }
-      `}</style>
     </div>
   );
 };

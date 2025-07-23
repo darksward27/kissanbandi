@@ -34,6 +34,7 @@ import AllProductsPage from '../pages/home/allProducts';
 import FruitsVeg from '../pages/vegetables/FruitsVeg';
 import RefundPolicy from '../pages/orderRefundPolicy/RefundPolicy';
 import ProductReviewPage from '../pages/vegetables/Feedback/ProductReviewPage';
+import ProductDetailPage from "../pages/vegetables/ProductDetailPage";
 
 const AppRoutes = () => {
   return (
@@ -64,6 +65,7 @@ const AppRoutes = () => {
         <Route path="category/vegetables/root-vegetables" element={<RootVegetables/>} />
         <Route path="category/vegetables/fruits-veg" element={<FruitsVeg />} />
         <Route path="products" element={<AllProductsPage />} />
+        <Route path="products/:id" element={<ProductDetailPage />} />
         <Route path="/write-review" element ={<ProductReviewPage/>} />
         {/* Protected Routes */}
         <Route

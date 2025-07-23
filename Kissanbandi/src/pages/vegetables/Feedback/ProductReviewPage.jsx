@@ -45,9 +45,9 @@ const ProductReviewPage = () => {
 
   // Helper function to get auth token
   const getAuthToken = () => {
-    return localStorage.getItem('kissanbandi_token') || 
-           localStorage.getItem('token') || 
-           localStorage.getItem('authToken');
+    return sessionStorage.getItem('kissanbandi_token') || 
+           sessionStorage.getItem('token') || 
+           sessionStorage.getItem('authToken');
   };
 
   // Fetch products - FIXED API CALL
@@ -300,12 +300,7 @@ const ProductReviewPage = () => {
           <p className="text-amber-600 text-sm mt-2">Feel free to share multiple reviews for the same product based on different experiences!</p>
           {user && (
             <p className="text-amber-600 mt-2">Welcome, {user.name || user.email}!</p>
-          )}
-          {/* Debug info */}
-          <div className="mt-2 text-xs text-gray-500">
-            <p>API URL: {getApiUrl()}</p>
-            <p>Environment: {import.meta.env.VITE_NODE_ENV}</p>
-          </div>
+          )} 
         </div>
 
         <div className="bg-white rounded-2xl shadow-xl p-8 border border-amber-100">

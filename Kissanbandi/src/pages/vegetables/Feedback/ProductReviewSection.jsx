@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import {
   Star, User, ThumbsUp, ShoppingBag, CheckCircle, Filter, SortAsc, 
-  Loader2, AlertCircle, Eye, ChevronLeft, ChevronRight, X, Edit3, ChevronDown
+  Loader2, AlertCircle, Eye, ChevronLeft, ChevronRight, X, Edit3, ChevronDown,
+  MessageSquare, Shield, Crown, Clock
 } from 'lucide-react';
 
 const VerifiedReviewsSection = ({ productId = null, showProductInfo = false }) => {
@@ -23,10 +24,31 @@ const VerifiedReviewsSection = ({ productId = null, showProductInfo = false }) =
     const nodeEnv = import.meta.env.VITE_NODE_ENV;
     
     if (nodeEnv === 'production') {
-      return 'https://bogat.onrender.com/api';
+      return 'http://localhost:5000/api';
     }
     
-    return apiUrl || 'https://bogat.onrender.com/api';
+    return apiUrl || 'http://localhost:5000/api';
+  };
+
+  // Helper function to construct proper image URLs
+  const getImageUrl = (imagePath) => {
+    if (!imagePath) return null;
+    
+    const baseUrl = getApiUrl().replace('/api', '');
+    
+    // If it's already a full URL, return as is
+    if (imagePath.startsWith('http')) {
+      return imagePath;
+    }
+    
+    // If it starts with /uploads, use it directly
+    if (imagePath.startsWith('/uploads')) {
+      return `${baseUrl}${imagePath}`;
+    }
+    
+    // If it's just a filename, construct the full path
+    const filename = imagePath.split('/').pop();
+    return `${baseUrl}/uploads/reviews/${filename}`;
   };
 
   const fetchVerifiedReviews = async (page = 1) => {
@@ -98,7 +120,9 @@ const VerifiedReviewsSection = ({ productId = null, showProductInfo = false }) =
   }, [currentPage]);
 
   const openImageModal = (images, startIndex = 0) => {
-    setSelectedImages(images);
+    // Process images to ensure proper URLs
+    const processedImages = images.map(img => getImageUrl(img)).filter(Boolean);
+    setSelectedImages(processedImages);
     setCurrentImageIndex(startIndex);
     setImageModalOpen(true);
   };
@@ -140,6 +164,20 @@ const VerifiedReviewsSection = ({ productId = null, showProductInfo = false }) =
     });
   };
 
+  const formatRelativeTime = (dateString) => {
+    const now = new Date();
+    const date = new Date(dateString);
+    const diffInHours = Math.floor((now - date) / (1000 * 60 * 60));
+    
+    if (diffInHours < 24) {
+      return `${diffInHours} hours ago`;
+    } else if (diffInHours < 48) {
+      return 'Yesterday';
+    } else {
+      return formatDate(dateString);
+    }
+  };
+
   const handleWriteReview = () => {
     window.location.href = '/write-review';
   };
@@ -148,6 +186,48 @@ const VerifiedReviewsSection = ({ productId = null, showProductInfo = false }) =
     setCurrentPage(page);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
+
+  // Enhanced Admin Reply Component
+  const AdminReply = ({ reply }) => {
+  if (!reply || !reply.text) return null;
+
+  return (
+    <div className="mt-4 border-l-4 border-blue-500 bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-r-lg shadow-sm">
+      <div className="flex items-start gap-3">
+        <div className="bg-gradient-to-br from-blue-100 to-indigo-100 rounded-full p-2 flex-shrink-0 shadow-sm">
+          <Shield className="w-5 h-5 text-blue-600" />
+        </div>
+        <div className="flex-1">
+          <div className="flex items-center gap-2 mb-2 flex-wrap">
+            <div className="flex items-center gap-1">
+              <Crown className="w-4 h-4 text-blue-600" />
+              <h6 className="font-semibold text-blue-900">Store Administrator</h6>
+            </div>
+            <span className="bg-gradient-to-r from-blue-100 to-indigo-100 text-blue-700 px-3 py-1 rounded-full text-xs font-medium border border-blue-200">
+              Official Response
+            </span>
+          </div>
+          <p className="text-gray-700 leading-relaxed mb-3">{reply.text}</p>
+          <div className="flex items-center gap-4 text-sm">
+            <div className="flex items-center gap-1">
+              <Clock className="w-4 h-4 text-blue-500" />
+              <span className="text-blue-600 font-medium">
+                {reply.date ? formatRelativeTime(reply.date) : 'Recently'}
+              </span>
+            </div>
+            {reply.adminName && (
+              <div className="flex items-center gap-1">
+                <User className="w-4 h-4 text-blue-500" />
+                <span className="text-gray-600">by {reply.adminName}</span>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 
   if (loading && reviews.length === 0) {
     return (
@@ -299,7 +379,7 @@ const VerifiedReviewsSection = ({ productId = null, showProductInfo = false }) =
                   <User className="w-6 h-6 text-amber-600" />
                 </div>
                 <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-2">
+                  <div className="flex items-center gap-3 mb-2 flex-wrap">
                     <h4 className="font-semibold text-gray-900 text-lg">
                       {review.user?.name || 'Anonymous User'}
                     </h4>
@@ -307,6 +387,12 @@ const VerifiedReviewsSection = ({ productId = null, showProductInfo = false }) =
                       <CheckCircle className="w-3 h-3" />
                       Verified Purchase
                     </span>
+                    {review.reply && review.reply.message && (
+                      <span className="flex items-center gap-1 bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-medium">
+                        <MessageSquare className="w-3 h-3" />
+                        Store Replied
+                      </span>
+                    )}
                   </div>
                   <div className="flex items-center gap-4">
                     {renderStars(review.rating)}
@@ -331,15 +417,11 @@ const VerifiedReviewsSection = ({ productId = null, showProductInfo = false }) =
                   <p className="text-sm font-medium text-gray-700 mb-3">Photos from this review:</p>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                     {review.images.map((imageUrl, idx) => {
-                      const filename = imageUrl.split('/').pop();
-                      const baseApiUrl = getApiUrl().replace('/api', '');
+                      const processedImageUrl = getImageUrl(imageUrl);
                       
-                      const possiblePaths = [
-                        `${baseApiUrl}${imageUrl}`,
-                        `${baseApiUrl}/uploads/reviews/${filename}`,
-                        imageUrl,
-                        `https://via.placeholder.com/200x200/8B4513/ffffff?text=Review+Photo`
-                      ];
+                      if (!processedImageUrl) {
+                        return null;
+                      }
 
                       return (
                         <div
@@ -348,21 +430,16 @@ const VerifiedReviewsSection = ({ productId = null, showProductInfo = false }) =
                           onClick={() => openImageModal(review.images, idx)}
                         >
                           <img
-                            src={possiblePaths[0]}
+                            src={processedImageUrl}
                             alt={`Review image ${idx + 1}`}
                             className="w-24 h-24 object-cover rounded-lg border border-amber-200 hover:opacity-80 transition-opacity"
                             onError={(e) => {
-                              const img = e.target;
-                              const currentSrc = img.src;
-                              const currentIndex = possiblePaths.findIndex(path => 
-                                currentSrc.includes(path) || currentSrc === path
-                              );
-                              
-                              if (currentIndex >= 0 && currentIndex < possiblePaths.length - 1) {
-                                const nextPath = possiblePaths[currentIndex + 1];
-                                console.log(`Trying image path ${currentIndex + 2}/${possiblePaths.length}:`, nextPath);
-                                img.src = nextPath;
-                              }
+                              console.error('Image failed to load:', processedImageUrl);
+                              // Fallback to placeholder
+                              e.target.src = `https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?w=600&h=400&fit=crop`;
+                            }}
+                            onLoad={() => {
+                              console.log('Image loaded successfully:', processedImageUrl);
                             }}
                           />
                           
@@ -380,6 +457,9 @@ const VerifiedReviewsSection = ({ productId = null, showProductInfo = false }) =
                 </div>
               )}
 
+              {/* Enhanced Admin Reply Section */}
+              <AdminReply reply={review.reply} />
+
               {/* Review Actions */}
               <div className="flex items-center justify-between pt-4 border-t border-gray-100">
                 <div className="flex items-center gap-4">
@@ -389,9 +469,16 @@ const VerifiedReviewsSection = ({ productId = null, showProductInfo = false }) =
                   </button>
                 </div>
                 
-                <span className="px-3 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-700">
-                  Verified Purchase
-                </span>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="px-3 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-700">
+                    Verified Purchase
+                  </span>
+                  {review.reply && review.reply.message && (
+                    <span className="px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
+                      Store Responded
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
           ))
@@ -437,7 +524,7 @@ const VerifiedReviewsSection = ({ productId = null, showProductInfo = false }) =
       )}
 
       {/* Image Modal */}
-      {imageModalOpen && (
+      {imageModalOpen && selectedImages.length > 0 && (
         <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50">
           <div className="relative max-w-4xl max-h-4xl w-full h-full p-4">
             <button
@@ -468,10 +555,13 @@ const VerifiedReviewsSection = ({ productId = null, showProductInfo = false }) =
               <img
                 src={selectedImages[currentImageIndex]}
                 alt={`Review image ${currentImageIndex + 1}`}
-                className="max-w-full max-h-full object-contain rounded-lg"
+                className="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
                 onError={(e) => {
-                  console.log('Modal image failed to load:', selectedImages[currentImageIndex]);
-                  e.target.src = 'https://via.placeholder.com/600x400/d4a574/ffffff?text=Image+Not+Found';
+                  console.error('Modal image failed to load:', selectedImages[currentImageIndex]);
+                  e.target.src = `https://via.placeholder.com/600x400/d4a574/ffffff?text=Image+Not+Found`;
+                }}
+                onLoad={() => {
+                  console.log('Modal image loaded successfully:', selectedImages[currentImageIndex]);
                 }}
               />
             </div>

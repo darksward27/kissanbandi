@@ -143,10 +143,82 @@ export const productsApi = {
     }
   },
 
-  // Get product by ID
+  // Enhanced Get product by ID - Updated for ProductDetailPage
   getProductById: async (id) => {
-    const response = await api.get(`/products/${id}`);
-    return response.data;
+    try {
+      console.log('🔄 Fetching product by ID:', id);
+      
+      if (!id) {
+        throw new Error('Product ID is required');
+      }
+
+      const timestamp = Date.now();
+      const response = await api.get(`/products/${id}`, {
+        params: { _t: timestamp },
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        }
+      });
+
+      const { data } = response;
+      console.log('✅ Product detail API response:', data);
+
+      // Handle different response structures
+      let product = null;
+
+      if (data && typeof data === 'object') {
+        if (data.success && data.data) {
+          // Response format: { success: true, data: product }
+          product = data.data;
+        } else if (data._id || data.id) {
+          // Direct product object
+          product = data;
+        } else if (data.product) {
+          // Response format: { product: product }
+          product = data.product;
+        }
+      }
+
+      if (!product) {
+        throw new Error('Product not found or invalid response format');
+      }
+
+      // Validate required fields
+      if (!product._id && !product.id) {
+        throw new Error('Product missing required ID field');
+      }
+
+      if (!product.name) {
+        console.warn('⚠️ Product missing name field');
+      }
+
+      console.log('📦 Product to return:', product);
+      return product;
+
+    } catch (error) {
+      console.error('❌ Error fetching product by ID:', {
+        id,
+        message: error.message,
+        status: error.response?.status,
+        data: error.response?.data
+      });
+
+      // Enhanced error handling for product detail page
+      if (error.response) {
+        if (error.response.status === 404) {
+          throw new Error('Product not found');
+        } else if (error.response.status === 400) {
+          throw new Error('Invalid product ID');
+        } else {
+          throw new Error(`Server error: ${error.response.status}`);
+        }
+      } else if (error.request) {
+        throw new Error('Network error: Unable to fetch product');
+      } else {
+        throw error;
+      }
+    }
   },
 
   // Create new product (admin only)
@@ -177,24 +249,119 @@ export const productsApi = {
     return response.data;
   },
 
-  // Get products by category
+  // Enhanced Get products by category
   getProductsByCategory: async (category, subcategory = null) => {
-    const params = { category };
-    if (subcategory) params.subcategory = subcategory;
-    const response = await api.get('/products/category', { params });
-    return response.data;
+    try {
+      console.log('🔄 Fetching products by category:', { category, subcategory });
+      
+      const params = { category };
+      if (subcategory) params.subcategory = subcategory;
+      
+      const timestamp = Date.now();
+      const response = await api.get('/products/category', { 
+        params: { ...params, _t: timestamp },
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        }
+      });
+
+      const { data } = response;
+      console.log('✅ Category products API response:', data);
+
+      // Normalize the data
+      let products = [];
+      if (Array.isArray(data)) {
+        products = data;
+      } else if (data && data.success && Array.isArray(data.data)) {
+        products = data.data;
+      } else if (data && Array.isArray(data.products)) {
+        products = data.products;
+      }
+
+      console.log('📦 Category products to return:', products);
+      return products;
+
+    } catch (error) {
+      console.error('❌ Error fetching products by category:', error);
+      throw error;
+    }
   },
 
-  // Search products
+  // Enhanced Search products
   searchProducts: async (query) => {
-    const response = await api.get('/products/search', { params: { query } });
-    return response.data;
+    try {
+      console.log('🔄 Searching products with query:', query);
+      
+      if (!query || query.trim().length === 0) {
+        return [];
+      }
+
+      const timestamp = Date.now();
+      const response = await api.get('/products/search', { 
+        params: { query: query.trim(), _t: timestamp },
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        }
+      });
+
+      const { data } = response;
+      console.log('✅ Search products API response:', data);
+
+      // Normalize the data
+      let products = [];
+      if (Array.isArray(data)) {
+        products = data;
+      } else if (data && data.success && Array.isArray(data.data)) {
+        products = data.data;
+      } else if (data && Array.isArray(data.products)) {
+        products = data.products;
+      }
+
+      console.log('📦 Search products to return:', products);
+      return products;
+
+    } catch (error) {
+      console.error('❌ Error searching products:', error);
+      throw error;
+    }
   },
 
   // Get featured products
   getFeaturedProducts: async () => {
-    const response = await api.get('/products/featured');
-    return response.data;
+    try {
+      console.log('🔄 Fetching featured products');
+      
+      const timestamp = Date.now();
+      const response = await api.get('/products/featured', {
+        params: { _t: timestamp },
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        }
+      });
+
+      const { data } = response;
+      console.log('✅ Featured products API response:', data);
+
+      // Normalize the data
+      let products = [];
+      if (Array.isArray(data)) {
+        products = data;
+      } else if (data && data.success && Array.isArray(data.data)) {
+        products = data.data;
+      } else if (data && Array.isArray(data.products)) {
+        products = data.products;
+      }
+
+      console.log('📦 Featured products to return:', products);
+      return products;
+
+    } catch (error) {
+      console.error('❌ Error fetching featured products:', error);
+      throw error;
+    }
   }
 };
 
@@ -471,7 +638,7 @@ export const ordersApi = {
   }
 };
 
-// Users API
+// Enhanced Users API
 export const usersApi = {
   getAllCustomers: async () => {
     const response = await api.get('/users');
@@ -498,20 +665,87 @@ export const usersApi = {
     return response.data;
   },
 
+  // Enhanced Wishlist functionality
   getWishlist: async () => {
-    const response = await api.get('/users/wishlist');
-    return response.data;
+    try {
+      console.log('🔄 Fetching user wishlist');
+      
+      const token = localStorage.getItem('kissanbandi_token') || sessionStorage.getItem('kissanbandi_token');
+      if (!token) {
+        console.log('ℹ️ No auth token found, returning empty wishlist');
+        return [];
+      }
+
+      const timestamp = Date.now();
+      const response = await api.get('/users/wishlist', {
+        params: { _t: timestamp },
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        }
+      });
+
+      const { data } = response;
+      console.log('✅ Wishlist API response:', data);
+
+      // Normalize the data
+      let wishlist = [];
+      if (Array.isArray(data)) {
+        wishlist = data;
+      } else if (data && data.success && Array.isArray(data.data)) {
+        wishlist = data.data;
+      } else if (data && Array.isArray(data.wishlist)) {
+        wishlist = data.wishlist;
+      }
+
+      console.log('📦 Wishlist to return:', wishlist);
+      return wishlist;
+
+    } catch (error) {
+      console.error('❌ Error fetching wishlist:', error);
+      
+      // Don't throw error for wishlist - just return empty array
+      if (error.response?.status === 401) {
+        console.log('ℹ️ User not authenticated for wishlist');
+        return [];
+      }
+      
+      console.warn('⚠️ Wishlist fetch failed, returning empty array');
+      return [];
+    }
   },
 
   addToWishlist: async (productId) => {
-    const response = await api.post(`/users/wishlist/${productId}`);
-    return response.data;
+    try {
+      console.log('🔄 Adding product to wishlist:', productId);
+      
+      const response = await api.post(`/users/wishlist/${productId}`);
+      
+      console.log('✅ Add to wishlist response:', response.data);
+      return response.data;
+
+    } catch (error) {
+      console.error('❌ Error adding to wishlist:', error);
+      throw error;
+    }
   },
 
   removeFromWishlist: async (productId) => {
-    const response = await api.delete(`/users/wishlist/${productId}`);
-    return response.data;
+    try {
+      console.log('🔄 Removing product from wishlist:', productId);
+      
+      const response = await api.delete(`/users/wishlist/${productId}`);
+      
+      console.log('✅ Remove from wishlist response:', response.data);
+      return response.data;
+
+    } catch (error) {
+      console.error('❌ Error removing from wishlist:', error);
+      throw error;
+    }
   }
 };
+
+
 
 export default api;

@@ -184,9 +184,9 @@ exports.getPublicProductReviews = async (req, res) => {
     } = req.query;
 
     if (!productId) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         success: false,
-        error: 'Product ID is required' 
+        error: 'Product ID is required'
       });
     }
 
@@ -223,34 +223,62 @@ exports.getPublicProductReviews = async (req, res) => {
         sort = { createdAt: -1 };
     }
 
-    // For now, just use find instead of paginate
-    const reviews = await Review.find(filter)
+    const reviewsRaw = await Review.find(filter)
       .populate([
         { path: 'user', select: 'name' },
-        { path: 'reply.admin', select: 'name' }
+        { path: 'reply.admin', select: 'name' } // if admin is a ref to User/Admin
       ])
       .sort(sort)
       .limit(parseInt(limit))
-      .skip((parseInt(page) - 1) * parseInt(limit));
+      .skip((parseInt(page) - 1) * parseInt(limit))
+      .lean();
+
+    // Format reply and user data cleanly
+    const reviews = reviewsRaw.map((review) => {
+      const formattedReply = review.reply && review.reply.message
+        ? {
+            message: review.reply.message,
+            repliedAt: review.reply.repliedAt || review.reply.date || review.reply.createdAt,
+            adminName: review.reply.admin?.name || review.reply.adminName || 'Admin'
+          }
+        : null;
+
+      return {
+        _id: review._id,
+        product: review.product,
+        user: {
+          _id: review.user?._id || null,
+          name: review.user?.name || 'Anonymous'
+        },
+        rating: review.rating,
+        title: review.title,
+        comment: review.comment,
+        createdAt: review.createdAt,
+        images: review.images || [],
+        helpful: review.helpful || 0,
+        reply: formattedReply
+      };
+    });
 
     const totalReviews = await Review.countDocuments(filter);
+    const totalPages = Math.ceil(totalReviews / parseInt(limit));
 
     res.json({
       success: true,
-      reviews: reviews,
+      reviews,
       pagination: {
         currentPage: parseInt(page),
-        totalPages: Math.ceil(totalReviews / parseInt(limit)),
-        totalReviews: totalReviews,
-        hasNextPage: parseInt(page) < Math.ceil(totalReviews / parseInt(limit)),
+        totalPages,
+        totalReviews,
+        hasNextPage: parseInt(page) < totalPages,
         hasPrevPage: parseInt(page) > 1
       }
     });
   } catch (error) {
     console.error('Error fetching public product reviews:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      error: 'Failed to fetch product reviews' 
+      error: 'Failed to fetch product reviews'
     });
   }
 };
@@ -820,6 +848,42 @@ exports.getVerifiedReviewsCount = async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Failed to count verified reviews',
+      details: error.message
+    });
+  }
+};
+
+exports.getProductReviewReplies = async (req, res) => {
+  try {
+    const { productId } = req.params;
+
+    if (!productId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Product ID is required'
+      });
+    }
+
+    const reviewsWithReplies = await Review.find({
+      product: productId,
+      status: 'approved',
+      'reply.text': { $exists: true, $ne: '' }  // Only reviews with replies
+    }).select('reply _id') // only fetch reply and review ID
+      .sort({ 'reply.date': -1 }); // sort by latest reply
+
+    res.json({
+      success: true,
+      replies: reviewsWithReplies.map(review => ({
+        reviewId: review._id,
+        reply: review.reply
+      }))
+    });
+
+  } catch (error) {
+    console.error('Error fetching review replies:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch replies for this product',
       details: error.message
     });
   }

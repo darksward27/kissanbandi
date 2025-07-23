@@ -267,12 +267,12 @@ const Analytics = () => {
 
               {/* Top Customers */}
               <div className="bg-white p-6 rounded-2xl shadow-lg border border-amber-100">
-                <h2 className="text-xl font-bold text-amber-800 mb-6">Top Customers</h2>
+                <h2 className="text-xl font-bold text-amber-800 mb-6">Top 5 Customers</h2>
                 <div className="h-80">
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                       <Pie
-                        data={stats.topCustomers}
+                        data={stats.topCustomers.slice(0, 5)}
                         dataKey="totalSpent"
                         nameKey="name"
                         cx="50%"
