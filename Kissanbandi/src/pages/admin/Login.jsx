@@ -41,30 +41,40 @@ const Login = () => {
       navigate(from, { replace: true });
     } catch (err) {
       toast.error(err.message || 'Login failed');
+      
+      // Clear form fields on error
+      setEmail('');
+      setPassword('');
+      setRememberMe(false);
+      
+      // Force redirect to admin login page
+      setTimeout(() => {
+        navigate('/admin/login', { replace: true, state: { error: err.message } });
+      }, 100);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 py-6 sm:py-12 px-3 sm:px-4 lg:px-8">
+      <div className="max-w-md w-full space-y-6 sm:space-y-8">
         <div>
           <div className="flex justify-center">
-            <div className="bg-amber-100 p-3 rounded-full border border-amber-200">
-              <Lock className="h-12 w-12 text-amber-700" />
+            <div className="bg-amber-100 p-2 sm:p-3 rounded-full border border-amber-200">
+              <Lock className="h-8 w-8 sm:h-12 sm:w-12 text-amber-700" />
             </div>
           </div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
+          <h2 className="mt-4 sm:mt-6 text-center text-2xl sm:text-3xl font-extrabold text-gray-900">
             Admin Login
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600">
             Please sign in to access the admin dashboard
           </p>
         </div>
-        <div className="bg-white rounded-xl shadow-lg border border-amber-200 p-6">
-          <form className="space-y-6" onSubmit={handleSubmit}>
-            <div className="space-y-4">
+        <div className="bg-white rounded-xl shadow-lg border border-amber-200 p-4 sm:p-6">
+          <form className="space-y-4 sm:space-y-6" onSubmit={handleSubmit}>
+            <div className="space-y-3 sm:space-y-4">
               <div>
                 <label htmlFor="email" className="block text-sm font-medium text-gray-500 mb-1">
                   Email address
@@ -74,7 +84,7 @@ const Login = () => {
                   name="email"
                   type="email"
                   required
-                  className="appearance-none relative block w-full px-3 py-2 border border-amber-200 placeholder-amber-400 text-gray-500 rounded-md focus:outline-none focus:ring-amber-500 focus:border-amber-500 sm:text-sm hover:border-amber-300 transition-colors duration-200"
+                  className="appearance-none relative block w-full px-3 py-2 sm:py-3 border border-amber-200 placeholder-amber-400 text-gray-500 rounded-md focus:outline-none focus:ring-amber-500 focus:border-amber-500 text-sm sm:text-base hover:border-amber-300 transition-colors duration-200"
                   placeholder="Enter your email address"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -89,7 +99,7 @@ const Login = () => {
                   name="password"
                   type="password"
                   required
-                  className="appearance-none relative block w-full px-3 py-2 border border-amber-200 placeholder-amber-400 text-gray-900 rounded-md focus:outline-none focus:ring-amber-500 focus:border-amber-500 sm:text-sm hover:border-amber-300 transition-colors duration-200"
+                  className="appearance-none relative block w-full px-3 py-2 sm:py-3 border border-amber-200 placeholder-amber-400 text-gray-900 rounded-md focus:outline-none focus:ring-amber-500 focus:border-amber-500 text-sm sm:text-base hover:border-amber-300 transition-colors duration-200"
                   placeholder="Enter your password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -117,11 +127,11 @@ const Login = () => {
               <button
                 type="submit"
                 disabled={loading}
-                className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-gradient-to-r from-amber-600 to-orange-700 hover:from-amber-700 hover:to-orange-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-xl"
+                className="group relative w-full flex justify-center py-2 sm:py-3 px-4 border border-transparent text-sm sm:text-base font-medium rounded-md text-white bg-gradient-to-r from-amber-600 to-orange-700 hover:from-amber-700 hover:to-orange-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-xl"
               >
                 {loading ? (
                   <span className="absolute left-0 inset-y-0 flex items-center pl-3">
-                    <div className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full"></div>
+                    <div className="animate-spin h-4 w-4 sm:h-5 sm:w-5 border-2 border-white border-t-transparent rounded-full"></div>
                   </span>
                 ) : null}
                 Sign in

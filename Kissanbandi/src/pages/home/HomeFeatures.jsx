@@ -18,12 +18,7 @@ const HomeFeatures = () => {
       description: "Complimentary delivery for all orders above ₹500. Artisanal products delivered with care to your doorstep.",
       gradient: "from-orange-400 to-amber-500"
     },
-    {
-      icon: <Clock className="w-12 h-12" style={{ color: '#f59b52' }} />,
-      title: "Express Dispatch",
-      description: "Same day delivery for orders placed before 2 PM. Experience the luxury of instant gratification.",
-      gradient: "from-amber-400 to-yellow-500"
-    },
+    
     {
       icon: <Leaf className="w-12 h-12" style={{ color: '#f59b52' }} />,
       title: "Artisanal & Authentic",
@@ -69,7 +64,7 @@ const HomeFeatures = () => {
             className="text-4xl md:text-5xl font-bold mb-4"
             style={{ color: '#823000' }}
           >
-            Why Choose BOGAT?
+            Why Choose SRI BOGAT?
           </h2>
           
           <p 
@@ -80,7 +75,7 @@ const HomeFeatures = () => {
           </p>
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {features.map((feature, index) => (
             <div 
               key={index}

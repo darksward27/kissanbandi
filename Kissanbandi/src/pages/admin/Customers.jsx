@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { usersApi } from '../../services/api';
 import { toast } from 'react-hot-toast';
-import { Search, ChevronDown, ChevronUp, ShoppingBag, IndianRupee, Calendar, Heart } from 'lucide-react';
+import { Search, ChevronDown, ChevronUp, ShoppingBag, IndianRupee, Calendar, Heart, MessageCircle, Star } from 'lucide-react';
 import {
   BarChart,
   Bar,
@@ -14,6 +15,7 @@ import {
 import CustomerDetailsModal from '../../components/modals/CustomerDetailsModal';
 
 const Customers = () => {
+  const navigate = useNavigate();
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -74,6 +76,10 @@ const Customers = () => {
     loadCustomers(); // Refresh the customers list after update
   };
 
+  const handleNavigateToReviews = () => {
+    navigate('/admin/reviews');
+  };
+
   const filteredCustomers = customers.filter(customer => 
     customer.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     customer.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -117,22 +123,36 @@ const Customers = () => {
     <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50">
       <div className="p-6 space-y-8">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
           <div>
             <h1 className="text-4xl font-bold bg-gradient-to-r from-amber-600 to-orange-600 bg-clip-text text-transparent">
               Customers
             </h1>
             <p className="text-gray-600 mt-2">Manage and analyze your customer base</p>
           </div>
-          <div className="relative w-full sm:w-80">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-amber-500 w-5 h-5" />
-            <input
-              type="text"
-              placeholder="Search customers..."
-              className="w-full pl-10 pr-4 py-3 border border-amber-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all duration-200"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
+          
+          {/* Search Bar and Reviews Button */}
+          <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
+            <div className="relative w-full sm:w-80">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-amber-500 w-5 h-5" />
+              <input
+                type="text"
+                placeholder="Search customers..."
+                className="w-full pl-10 pr-4 py-3 border border-amber-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all duration-200"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+            
+            {/* Customer Reviews Button */}
+            <button
+              onClick={handleNavigateToReviews}
+              className="flex items-center gap-2 bg-gradient-to-r from-amber-600 to-orange-700 text-white px-6 py-3 rounded-xl hover:from-amber-700 hover:to-orange-800 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 whitespace-nowrap"
+            >
+              <MessageCircle className="w-5 h-5" />
+              <Star className="w-4 h-4" />
+              Customer Reviews
+            </button>
           </div>
         </div>
 

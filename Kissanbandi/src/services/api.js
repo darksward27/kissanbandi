@@ -10,6 +10,10 @@ const api = axios.create({
   },
   withCredentials: true,
   timeout: 30000,
+  // Make sure all 2xx status codes are treated as success
+  validateStatus: function (status) {
+    return status >= 200 && status < 300;
+  }
 });
 
 // Request interceptor for adding auth token
@@ -43,8 +47,6 @@ api.interceptors.request.use(
   }
 );
 
-
-
 // Response interceptor for handling errors
 api.interceptors.response.use(
   (response) => response,
@@ -69,11 +71,19 @@ api.interceptors.response.use(
       sessionStorage.removeItem('adminUser');
       sessionStorage.removeItem('kissanbandi_user');
       window.location.href = '/login';
+      return Promise.reject(error);
     }
 
-    // Handle other errors
-    const message = error.response?.data?.error || error.message || 'An error occurred';
-    toast.error(message);
+    // FIXED: Don't show automatic toast for registration endpoints
+    // Let the component handle success/error messaging
+    const isRegistrationEndpoint = error.config?.url?.includes('/users/register');
+    const isLoginEndpoint = error.config?.url?.includes('/auth/login') || error.config?.url?.includes('/users/login');
+    
+    // Don't show automatic toasts for auth endpoints - let components handle them
+    if (!isRegistrationEndpoint && !isLoginEndpoint) {
+      const message = error.response?.data?.error || error.message || 'An error occurred';
+      toast.error(message);
+    }
 
     return Promise.reject(error);
   }
@@ -83,61 +93,132 @@ api.interceptors.response.use(
 export const productsApi = {
   // Get all products with optional filters
   getAllProducts: async (filters = {}) => {
-  try {
-    console.log('🔄 Fetching products with filters:', filters);
+    try {
+      console.log('🔄 Fetching products with filters:', filters);
 
-    const timestamp = Date.now();
+      const timestamp = Date.now();
 
-    const response = await api.get('/products', {
-      params: { ...filters, _t: timestamp },
-      headers: {
-        'Cache-Control': 'no-cache',
-        'Pragma': 'no-cache'
+      const response = await api.get('/products', {
+        params: { ...filters, _t: timestamp },
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        }
+      });
+
+      const { data } = response;
+
+      // Debug full API response structure
+      console.log('✅ API response received:', data);
+
+      // Normalize the data
+      let products = [];
+
+      if (Array.isArray(data)) {
+        products = data;
+      } else if (data && typeof data === 'object') {
+        if (Array.isArray(data.products)) {
+          products = data.products;
+        } else if (Array.isArray(data.data)) {
+          products = data.data;
+        }
       }
-    });
 
-    const { data } = response;
-
-    // Debug full API response structure
-    console.log('✅ API response received:', data);
-
-    // Normalize the data
-    let products = [];
-
-    if (Array.isArray(data)) {
-      products = data;
-    } else if (data && typeof data === 'object') {
-      if (Array.isArray(data.products)) {
-        products = data.products;
-      } else if (Array.isArray(data.data)) {
-        products = data.data;
+      // Fallback check
+      if (!Array.isArray(products)) {
+        console.warn('⚠️ Unexpected products format. Setting to empty array.');
+        products = [];
       }
+
+      console.log('📦 Products to return:', products);
+      return products;
+
+    } catch (error) {
+      console.error('❌ Error fetching products:', {
+        message: error.message,
+        status: error.response?.status,
+        data: error.response?.data
+      });
+      throw error;
     }
+  },
 
-    // Fallback check
-    if (!Array.isArray(products)) {
-      console.warn('⚠️ Unexpected products format. Setting to empty array.');
-      products = [];
-    }
-
-    console.log('📦 Products to return:', products);
-    return products;
-
-  } catch (error) {
-    console.error('❌ Error fetching products:', {
-      message: error.message,
-      status: error.response?.status,
-      data: error.response?.data
-    });
-    throw error;
-  }
-},
-
-
-  // Get product by ID
+  // Enhanced Get product by ID - Updated for ProductDetailPage
   getProductById: async (id) => {
-    const response = await api.get(`/products/${id}`);
-    return response.data;
+    try {
+      console.log('🔄 Fetching product by ID:', id);
+      
+      if (!id) {
+        throw new Error('Product ID is required');
+      }
+
+      const timestamp = Date.now();
+      const response = await api.get(`/products/${id}`, {
+        params: { _t: timestamp },
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        }
+      });
+
+      const { data } = response;
+      console.log('✅ Product detail API response:', data);
+
+      // Handle different response structures
+      let product = null;
+
+      if (data && typeof data === 'object') {
+        if (data.success && data.data) {
+          // Response format: { success: true, data: product }
+          product = data.data;
+        } else if (data._id || data.id) {
+          // Direct product object
+          product = data;
+        } else if (data.product) {
+          // Response format: { product: product }
+          product = data.product;
+        }
+      }
+
+      if (!product) {
+        throw new Error('Product not found or invalid response format');
+      }
+
+      // Validate required fields
+      if (!product._id && !product.id) {
+        throw new Error('Product missing required ID field');
+      }
+
+      if (!product.name) {
+        console.warn('⚠️ Product missing name field');
+      }
+
+      console.log('📦 Product to return:', product);
+      return product;
+
+    } catch (error) {
+      console.error('❌ Error fetching product by ID:', {
+        id,
+        message: error.message,
+        status: error.response?.status,
+        data: error.response?.data
+      });
+
+      // Enhanced error handling for product detail page
+      if (error.response) {
+        if (error.response.status === 404) {
+          throw new Error('Product not found');
+        } else if (error.response.status === 400) {
+          throw new Error('Invalid product ID');
+        } else {
+          throw new Error(`Server error: ${error.response.status}`);
+        }
+      } else if (error.request) {
+        throw new Error('Network error: Unable to fetch product');
+      } else {
+        throw error;
+      }
+    }
   },
 
   // Create new product (admin only)
@@ -157,44 +238,141 @@ export const productsApi = {
     const response = await api.delete(`/products/${id}`);
     return response.data;
   },
-    InactiveProduct: async (id) => {
-      const response = await api.patch(`/products/${id}/inactive`);
-      return response.data;
-    },
 
-    ActiveProduct: async (id) => {
-      const response = await api.patch(`/products/${id}/active`);
-      return response.data;
-    },
-
-  // Get products by category
-  getProductsByCategory: async (category, subcategory = null) => {
-    const params = { category };
-    if (subcategory) params.subcategory = subcategory;
-    const response = await api.get('/products/category', { params });
+  InactiveProduct: async (id) => {
+    const response = await api.patch(`/products/${id}/inactive`);
     return response.data;
   },
 
-  // Search products
-  searchProducts: async (query) => {
-    const response = await api.get('/products/search', { params: { query } });
+  ActiveProduct: async (id) => {
+    const response = await api.patch(`/products/${id}/active`);
     return response.data;
+  },
+
+  // Enhanced Get products by category
+  getProductsByCategory: async (category, subcategory = null) => {
+    try {
+      console.log('🔄 Fetching products by category:', { category, subcategory });
+      
+      const params = { category };
+      if (subcategory) params.subcategory = subcategory;
+      
+      const timestamp = Date.now();
+      const response = await api.get('/products/category', { 
+        params: { ...params, _t: timestamp },
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        }
+      });
+
+      const { data } = response;
+      console.log('✅ Category products API response:', data);
+
+      // Normalize the data
+      let products = [];
+      if (Array.isArray(data)) {
+        products = data;
+      } else if (data && data.success && Array.isArray(data.data)) {
+        products = data.data;
+      } else if (data && Array.isArray(data.products)) {
+        products = data.products;
+      }
+
+      console.log('📦 Category products to return:', products);
+      return products;
+
+    } catch (error) {
+      console.error('❌ Error fetching products by category:', error);
+      throw error;
+    }
+  },
+
+  // Enhanced Search products
+  searchProducts: async (query) => {
+    try {
+      console.log('🔄 Searching products with query:', query);
+      
+      if (!query || query.trim().length === 0) {
+        return [];
+      }
+
+      const timestamp = Date.now();
+      const response = await api.get('/products/search', { 
+        params: { query: query.trim(), _t: timestamp },
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        }
+      });
+
+      const { data } = response;
+      console.log('✅ Search products API response:', data);
+
+      // Normalize the data
+      let products = [];
+      if (Array.isArray(data)) {
+        products = data;
+      } else if (data && data.success && Array.isArray(data.data)) {
+        products = data.data;
+      } else if (data && Array.isArray(data.products)) {
+        products = data.products;
+      }
+
+      console.log('📦 Search products to return:', products);
+      return products;
+
+    } catch (error) {
+      console.error('❌ Error searching products:', error);
+      throw error;
+    }
   },
 
   // Get featured products
   getFeaturedProducts: async () => {
-    const response = await api.get('/products/featured');
-    return response.data;
+    try {
+      console.log('🔄 Fetching featured products');
+      
+      const timestamp = Date.now();
+      const response = await api.get('/products/featured', {
+        params: { _t: timestamp },
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        }
+      });
+
+      const { data } = response;
+      console.log('✅ Featured products API response:', data);
+
+      // Normalize the data
+      let products = [];
+      if (Array.isArray(data)) {
+        products = data;
+      } else if (data && data.success && Array.isArray(data.data)) {
+        products = data.data;
+      } else if (data && Array.isArray(data.products)) {
+        products = data.products;
+      }
+
+      console.log('📦 Featured products to return:', products);
+      return products;
+
+    } catch (error) {
+      console.error('❌ Error fetching featured products:', error);
+      throw error;
+    }
   }
 };
 
-// Orders API
+// Orders API - CONSOLIDATED VERSION
 export const ordersApi = {
+  // Get all orders for admin
   getAllOrders: async (params = {}) => {
     try {
       console.log('Fetching orders with params:', params);
       const timestamp = new Date().getTime();
-      const response = await api.get('/orders', {
+      const response = await api.get('/orders/admin/all', {
         params: { ...params, _t: timestamp },
         headers: {
           'Cache-Control': 'no-cache',
@@ -228,6 +406,7 @@ export const ordersApi = {
     }
   },
   
+  // Get orders by date range
   getOrdersByDateRange: async (startDate, endDate) => {
     try {
       console.log('Fetching orders by date range:', { startDate, endDate });
@@ -256,11 +435,12 @@ export const ordersApi = {
     }
   },
   
+  // Get order statistics
   getOrderStats: async (params = {}) => {
     try {
       console.log('Fetching order stats with params:', params);
       const timestamp = new Date().getTime();
-      const response = await api.get('/orders/stats', {
+      const response = await api.get('/orders/admin/stats', {
         params: { ...params, _t: timestamp },
         headers: {
           'Cache-Control': 'no-cache',
@@ -291,6 +471,7 @@ export const ordersApi = {
     }
   },
   
+  // Update order status
   updateOrderStatus: async (id, status) => {
     try {
       console.log('Updating order status:', { id, status });
@@ -302,6 +483,7 @@ export const ordersApi = {
     }
   },
   
+  // Export orders
   exportOrders: async (filters = {}) => {
     try {
       console.log('Exporting orders with filters:', filters);
@@ -336,61 +518,127 @@ export const ordersApi = {
       throw error;
     }
   },
+
+  // Get user's own orders
   getMyOrders: async () => {
-  try {
-    const timestamp = new Date().getTime();
-    const response = await api.get('/orders/my-orders', {
-      params: { _t: timestamp },
-      headers: {
-        'Cache-Control': 'no-cache',
-        'Pragma': 'no-cache'
-      }
-    });
+    try {
+      const timestamp = new Date().getTime();
+      const response = await api.get('/orders/my-orders', {
+        params: { _t: timestamp },
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        }
+      });
 
-    // Normalize response
-    return Array.isArray(response.data)
-      ? response.data
-      : response.data?.orders || response.data?.data || [];
-  } catch (error) {
-    console.error('Error fetching user orders:', {
-      message: error.message,
-      status: error.response?.status,
-      data: error.response?.data
-    });
-    throw error;
-  }
-},
+      // Normalize response
+      return Array.isArray(response.data)
+        ? response.data
+        : response.data?.orders || response.data?.data || [];
+    } catch (error) {
+      console.error('Error fetching user orders:', {
+        message: error.message,
+        status: error.response?.status,
+        data: error.response?.data
+      });
+      throw error;
+    }
+  },
 
+  // Get specific order by ID
   getOrder: async (id) => {
     const response = await api.get(`/orders/${id}`);
     return response.data;
   },
 
+  // Create new order
   createOrder: async (orderData) => {
     const response = await api.post('/orders', orderData);
     return response.data;
   },
 
-createRazorpayOrder: async (data, token) => {
-  const response = await api.post('/orders/razorpay/create', data, {
-    headers: {
-      Authorization: `Bearer ${token}`
-    }
-  });
-  return response.data;
-},
+  // Create Razorpay order
+  createRazorpayOrder: async (data) => {
+    const response = await api.post('/orders/razorpay/create', data);
+    return response.data;
+  },
 
-verifyPayment: async (data, token) => {
-  const response = await api.post('/orders/razorpay/verify', data, {
-    headers: {
-      Authorization: `Bearer ${token}`
+  // Verify Razorpay payment
+  verifyPayment: async (data) => {
+    const response = await api.post('/orders/razorpay/verify', data);
+    return response.data;
+  },
+
+  // ADMIN NOTES FUNCTIONALITY
+  // Update admin note for cancelled orders
+  updateAdminNote: async (orderId, data) => {
+    try {
+      console.log('API: Updating admin note for order:', orderId, data);
+      
+      const response = await api.patch(`/orders/${orderId}/admin-note`, data);
+      
+      console.log('API: Admin note update response:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('API: Error updating admin note:', error);
+      
+      // Enhanced error handling
+      if (error.response) {
+        // Server responded with error status
+        const errorMessage = error.response.data?.error || 'Failed to update admin note';
+        const errorDetails = error.response.data?.details || '';
+        
+        throw new Error(`${errorMessage}${errorDetails ? ': ' + errorDetails : ''}`);
+      } else if (error.request) {
+        // Network error
+        throw new Error('Network error: Unable to update admin note. Please check your connection.');
+      } else {
+        // Other error
+        throw new Error('An unexpected error occurred while updating admin note');
+      }
     }
-  });
-  return response.data;
-}
+  },
+
+  // Get admin note history (optional)
+  getAdminNoteHistory: async (orderId) => {
+    try {
+      console.log('API: Fetching admin note history for order:', orderId);
+      
+      const response = await api.get(`/orders/${orderId}/admin-note`);
+      
+      console.log('API: Admin note history response:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('API: Error fetching admin note history:', error);
+      
+      if (error.response) {
+        const errorMessage = error.response.data?.error || 'Failed to fetch admin note history';
+        throw new Error(errorMessage);
+      } else if (error.request) {
+        throw new Error('Network error: Unable to fetch admin note history');
+      } else {
+        throw new Error('An unexpected error occurred while fetching admin note history');
+      }
+    }
+  },
+
+  // Bulk update admin notes (optional - for future use)
+  bulkUpdateAdminNotes: async (updates) => {
+    try {
+      console.log('API: Bulk updating admin notes:', updates);
+      
+      const response = await api.patch('/orders/bulk-admin-notes', { updates });
+      
+      console.log('API: Bulk admin note update response:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('API: Error bulk updating admin notes:', error);
+      throw error;
+    }
+  }
 };
 
-// Users API
+// Enhanced Users API
 export const usersApi = {
   getAllCustomers: async () => {
     const response = await api.get('/users');
@@ -417,20 +665,87 @@ export const usersApi = {
     return response.data;
   },
 
+  // Enhanced Wishlist functionality
   getWishlist: async () => {
-    const response = await api.get('/users/wishlist');
-    return response.data;
+    try {
+      console.log('🔄 Fetching user wishlist');
+      
+      const token = localStorage.getItem('kissanbandi_token') || sessionStorage.getItem('kissanbandi_token');
+      if (!token) {
+        console.log('ℹ️ No auth token found, returning empty wishlist');
+        return [];
+      }
+
+      const timestamp = Date.now();
+      const response = await api.get('/users/wishlist', {
+        params: { _t: timestamp },
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        }
+      });
+
+      const { data } = response;
+      console.log('✅ Wishlist API response:', data);
+
+      // Normalize the data
+      let wishlist = [];
+      if (Array.isArray(data)) {
+        wishlist = data;
+      } else if (data && data.success && Array.isArray(data.data)) {
+        wishlist = data.data;
+      } else if (data && Array.isArray(data.wishlist)) {
+        wishlist = data.wishlist;
+      }
+
+      console.log('📦 Wishlist to return:', wishlist);
+      return wishlist;
+
+    } catch (error) {
+      console.error('❌ Error fetching wishlist:', error);
+      
+      // Don't throw error for wishlist - just return empty array
+      if (error.response?.status === 401) {
+        console.log('ℹ️ User not authenticated for wishlist');
+        return [];
+      }
+      
+      console.warn('⚠️ Wishlist fetch failed, returning empty array');
+      return [];
+    }
   },
 
   addToWishlist: async (productId) => {
-    const response = await api.post(`/users/wishlist/${productId}`);
-    return response.data;
+    try {
+      console.log('🔄 Adding product to wishlist:', productId);
+      
+      const response = await api.post(`/users/wishlist/${productId}`);
+      
+      console.log('✅ Add to wishlist response:', response.data);
+      return response.data;
+
+    } catch (error) {
+      console.error('❌ Error adding to wishlist:', error);
+      throw error;
+    }
   },
 
   removeFromWishlist: async (productId) => {
-    const response = await api.delete(`/users/wishlist/${productId}`);
-    return response.data;
+    try {
+      console.log('🔄 Removing product from wishlist:', productId);
+      
+      const response = await api.delete(`/users/wishlist/${productId}`);
+      
+      console.log('✅ Remove from wishlist response:', response.data);
+      return response.data;
+
+    } catch (error) {
+      console.error('❌ Error removing from wishlist:', error);
+      throw error;
+    }
   }
 };
 
-export default api; 
+
+
+export default api;

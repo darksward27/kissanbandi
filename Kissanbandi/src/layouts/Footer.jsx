@@ -40,37 +40,7 @@ const Footer = () => {
               From heritage farms to your kitchen, delivering excellence since generations.
             </p>
             
-            {/* Stats */}
-            <div className="grid grid-cols-3 gap-4 mb-6 max-w-md">
-              <div className="text-center">
-                <div 
-                  className="text-xl font-bold"
-                  style={{ color: '#f59b52' }}
-                >
-                  1000+
-                </div>
-                <div className="text-sm text-white/60">Happy Customers</div>
-              </div>
-              <div className="text-center">
-                <div 
-                  className="text-xl font-bold"
-                  style={{ color: '#f59b52' }}
-                >
-                  25+
-                </div>
-                <div className="text-sm text-white/60">Heritage Farms</div>
-              </div>
-              <div className="text-center">
-                <div 
-                  className="text-xl font-bold"
-                  style={{ color: '#f59b52' }}
-                >
-                  100%
-                </div>
-                <div className="text-sm text-white/60">Authentic</div>
-              </div>
-            </div>
-
+           
             {/* Social Media */}
             <div className="flex space-x-3">
               <a 

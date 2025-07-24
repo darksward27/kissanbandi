@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Menu, X, ChevronLeft, ChevronRight, User, LogOut, ChevronDown } from 'lucide-react';
+import { Menu, X, ChevronLeft, ChevronRight, User, LogOut, ChevronDown,Ticket } from 'lucide-react';
 import { useAuth } from '../../pages/checkout/AuthProvider';
 import { toast } from 'react-hot-toast';
+import { LayoutDashboard, Box, ShoppingCart, Users, LineChart, FileText } from 'lucide-react';
 
 // Brown-themed AdminSidebar component
 const AdminSidebar = ({ isOpen, onClose, isMinimized, onToggleMinimize }) => {
@@ -12,15 +13,16 @@ const AdminSidebar = ({ isOpen, onClose, isMinimized, onToggleMinimize }) => {
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
   
-  const navItems = [
-    { name: 'Dashboard', icon: '📊', path: '/admin' },
-    { name: 'Products', icon: '📦', path: '/admin/products' },
-    { name: 'Orders', icon: '🛒', path: '/admin/orders' },
-    { name: 'Users', icon: '👥', path: '/admin/customers' },
-    { name: 'Analytics', icon: '📈', path: '/admin/analytics' },
-    { name: 'Blogs', icon: '📝', path: '/admin/blogs' },
-  ];
 
+const navItems = [
+  { name: 'Dashboard', icon: <LayoutDashboard className="w-5 h-5" />, path: '/admin' },
+  { name: 'Products', icon: <Box className="w-5 h-5" />, path: '/admin/products' },
+  { name: 'Orders', icon: <ShoppingCart className="w-5 h-5" />, path: '/admin/orders' },
+  { name: 'Users', icon: <Users className="w-5 h-5" />, path: '/admin/customers' },
+  { name: 'Analytics', icon: <LineChart className="w-5 h-5" />, path: '/admin/analytics' },
+  { name: 'Blogs', icon: <FileText className="w-5 h-5" />, path: '/admin/blogs' },
+  { name: 'Coupons', icon: <Ticket className="w-5 h-5" />, path: '/admin/coupons' }
+];
   const handleNavigation = (path) => {
     navigate(path);
     // Close mobile menu when navigating

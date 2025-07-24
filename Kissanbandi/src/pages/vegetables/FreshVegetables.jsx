@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Heart, Star, ShoppingCart, Sparkles, Lock, Package, TrendingUp
+  Heart, Star, ShoppingCart, Sparkles, Lock, Package, TrendingUp, Eye, ArrowRight
 } from 'lucide-react';
 import { useCart } from "../checkout/CartContext";
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../checkout/AuthProvider';
 import { toast } from 'react-hot-toast';
 import { usersApi, productsApi } from '../../services/api';
+import ProductReviewSection from './Feedback/ProductReviewSection';
 
 const BogatProducts = () => {
   const [products, setProducts] = useState([]);
@@ -20,6 +21,85 @@ const BogatProducts = () => {
 
   const navigate = useNavigate();
   const { dispatch } = useCart();
+
+  // Helper function to get the first image from the images array
+// Replace your getProductImage function with this fixed version:
+
+const getProductImage = (product) => {
+  if (!product) {
+    return 'https://via.placeholder.com/300x200/f3f4f6/9ca3af?text=No+Product';
+  }
+
+  let imageUrl = null;
+
+  // First try the images array
+  if (product.images && Array.isArray(product.images) && product.images.length > 0) {
+    imageUrl = product.images[0];
+  } 
+  // Fallback to the single image field
+  else if (product.image) {
+    imageUrl = product.image;
+  }
+
+  // If no image found, return placeholder
+  if (!imageUrl) {
+    return 'https://via.placeholder.com/300x200/f3f4f6/9ca3af?text=No+Image';
+  }
+
+  // Your backend serves from: app.use('/uploads', express.static(path.join(__dirname, 'src/uploads')));
+  // Your database has: "/uploads/product/filename.jpg"
+  // So the URL should be: "https://bogat.onrender.com/uploads/product/filename.jpg"
+  
+  if (imageUrl.startsWith('/uploads')) {
+    return `https://bogat.onrender.com${imageUrl}`;
+  }
+
+  // If it's already a full URL, use as is
+  if (imageUrl.startsWith('http')) {
+    return imageUrl;
+  }
+
+  // Default fallback
+  return `https://bogat.onrender.com/uploads/product/${imageUrl}`;
+};
+
+// Enhanced debugging with file system check
+const debugProducts = () => {
+  console.log('=== PRODUCTS & IMAGES DEBUG ===');
+  products.slice(0, 3).forEach((product, index) => {
+    const processedUrl = getProductImage(product);
+    console.log(`Product ${index + 1}:`, {
+      name: product.name,
+      'images array': product.images,
+      'images length': product.images?.length,
+      'first image from array': product.images?.[0],
+      'single image field': product.image,
+      'final processed URL': processedUrl
+    });
+    
+    // Test if the URL actually works
+    console.log(`Testing URL for ${product.name}:`, processedUrl);
+    testImageUrl(processedUrl);
+  });
+  console.log('=== END DEBUG ===');
+};
+
+// Test function to check if images load
+const memoizedGetProductImage = React.useMemo(() => {
+  const cache = new Map();
+  return (product) => {
+    const productId = product?._id || product?.id;
+    if (!productId) return getProductImage(product);
+    
+    if (cache.has(productId)) {
+      return cache.get(productId);
+    }
+    
+    const result = getProductImage(product);
+    cache.set(productId, result);
+    return result;
+  };
+}, []);
 
   useEffect(() => {
     document.documentElement.style.scrollBehavior = 'smooth';
@@ -90,7 +170,9 @@ const BogatProducts = () => {
             name: product.name,
             price: product.price,
             status: product.status,
-            stock: product.stock
+            stock: product.stock,
+            images: product.images?.length || 0,
+            image: product.image ? 'present' : 'missing'
           });
         }
         
@@ -135,28 +217,29 @@ const BogatProducts = () => {
     return { type: 'available', message: 'Available' };
   };
 
-  const handleAddToCart = (product) => {
+  // Updated to navigate to product detail instead of adding to cart
+  const handleViewProduct = (e, product) => {
+    e.stopPropagation(); // Prevent card click navigation
+    
     if (!product) return;
     
-    // Check if user is authenticated
-    if (!isAuthenticated) {
-      toast.error('Please login to add items to cart');
-      navigate('/login');
+    const productId = product._id || product.id;
+    console.log('🔄 Navigating to product detail:', productId);
+    
+    if (!productId) {
+      console.error('❌ Product ID is missing!');
+      toast.error('Product ID is missing');
       return;
     }
     
-    // Check product availability
-    const productStatus = getProductStatus(product);
-    if (productStatus.type !== 'available') {
-      toast.error(`Sorry, ${productStatus.message.toLowerCase()}!`);
-      return;
-    }
-    
-    dispatch({ type: 'ADD_TO_CART', payload: product });
-    setTimeout(() => toast.success(`Added ${product.name} to cart!`), 0);
+    // Navigate to product detail page
+    navigate(`/products/${productId}`);
+    console.log('✅ Navigation triggered to:', `/products/${productId}`);
   };
 
-  const toggleWishlist = async (productId) => {
+  const toggleWishlist = async (e, productId) => {
+    e.stopPropagation(); // Prevent navigation to product detail
+    
     if (!productId) return;
 
     // Check if user is authenticated
@@ -191,9 +274,25 @@ const BogatProducts = () => {
   };
 
   // Show login prompt for restricted actions
-  const showLoginPrompt = () => {
+  const showLoginPrompt = (e) => {
+    e.stopPropagation(); // Prevent navigation to product detail
     toast.error('Please login to continue');
     navigate('/login');
+  };
+
+  // Navigate to product detail page (for card click)
+  const navigateToProduct = (productId) => {
+    console.log('🔄 Card clicked - Navigating to product:', productId);
+    console.log('🔄 URL will be:', `/products/${productId}`);
+    
+    if (!productId) {
+      console.error('❌ Product ID is missing!');
+      toast.error('Product ID is missing');
+      return;
+    }
+    
+    navigate(`/products/${productId}`);
+    console.log('✅ Card navigation triggered');
   };
 
   if (loading) {
@@ -255,7 +354,7 @@ const BogatProducts = () => {
                 >
                   login
                 </button>
-                to add items to cart and wishlist
+                to access all features
               </span>
             </div>
           </div>
@@ -295,25 +394,41 @@ const BogatProducts = () => {
             return (
               <div 
                 key={product._id || product.id} 
-                className={`bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-2xl transition-all duration-500 group border border-gray-200 hover:border-gray-300 transform hover:-translate-y-2 flex flex-col h-full ${
+                onClick={() => navigateToProduct(product._id || product.id)}
+                className={`bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-2xl transition-all duration-500 group border border-gray-200 hover:border-gray-300 transform hover:-translate-y-2 flex flex-col h-full cursor-pointer ${
                   isUnavailable ? 'opacity-75' : ''
                 }`}
               >
                 <div className="relative overflow-hidden">
                   <div className="absolute inset-0 bg-gradient-to-t from-gray-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                   <img
-                    src={product.image || '/api/placeholder/300/200'}
+                    src={memoizedGetProductImage(product)}
                     alt={product.name}
                     className={`w-full h-48 object-cover transform group-hover:scale-110 transition-transform duration-500 ${
                       isUnavailable ? 'filter grayscale' : ''
                     }`}
                     onError={(e) => {
-                      e.target.src = '/api/placeholder/300/200';
+                      console.error('❌ Image failed to load:', e.target.src);
+                      console.log('🔄 Falling back to placeholder for product:', product.name);
+                      e.target.src = 'https://via.placeholder.com/300x200/f3f4f6/9ca3af?text=Image+Error';
+                    }}
+                    onLoad={(e) => {
+                      console.log('✅ Image loaded successfully:', e.target.src);
                     }}
                   />
                   
+                  {/* View Product Button - appears on hover */}
+                  <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+                    <div className="bg-white/90 backdrop-blur-sm rounded-full px-4 py-2 transform translate-y-4 group-hover:translate-y-0 transition-transform duration-300">
+                      <div className="flex items-center space-x-2 text-amber-700 font-medium">
+                        <Eye className="w-4 h-4" />
+                        <span className="text-sm">View Details</span>
+                      </div>
+                    </div>
+                  </div>
+                  
                   <button 
-                    onClick={() => isAuthenticated ? toggleWishlist(product._id || product.id) : showLoginPrompt()}
+                    onClick={(e) => isAuthenticated ? toggleWishlist(e, product._id || product.id) : showLoginPrompt(e)}
                     className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm rounded-full p-2.5 shadow-lg hover:bg-white hover:scale-110 transition-all duration-300 border border-gray-200"
                   >
                     {!isAuthenticated ? (
@@ -386,29 +501,37 @@ const BogatProducts = () => {
                       )}
                     </div>
                     
+                    {/* Updated buttons - All now navigate to product detail */}
                     {productStatus.type === 'unavailable' ? (
-                      <div className="text-gray-500 font-semibold text-sm px-4 py-2 bg-gray-50 rounded-xl border border-gray-200">
+                      <div 
+                        onClick={(e) => e.stopPropagation()}
+                        className="text-gray-500 font-semibold text-sm px-4 py-2 bg-gray-50 rounded-xl border border-gray-200"
+                      >
                         Unavailable
                       </div>
                     ) : productStatus.type === 'out-of-stock' ? (
-                      <div className="text-red-500 font-semibold text-sm px-4 py-2 bg-red-50 rounded-xl border border-red-200">
-                        Out of Stock
-                      </div>
+                      <button 
+                        onClick={(e) => handleViewProduct(e, product)}
+                        className="text-orange-600 font-semibold text-sm px-4 py-2 bg-orange-50 rounded-xl border border-orange-200 hover:bg-orange-100 transition-colors flex items-center"
+                      >
+                        <Eye className="w-4 h-4 mr-1" />
+                        View Details
+                      </button>
                     ) : !isAuthenticated ? (
                       <button 
-                        onClick={showLoginPrompt}
-                        className="bg-gradient-to-r from-gray-400 to-gray-500 text-white px-4 py-2 rounded-xl hover:from-gray-500 hover:to-gray-600 transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl flex items-center group/btn font-medium text-sm whitespace-nowrap"
+                        onClick={(e) => handleViewProduct(e, product)}
+                        className="bg-gradient-to-r from-blue-500 to-blue-600 text-white px-4 py-2 rounded-xl hover:from-blue-600 hover:to-blue-700 transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl flex items-center group/btn font-medium text-sm whitespace-nowrap"
                       >
-                        <Lock className="w-4 h-4 mr-1" />
-                        Login to Add
+                        <Eye className="w-4 h-4 mr-1" />
+                        View Product
                       </button>
                     ) : (
                       <button 
-                        onClick={() => handleAddToCart(product)}
+                        onClick={(e) => handleViewProduct(e, product)}
                         className="bg-gradient-to-r from-amber-600 to-orange-700 text-white px-4 py-2 rounded-xl hover:from-amber-700 hover:to-orange-800 transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl flex items-center group/btn font-medium text-sm whitespace-nowrap"
                       >
                         <ShoppingCart className="w-4 h-4 mr-1 group-hover/btn:animate-bounce" />
-                        Add to Cart
+                        View & Buy
                       </button>
                     )}
                   </div>
@@ -419,7 +542,7 @@ const BogatProducts = () => {
                   productStatus.type === 'unavailable' 
                     ? 'bg-gradient-to-r from-gray-400 to-gray-500' 
                     : productStatus.type === 'out-of-stock'
-                    ? 'bg-gradient-to-r from-red-400 to-red-500'
+                    ? 'bg-gradient-to-r from-orange-400 to-orange-500'
                     : 'bg-gradient-to-r from-amber-400 to-orange-500'
                 }`}></div>
               </div>
@@ -450,6 +573,8 @@ const BogatProducts = () => {
           </div>
         )}
       </div>
+
+      <ProductReviewSection />
     </div>
   );
 };

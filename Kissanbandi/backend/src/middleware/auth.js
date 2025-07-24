@@ -22,7 +22,7 @@ exports.auth = async (req, res, next) => {
   }
 };
 
-// Check if user is admin
+// Check if user is a
 exports.admin = async (req, res, next) => {
   try {
     const user = await User.findById(req.user.userId);

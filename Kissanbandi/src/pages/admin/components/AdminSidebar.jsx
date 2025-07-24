@@ -22,7 +22,8 @@ const AdminSidebar = () => {
     { title: 'Products', icon: ShoppingBag, path: '/admin/products' },
     { title: 'Orders', icon: ClipboardList, path: '/admin/orders' },
     { title: 'Customers', icon: Users, path: '/admin/customers' },
-    { title: 'Blogs', icon: BookOpen, path: '/admin/blogs' }
+    { title: 'Blogs', icon: BookOpen, path: '/admin/blogs' },
+    { title: 'Coupons', icon: Coupon, path: '/admin/coupons' },
   ];
 
   const handleLogout = () => {

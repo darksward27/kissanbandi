@@ -93,7 +93,8 @@ export const AuthProvider = ({ children }) => {
       storage.setItem('kissanbandi_user', JSON.stringify(userData));
 
       api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      return userData;
+      return { token, user: userData };
+
     } catch (error) {
       if (error.response?.data?.error === "Please verify your email first") {
         const shouldResend = window.confirm(

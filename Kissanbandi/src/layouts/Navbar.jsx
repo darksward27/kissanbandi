@@ -60,6 +60,56 @@ const Navbar = () => {
     setIsOpen(false);
   };
 
+  // Helper function to check if a path is active
+  const isActiveRoute = (path) => {
+    if (path === '/') {
+      return location.pathname === '/';
+    }
+    return location.pathname.startsWith(path);
+  };
+
+  // Helper function to get active/inactive styles for desktop navigation
+  const getDesktopNavStyles = (path) => {
+    const isActive = isActiveRoute(path);
+    const baseStyles = "flex items-center space-x-2 font-medium px-4 py-2 rounded-full transition-all duration-300 hover:shadow-md hover:shadow-orange-200/30 hover:scale-105 border-2 hover:border-orange-200 hover:bg-gradient-to-r hover:from-amber-50 hover:to-orange-50";
+    
+    if (isActive) {
+      return `${baseStyles} border-orange-300 bg-gradient-to-r from-amber-50 to-orange-50 text-amber-800 shadow-md shadow-orange-200/30 scale-105`;
+    }
+    
+    return `${baseStyles} border-transparent text-gray-700 hover:text-amber-800`;
+  };
+
+  // Helper function to get active/inactive styles for mobile navigation
+  const getMobileNavStyles = (path) => {
+    const isActive = isActiveRoute(path);
+    const baseStyles = "flex items-center space-x-3 p-4 rounded-lg transition-all duration-300 group border-2 hover:border-orange-200 hover:scale-[1.02] transform hover:bg-gradient-to-r hover:from-amber-50 hover:to-orange-50";
+    
+    if (isActive) {
+      return `${baseStyles} border-orange-300 bg-gradient-to-r from-amber-50 to-orange-50 scale-[1.02]`;
+    }
+    
+    return `${baseStyles} border-transparent`;
+  };
+
+  // Helper function to get active/inactive styles for quick links
+  const getQuickLinkStyles = (path) => {
+    const isActive = isActiveRoute(path);
+    const baseStyles = "flex flex-col items-center p-3 rounded-lg transition-all duration-300 group relative border-2 hover:border-orange-200 hover:scale-105 transform hover:bg-gradient-to-r hover:from-amber-50 hover:to-orange-50";
+    
+    if (isActive) {
+      return `${baseStyles} border-orange-300 bg-gradient-to-r from-amber-50 to-orange-50 scale-105`;
+    }
+    
+    return `${baseStyles} border-transparent`;
+  };
+
+  // Helper function to get text color for active/inactive states
+  const getTextColor = (path) => {
+    const isActive = isActiveRoute(path);
+    return isActive ? "text-amber-800" : "text-gray-600 group-hover:text-amber-800";
+  };
+
   return (
     <div className="fixed top-0 left-0 right-0 z-50">
       {/* Main navbar with brown theme */}
@@ -87,31 +137,34 @@ const Navbar = () => {
                   <div className={`font-bold tracking-wider transition-all duration-300 text-transparent bg-clip-text bg-gradient-to-r from-[#4B2E2B] to-[#dd9941] ${
                     isScrolled ? 'text-lg md:text-xl' : 'text-xl md:text-2xl'
                   }`}>
-                    BOGAT
+                    SRI BOGAT
                   </div>
                 </div>
               </Link>
 
-              {/* Desktop Navigation - Moved to left */}
+              {/* Desktop Navigation - Moved to left with active states */}
               <div className="hidden md:flex items-center space-x-6 animate-fadeIn">
                 <Link 
                   to="/products"
-                  className="flex items-center space-x-2 font-medium px-4 py-2 rounded-full transition-all duration-300 hover:shadow-md hover:shadow-orange-200/30 hover:scale-105 border-2 border-transparent hover:border-orange-200 text-gray-700 hover:text-amber-800 hover:bg-gradient-to-r hover:from-amber-50 hover:to-orange-50"
+                  className={getDesktopNavStyles('/products')}
                 >
                   <span className="relative">
                     Our Products
-                    <span className="absolute bottom-0 left-0 h-0.5 bg-gradient-to-r from-orange-500 to-amber-600 transition-all duration-300 w-0 hover:w-full"></span>
+                    <span className={`absolute bottom-0 left-0 h-0.5 bg-gradient-to-r from-orange-500 to-amber-600 transition-all duration-300 ${
+                      isActiveRoute('/products') ? 'w-full' : 'w-0 hover:w-full'
+                    }`}></span>
                   </span>
                 </Link>
                 
                 <Link 
                   to="/blogs"
-                  className="flex items-center space-x-2 font-medium px-4 py-2 rounded-full transition-all duration-300 hover:shadow-md hover:shadow-orange-200/30 hover:scale-105 border-2 border-transparent hover:border-orange-200 text-gray-700 hover:text-amber-800 hover:bg-gradient-to-r hover:from-amber-50 hover:to-orange-50"
+                  className={getDesktopNavStyles('/blogs')}
                 >
-                  
                   <span className="relative">
                     Blog
-                    <span className="absolute bottom-0 left-0 h-0.5 bg-gradient-to-r from-orange-500 to-amber-600 transition-all duration-300 w-0 hover:w-full"></span>
+                    <span className={`absolute bottom-0 left-0 h-0.5 bg-gradient-to-r from-orange-500 to-amber-600 transition-all duration-300 ${
+                      isActiveRoute('/blogs') ? 'w-full' : 'w-0 hover:w-full'
+                    }`}></span>
                   </span>
                 </Link>
               </div>
@@ -136,21 +189,27 @@ const Navbar = () => {
                     <div className="absolute right-0 mt-3 w-56 bg-white/95 backdrop-blur-lg rounded-xl shadow-2xl py-2 z-50 border-2 border-amber-200 overflow-hidden animate-slideInDown">
                       <Link
                         to="/profile"
-                        className="block px-6 py-3 text-sm text-gray-700 hover:bg-gradient-to-r hover:from-amber-50 hover:to-orange-50 hover:text-amber-800 transition-all duration-200 hover:translate-x-2 hover:scale-[1.02] transform"
+                        className={`block px-6 py-3 text-sm transition-all duration-200 hover:translate-x-2 hover:scale-[1.02] transform ${
+                          isActiveRoute('/profile') ? 'bg-gradient-to-r from-amber-50 to-orange-50 text-amber-800' : 'text-gray-700 hover:bg-gradient-to-r hover:from-amber-50 hover:to-orange-50 hover:text-amber-800'
+                        }`}
                         onClick={() => setShowProfileMenu(false)}
                       >
                         👤 Profile
                       </Link>
                       <Link
                         to="/orders"
-                        className="block px-6 py-3 text-sm text-gray-700 hover:bg-gradient-to-r hover:from-amber-50 hover:to-orange-50 hover:text-amber-800 transition-all duration-200 hover:translate-x-2 hover:scale-[1.02] transform"
+                        className={`block px-6 py-3 text-sm transition-all duration-200 hover:translate-x-2 hover:scale-[1.02] transform ${
+                          isActiveRoute('/orders') ? 'bg-gradient-to-r from-amber-50 to-orange-50 text-amber-800' : 'text-gray-700 hover:bg-gradient-to-r hover:from-amber-50 hover:to-orange-50 hover:text-amber-800'
+                        }`}
                         onClick={() => setShowProfileMenu(false)}
                       >
                         📦 My Orders
                       </Link>
                       <Link
                         to="/wishlist"
-                        className="block px-6 py-3 text-sm text-gray-700 hover:bg-gradient-to-r hover:from-amber-50 hover:to-orange-50 hover:text-amber-800 transition-all duration-200 hover:translate-x-2 hover:scale-[1.02] transform"
+                        className={`block px-6 py-3 text-sm transition-all duration-200 hover:translate-x-2 hover:scale-[1.02] transform ${
+                          isActiveRoute('/wishlist') ? 'bg-gradient-to-r from-amber-50 to-orange-50 text-amber-800' : 'text-gray-700 hover:bg-gradient-to-r hover:from-amber-50 hover:to-orange-50 hover:text-amber-800'
+                        }`}
                         onClick={() => setShowProfileMenu(false)}
                       >
                         💚 Wishlist
@@ -158,7 +217,9 @@ const Navbar = () => {
                       {user.role === 'admin' && (
                         <Link
                           to="/admin"
-                          className="block px-6 py-3 text-sm text-gray-700 hover:bg-gradient-to-r hover:from-amber-50 hover:to-orange-50 hover:text-amber-800 transition-all duration-200 hover:translate-x-2 hover:scale-[1.02] transform"
+                          className={`block px-6 py-3 text-sm transition-all duration-200 hover:translate-x-2 hover:scale-[1.02] transform ${
+                            isActiveRoute('/admin') ? 'bg-gradient-to-r from-amber-50 to-orange-50 text-amber-800' : 'text-gray-700 hover:bg-gradient-to-r hover:from-amber-50 hover:to-orange-50 hover:text-amber-800'
+                          }`}
                           onClick={() => setShowProfileMenu(false)}
                         >
                           ⚙️ Admin Dashboard
@@ -181,13 +242,17 @@ const Navbar = () => {
                 <>
                   <Link
                     to="/login"
-                    className="text-gray-700 hover:text-amber-800 hidden md:block px-4 py-2 rounded-full hover:bg-gradient-to-r hover:from-amber-50 hover:to-orange-50 transition-all duration-300 font-medium hover:shadow-md hover:shadow-orange-200/30 hover:scale-105 text-sm border-2 border-transparent hover:border-orange-200"
+                    className={`hidden md:block px-4 py-2 rounded-full transition-all duration-300 font-medium hover:shadow-md hover:shadow-orange-200/30 hover:scale-105 text-sm border-2 hover:border-orange-200 hover:bg-gradient-to-r hover:from-amber-50 hover:to-orange-50 ${
+                      isActiveRoute('/login') ? 'border-orange-300 bg-gradient-to-r from-amber-50 to-orange-50 text-amber-800 shadow-md shadow-orange-200/30 scale-105' : 'border-transparent text-gray-700 hover:text-amber-800'
+                    }`}
                   >
                     Login
                   </Link>
                   <Link
                     to="/register"
-                    className="text-white bg-gradient-to-r from-orange-500 to-amber-600 hover:from-orange-600 hover:to-amber-700 px-4 md:px-6 py-2 rounded-full transition-all duration-300 font-medium shadow-lg hover:shadow-xl hover:shadow-orange-300/50 hover:scale-105 hover:-translate-y-0.5 text-sm hidden md:block border-2 border-orange-400 hover:border-orange-500"
+                    className={`hidden md:block px-4 md:px-6 py-2 rounded-full transition-all duration-300 font-medium shadow-lg hover:shadow-xl hover:shadow-orange-300/50 hover:scale-105 hover:-translate-y-0.5 text-sm border-2 hover:border-orange-500 ${
+                      isActiveRoute('/register') ? 'text-white bg-gradient-to-r from-orange-600 to-amber-700 border-orange-500' : 'text-white bg-gradient-to-r from-orange-500 to-amber-600 hover:from-orange-600 hover:to-amber-700 border-orange-400'
+                    }`}
                   >
                     Register
                   </Link>
@@ -195,7 +260,12 @@ const Navbar = () => {
               )}
 
               {/* Desktop Cart icon */}
-              <Link to="/checkout" className="text-gray-700 hover:text-amber-800 relative p-1 md:p-2 rounded-full hover:bg-gradient-to-r hover:from-amber-50 hover:to-orange-50 transition-all duration-300 hover:shadow-lg hover:shadow-orange-200/30 hover:scale-110 group hidden md:flex border-2 border-transparent hover:border-orange-200">
+              <Link 
+                to="/checkout" 
+                className={`relative p-1 md:p-2 rounded-full transition-all duration-300 hover:shadow-lg hover:shadow-orange-200/30 hover:scale-110 group hidden md:flex border-2 hover:border-orange-200 hover:bg-gradient-to-r hover:from-amber-50 hover:to-orange-50 ${
+                  isActiveRoute('/checkout') ? 'border-orange-300 bg-gradient-to-r from-amber-50 to-orange-50 text-amber-800 shadow-lg shadow-orange-200/30 scale-110' : 'border-transparent text-gray-700 hover:text-amber-800'
+                }`}
+              >
                 <ShoppingCart className="w-5 h-5 md:w-6 md:h-6 group-hover:animate-bounce" />
                 {cartCount > 0 && (
                   <span className="absolute -top-1 -right-1 bg-gradient-to-r from-orange-500 to-amber-600 text-white text-xs rounded-full w-5 h-5 md:w-6 md:h-6 flex items-center justify-center font-bold shadow-lg animate-pulse hover:animate-none hover:scale-110 transition-all duration-200 border border-orange-400">
@@ -232,19 +302,21 @@ const Navbar = () => {
                 <Link
                   key={link.name}
                   to={link.path}
-                  className="flex flex-col items-center p-3 rounded-lg hover:bg-gradient-to-r hover:from-amber-50 hover:to-orange-50 transition-all duration-300 group relative border-2 border-transparent hover:border-orange-200 hover:scale-105 transform"
+                  className={getQuickLinkStyles(link.path)}
                   onClick={() => setIsOpen(false)}
                   style={{ animationDelay: `${index * 100}ms` }}
                 >
                   <div className="relative">
-                    <link.icon className="w-5 h-5 text-orange-600 group-hover:scale-110 transition-transform duration-200 group-hover:rotate-12" />
+                    <link.icon className={`w-5 h-5 group-hover:scale-110 transition-transform duration-200 group-hover:rotate-12 ${
+                      isActiveRoute(link.path) ? 'text-amber-800' : 'text-orange-600'
+                    }`} />
                     {link.badge && link.badge > 0 && (
                       <span className="absolute -top-2 -right-2 bg-gradient-to-r from-orange-500 to-amber-600 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center font-bold shadow-lg border border-orange-400">
                         {link.badge}
                       </span>
                     )}
                   </div>
-                  <span className="text-xs text-gray-600 mt-1 group-hover:text-amber-800">{link.name}</span>
+                  <span className={`text-xs mt-1 ${getTextColor(link.path)}`}>{link.name}</span>
                 </Link>
               ))}
             </div>
@@ -256,20 +328,26 @@ const Navbar = () => {
             <div className="space-y-2">
               <Link
                 to="/products"
-                className="flex items-center space-x-3 p-4 rounded-lg hover:bg-gradient-to-r hover:from-amber-50 hover:to-orange-50 transition-all duration-300 group border-2 border-transparent hover:border-orange-200 hover:scale-[1.02] transform"
+                className={getMobileNavStyles('/products')}
                 onClick={() => setIsOpen(false)}
               >
                 <span className="text-2xl group-hover:scale-110 transition-transform duration-200 group-hover:rotate-12">🛍️</span>
-                <span className="font-semibold text-gray-800 group-hover:text-amber-800">Our Products</span>
+                <span className={`font-semibold ${
+                  isActiveRoute('/products') ? 'text-amber-800' : 'text-gray-800 group-hover:text-amber-800'
+                }`}>Our Products</span>
               </Link>
               
               <Link
                 to="/blogs"
-                className="flex items-center space-x-3 p-4 rounded-lg hover:bg-gradient-to-r hover:from-amber-50 hover:to-orange-50 transition-all duration-300 group border-2 border-transparent hover:border-orange-200 hover:scale-[1.02] transform"
+                className={getMobileNavStyles('/blogs')}
                 onClick={() => setIsOpen(false)}
               >
-                <BookOpen className="w-6 h-6 text-orange-600 group-hover:scale-110 transition-transform duration-200 group-hover:rotate-12" />
-                <span className="font-semibold text-gray-800 group-hover:text-amber-800">Blog Stories</span>
+                <BookOpen className={`w-6 h-6 group-hover:scale-110 transition-transform duration-200 group-hover:rotate-12 ${
+                  isActiveRoute('/blogs') ? 'text-amber-800' : 'text-orange-600'
+                }`} />
+                <span className={`font-semibold ${
+                  isActiveRoute('/blogs') ? 'text-amber-800' : 'text-gray-800 group-hover:text-amber-800'
+                }`}>Blog Stories</span>
               </Link>
             </div>
           </div>
@@ -282,7 +360,9 @@ const Navbar = () => {
                 <div className="space-y-1">
                   <Link
                     to="/profile"
-                    className="flex items-center space-x-3 py-3 px-4 text-gray-600 hover:text-amber-800 hover:bg-gradient-to-r hover:from-amber-50 hover:to-orange-50 rounded-lg transition-all duration-300 hover:translate-x-2 border-2 border-transparent hover:border-orange-200 hover:scale-[1.02] transform"
+                    className={`flex items-center space-x-3 py-3 px-4 rounded-lg transition-all duration-300 hover:translate-x-2 border-2 hover:border-orange-200 hover:scale-[1.02] transform hover:bg-gradient-to-r hover:from-amber-50 hover:to-orange-50 ${
+                      isActiveRoute('/profile') ? 'border-orange-300 bg-gradient-to-r from-amber-50 to-orange-50 text-amber-800 scale-[1.02]' : 'border-transparent text-gray-600 hover:text-amber-800'
+                    }`}
                     onClick={() => setIsOpen(false)}
                   >
                     <User className="w-5 h-5" />
@@ -291,7 +371,9 @@ const Navbar = () => {
                   {user.role === 'admin' && (
                     <Link
                       to="/admin"
-                      className="flex items-center space-x-3 py-3 px-4 text-gray-600 hover:text-amber-800 hover:bg-gradient-to-r hover:from-amber-50 hover:to-orange-50 rounded-lg transition-all duration-300 hover:translate-x-2 border-2 border-transparent hover:border-orange-200 hover:scale-[1.02] transform"
+                      className={`flex items-center space-x-3 py-3 px-4 rounded-lg transition-all duration-300 hover:translate-x-2 border-2 hover:border-orange-200 hover:scale-[1.02] transform hover:bg-gradient-to-r hover:from-amber-50 hover:to-orange-50 ${
+                        isActiveRoute('/admin') ? 'border-orange-300 bg-gradient-to-r from-amber-50 to-orange-50 text-amber-800 scale-[1.02]' : 'border-transparent text-gray-600 hover:text-amber-800'
+                      }`}
                       onClick={() => setIsOpen(false)}
                     >
                       <span className="text-lg">⚙️</span>
@@ -316,14 +398,18 @@ const Navbar = () => {
                 <div className="space-y-3">
                   <Link
                     to="/login"
-                    className="block py-3 px-4 text-center text-gray-600 hover:text-amber-800 hover:bg-gradient-to-r hover:from-amber-50 hover:to-orange-50 rounded-lg transition-all duration-300 font-medium border-2 border-amber-200 hover:border-orange-300 hover:scale-105 transform"
+                    className={`block py-3 px-4 text-center rounded-lg transition-all duration-300 font-medium border-2 hover:border-orange-300 hover:scale-105 transform hover:bg-gradient-to-r hover:from-amber-50 hover:to-orange-50 ${
+                      isActiveRoute('/login') ? 'border-orange-300 bg-gradient-to-r from-amber-50 to-orange-50 text-amber-800 scale-105' : 'border-amber-200 text-gray-600 hover:text-amber-800'
+                    }`}
                     onClick={() => setIsOpen(false)}
                   >
                     Login
                   </Link>
                   <Link
                     to="/register"
-                    className="block py-3 px-4 text-center text-white bg-gradient-to-r from-orange-500 to-amber-600 hover:from-orange-600 hover:to-amber-700 rounded-lg transition-all duration-300 font-medium shadow-lg hover:shadow-xl hover:scale-105 border-2 border-orange-400 hover:border-orange-500 transform"
+                    className={`block py-3 px-4 text-center rounded-lg transition-all duration-300 font-medium shadow-lg hover:shadow-xl hover:scale-105 border-2 hover:border-orange-500 transform ${
+                      isActiveRoute('/register') ? 'text-white bg-gradient-to-r from-orange-600 to-amber-700 border-orange-500' : 'text-white bg-gradient-to-r from-orange-500 to-amber-600 hover:from-orange-600 hover:to-amber-700 border-orange-400'
+                    }`}
                     onClick={() => setIsOpen(false)}
                   >
                     Create Account

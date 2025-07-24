@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const userController = require('../controllers/userController');
 const { auth, admin, validateBody } = require('../middleware/auth');
-const { registerSchema, loginSchema, passwordResetSchema } = require('../validations/userValidation');
+const { registerSchema, loginSchema, passwordResetSchema,forgotPasswordSchema } = require('../validations/userValidation');
 const rateLimit = require('express-rate-limit');
 
 // Rate limiting for auth routes
@@ -19,7 +19,11 @@ router.post('/register', validateBody(registerSchema), userController.register);
 router.post('/login', authLimiter, validateBody(loginSchema), userController.login);
 router.post('/admin/login', authLimiter, validateBody(loginSchema), userController.adminLogin);
 router.get('/verify-email/:token', userController.verifyEmail);
-router.post('/forgot-password', authLimiter, userController.forgotPassword);
+router.post('/forgot-password', 
+  authLimiter, // For security
+  validateBody(forgotPasswordSchema), // Use Joi validation
+  userController.forgotPassword
+);
 router.post('/reset-password/:token', validateBody(passwordResetSchema), userController.resetPassword);
 
 // Protected routes

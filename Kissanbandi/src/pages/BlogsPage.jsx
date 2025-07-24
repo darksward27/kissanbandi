@@ -204,7 +204,7 @@ const BlogsPage = () => {
           <div className="text-center max-w-4xl mx-auto">
             <div className="inline-flex items-center space-x-2 bg-white/10 backdrop-blur-sm rounded-full px-6 py-2 mb-6">
               <Sparkles className="w-5 h-5 text-yellow-300" />
-              <span className="text-sm font-semibold text-white">BOGAT Stories</span>
+              <span className="text-sm font-semibold text-white">SRI BOGAT Stories</span>
             </div>
             
             <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold mb-6 text-white drop-shadow-2xl">
