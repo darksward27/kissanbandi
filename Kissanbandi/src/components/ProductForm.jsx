@@ -312,7 +312,7 @@ const ProductForm = ({ initialData, onSubmit, categories = [], categoriesLoading
         console.log('📤 Sending to create-with-images endpoint...');
         console.log('📁 Files to upload:', imageFiles.length);
         
-        const response = await fetch('http://localhost:5000/api/products/create-with-images', {
+        const response = await fetch('https://bogat.onrender.com/api/products/create-with-images', {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`,

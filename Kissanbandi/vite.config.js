@@ -10,7 +10,7 @@ export default defineConfig({
     strictPort: true, // Don't try other ports if 5173 is taken
     proxy: {
       '/api': {
-        target: 'http://localhost:5000',
+        target: 'https://bogat.onrender.com',
         changeOrigin: true,
         secure: false
       }
