@@ -34,11 +34,11 @@ const ProductsManagement = () => {
     }
     
     if (imagePath.startsWith('/uploads')) {
-      return `https://bogat.onrender.com${imagePath}`;
+      return `http://localhost:5000${imagePath}`;
     }
     
     const filename = imagePath.split('/').pop();
-    return `https://bogat.onrender.com/uploads/product/${filename}`;
+    return `http://localhost:5000/uploads/product/${filename}`;
   };
 
   const getProductImages = (product) => {
@@ -122,7 +122,7 @@ const ProductsManagement = () => {
   const loadCategories = async () => {
     try {
       setCategoriesLoading(true);
-      const response = await fetch('https://bogat.onrender.com/api/categories');
+      const response = await fetch('http://localhost:5000/api/categories');
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);

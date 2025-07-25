@@ -171,23 +171,53 @@ exports.createCoupon = async (req, res) => {
 // @access  Private/Admin
 exports.updateCoupon = async (req, res) => {
   try {
+    console.log('🔧 === UPDATE COUPON START ===');
+    console.log('🔧 Coupon ID:', req.params.id);
+    console.log('🔧 Request body:', JSON.stringify(req.body, null, 2));
+    console.log('🔧 User info:', req.user ? { 
+      userId: req.user.userId, 
+      _id: req.user._id, 
+      role: req.user.role 
+    } : 'No user');
+
+    // FIXED: Check for validation errors (make sure validationResult is imported)
+    const { validationResult } = require('express-validator');
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      console.log('🔧 Validation errors:', errors.array());
+      return res.status(400).json({
+        success: false,
+        error: 'Validation errors',
+        details: errors.array()
+      });
+    }
+
     const coupon = await Coupon.findById(req.params.id);
 
     if (!coupon) {
+      console.log('🔧 Coupon not found');
       return res.status(404).json({
         success: false,
         error: 'Coupon not found'
       });
     }
 
+    console.log('🔧 Found existing coupon:', {
+      id: coupon._id,
+      title: coupon.title,
+      code: coupon.code
+    });
+
     // Check if trying to update code and if it conflicts with existing coupon
     if (req.body.code && req.body.code.toUpperCase() !== coupon.code) {
+      console.log('🔧 Checking for code conflicts...');
       const existingCoupon = await Coupon.findOne({ 
         code: req.body.code.toUpperCase(),
         _id: { $ne: req.params.id }
       });
 
       if (existingCoupon) {
+        console.log('🔧 Code conflict found');
         return res.status(400).json({
           success: false,
           error: 'Coupon code already exists'
@@ -195,30 +225,100 @@ exports.updateCoupon = async (req, res) => {
       }
     }
 
-    // Prepare update data
+    // FIXED: Prepare update data with safe user ID access
     const updateData = {
       ...req.body,
-      updatedBy: req.user._id
+      // FIXED: Safe access to user ID with multiple fallbacks
+      updatedBy: req.user?.userId || req.user?._id || req.user?.id,
+      updatedAt: new Date()
     };
 
     if (updateData.code) {
       updateData.code = updateData.code.toUpperCase();
     }
 
+    // FIXED: Remove undefined values to prevent Mongoose errors
+    Object.keys(updateData).forEach(key => {
+      if (updateData[key] === undefined) {
+        delete updateData[key];
+      }
+    });
+
+    console.log('🔧 Final update data:', JSON.stringify(updateData, null, 2));
+
     // Update coupon
     const updatedCoupon = await Coupon.findByIdAndUpdate(
       req.params.id,
       updateData,
-      { new: true, runValidators: true }
+      { 
+        new: true, 
+        runValidators: true,
+        context: 'query'
+      }
     ).populate('updatedBy', 'name email');
+
+    if (!updatedCoupon) {
+      console.log('🔧 Failed to update coupon');
+      return res.status(404).json({
+        success: false,
+        error: 'Failed to update coupon'
+      });
+    }
+
+    console.log('🔧 Coupon updated successfully:', {
+      id: updatedCoupon._id,
+      title: updatedCoupon.title,
+      code: updatedCoupon.code
+    });
 
     res.status(200).json({
       success: true,
       message: 'Coupon updated successfully',
       data: updatedCoupon
     });
+
   } catch (error) {
-    console.error('Error updating coupon:', error);
+    console.error('❌ Error updating coupon:', {
+      message: error.message,
+      name: error.name,
+      stack: error.stack
+    });
+    
+    // FIXED: Better error handling for different error types
+    if (error.name === 'ValidationError') {
+      const validationErrors = Object.values(error.errors).map(err => ({
+        field: err.path,
+        message: err.message,
+        value: err.value
+      }));
+      
+      return res.status(400).json({
+        success: false,
+        error: 'Validation failed',
+        details: validationErrors
+      });
+    }
+    
+    if (error.name === 'CastError') {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid data format',
+        details: {
+          field: error.path,
+          value: error.value,
+          message: error.message
+        }
+      });
+    }
+
+    if (error.code === 11000) {
+      return res.status(400).json({
+        success: false,
+        error: 'Duplicate value error',
+        details: error.keyValue
+      });
+    }
+
     res.status(500).json({
       success: false,
       error: error.message || 'Failed to update coupon'

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { 
   Plus, 
@@ -59,31 +60,65 @@ const AdminCouponManagement = () => {
   const [errors, setErrors] = useState({});
 
   // API Base URL - Update this to match your backend
-  const API_BASE_URL = 'https://bogat.onrender.com/api/coupons';
+  const API_BASE_URL = 'http://localhost:5000/api/coupons';
 
   // Get auth token from sessionStorage or your auth context
   const getAuthToken = () => {
     return sessionStorage.getItem('adminToken');
   };
 
-  // API Helper function
+  // FIXED: Enhanced API Helper function with better error handling
   const apiCall = async (url, options = {}) => {
-    const token = getAuthToken();
-    const response = await fetch(`${API_BASE_URL}${url}`, {
-      ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
-        ...options.headers,
-      },
-    });
+    try {
+      const token = getAuthToken();
+      
+      if (!token) {
+        throw new Error('Authentication token not found. Please login again.');
+      }
 
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.message || 'API request failed');
+      console.log('🔍 API Call Debug:', {
+        url: `${API_BASE_URL}${url}`,
+        method: options.method || 'GET',
+        hasToken: !!token,
+        body: options.body ? JSON.parse(options.body) : null
+      });
+
+      const response = await fetch(`${API_BASE_URL}${url}`, {
+        ...options,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+          ...options.headers,
+        },
+      });
+
+      console.log('🔍 Response Status:', response.status);
+
+      // Get response text first to handle both JSON and non-JSON responses
+      const responseText = await response.text();
+      // console.log('🔍 Response Text:', responseText);
+
+      let responseData;
+      try {
+        responseData = responseText ? JSON.parse(responseText) : {};
+      } catch (parseError) {
+        console.error('❌ JSON Parse Error:', parseError);
+        throw new Error(`Invalid JSON response: ${responseText}`);
+      }
+
+      if (!response.ok) {
+        const errorMessage = responseData.error || 
+                           responseData.message || 
+                           `HTTP ${response.status}: ${response.statusText}`;
+        console.error('❌ API Error Response:', responseData);
+        throw new Error(errorMessage);
+      }
+
+      return responseData;
+    } catch (error) {
+      console.error('❌ API Call Failed:', error);
+      throw error;
     }
-
-    return await response.json();
   };
 
   // Load coupons from API
@@ -104,15 +139,15 @@ const AdminCouponManagement = () => {
       }
     } catch (error) {
       console.error('Error loading coupons:', error);
-      showToast('Failed to load coupons', 'error');
+      showToast('Failed to load coupons: ' + error.message, 'error');
     } finally {
       setLoading(false);
     }
   };
 
-  // Simple toast notification
+  // Enhanced toast notification
   const showToast = (message, type = 'success') => {
-    // You can replace this with your preferred toast library
+    console.log(`${type === 'success' ? '✅' : '❌'} ${message}`);
     if (type === 'success') {
       alert(`✅ ${message}`);
     } else {
@@ -170,55 +205,90 @@ const AdminCouponManagement = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    
-    if (!validateForm()) {
-      showToast('Please fix the errors below', 'error');
-      return;
+  // FIXED: Enhanced form submission with proper data formatting
+ const handleSubmit = async (e) => {
+  e.preventDefault();
+
+  if (!validateForm()) {
+    showToast('Please fix the errors below', 'error');
+    return;
+  }
+
+  try {
+    // FIXED: Build coupon data step by step to avoid issues
+    const couponData = {
+      title: formData.title.trim(),
+      code: formData.code.trim().toUpperCase(),
+      description: formData.description.trim(),
+      discountType: formData.discountType,
+      discountValue: Number(formData.discountValue),
+      minOrderValue: formData.minOrderValue ? Number(formData.minOrderValue) : 0,
+      usagePerUser: Number(formData.usagePerUser) || 1,
+      isActive: Boolean(formData.isActive),
+      userGroups: formData.userGroups || 'all',
+      startDate: new Date(formData.startDate).toISOString(),
+      endDate: new Date(formData.endDate).toISOString()
+    };
+
+    // FIXED: Only add optional fields if they have valid values
+    if (formData.maxUsageCount && formData.maxUsageCount.trim() !== '' && Number(formData.maxUsageCount) > 0) {
+      couponData.maxUsageCount = Number(formData.maxUsageCount);
     }
 
-    try {
-      const couponData = {
-        ...formData,
-        discountValue: Number(formData.discountValue),
-        minOrderValue: formData.minOrderValue ? Number(formData.minOrderValue) : 0,
-        maxUsageCount: formData.maxUsageCount ? Number(formData.maxUsageCount) : null,
-        usagePerUser: Number(formData.usagePerUser),
-        budget: formData.budget ? Number(formData.budget) : null
-      };
+    if (formData.budget && formData.budget.trim() !== '' && Number(formData.budget) > 0) {
+      couponData.budget = Number(formData.budget);
+    }
 
-      if (editingCoupon) {
-        // Update coupon
-        const response = await apiCall(`/${editingCoupon._id}`, {
-          method: 'PUT',
-          body: JSON.stringify(couponData)
-        });
-        
-        if (response.success) {
-          showToast('Coupon updated successfully!');
-        }
-      } else {
-        // Create coupon
-        const response = await apiCall('/', {
-          method: 'POST',
-          body: JSON.stringify(couponData),
-          });
-        console.log("Vaibhav Says : ", couponData);
-        if (response.success) {
-          showToast('Coupon created successfully!');
-        }
+    // REMOVED: The problematic forEach loops that were causing issues
+    // REMOVED: These lines were corrupting the data:
+    // ['maxUsageCount', 'budget', 'minOrderValue', 'discountValue', 'usagePerUser'].forEach((key) => {
+    //   if (couponData[key] === '') {
+    //     couponData[key] = null;
+    //   }
+    // });
+
+    // FIXED: Clean removal of empty values without corrupting existing data
+    Object.keys(couponData).forEach(key => {
+      if (couponData[key] === undefined || couponData[key] === null) {
+        delete couponData[key];
       }
+    });
 
-      resetForm();
-      setShowCreateModal(false);
-      setEditingCoupon(null);
-      await loadCoupons();
-    } catch (error) {
-      console.error('Error saving coupon:', error);
-      showToast(error.message || 'Failed to save coupon', 'error');
+    console.log('🔧 Submitting coupon data:', couponData);
+
+    if (editingCoupon) {
+      // Update coupon
+      console.log('🔧 Updating coupon with ID:', editingCoupon._id);
+      const response = await apiCall(`/${editingCoupon._id}`, {
+        method: 'PUT',
+        body: JSON.stringify(couponData)
+      });
+      
+      if (response.success) {
+        showToast('Coupon updated successfully!');
+      }
+    } else {
+      // Create coupon
+      console.log('🔧 Creating new coupon');
+      const response = await apiCall('/', {
+        method: 'POST',
+        body: JSON.stringify(couponData)
+      });
+      
+      if (response.success) {
+        showToast('Coupon created successfully!');
+      }
     }
-  };
+
+    resetForm();
+    setShowCreateModal(false);
+    setEditingCoupon(null);
+    await loadCoupons();
+  } catch (error) {
+    console.error('❌ Error saving coupon:', error);
+    showToast(error.message || 'Failed to save coupon', 'error');
+  }
+};
 
   const resetForm = () => {
     setFormData({
@@ -242,21 +312,31 @@ const AdminCouponManagement = () => {
     setErrors({});
   };
 
+  // FIXED: Enhanced edit handler with better date formatting
   const handleEdit = (coupon) => {
+    console.log('🔧 Editing coupon:', coupon);
     setEditingCoupon(coupon);
+    
+    // FIXED: Better date formatting
+    const formatDate = (dateString) => {
+      if (!dateString) return '';
+      const date = new Date(dateString);
+      return date.toISOString().split('T')[0];
+    };
+
     setFormData({
-      title: coupon.title,
-      code: coupon.code,
+      title: coupon.title || '',
+      code: coupon.code || '',
       description: coupon.description || '',
-      discountType: coupon.discountType,
-      discountValue: coupon.discountValue.toString(),
+      discountType: coupon.discountType || 'percentage',
+      discountValue: coupon.discountValue ? coupon.discountValue.toString() : '',
       minOrderValue: coupon.minOrderValue ? coupon.minOrderValue.toString() : '',
       maxUsageCount: coupon.maxUsageCount ? coupon.maxUsageCount.toString() : '',
-      usagePerUser: coupon.usagePerUser.toString(),
-      startDate: coupon.startDate?.split('T')[0] || coupon.startDate,
-      endDate: coupon.endDate?.split('T')[0] || coupon.endDate,
+      usagePerUser: coupon.usagePerUser ? coupon.usagePerUser.toString() : '1',
+      startDate: formatDate(coupon.startDate),
+      endDate: formatDate(coupon.endDate),
       budget: coupon.budget ? coupon.budget.toString() : '',
-      isActive: coupon.isActive,
+      isActive: Boolean(coupon.isActive),
       applicableProducts: coupon.applicableProducts || [],
       excludedProducts: coupon.excludedProducts || [],
       applicableCategories: coupon.applicableCategories || [],
@@ -285,7 +365,6 @@ const AdminCouponManagement = () => {
     if (!window.confirm('Are you sure you want to delete this coupon?')) return;
 
     try {
-      console.log("Vaibhav Says : ", couponId);
       const response = await apiCall(`/${couponId}`, {
         method: 'DELETE'
       });

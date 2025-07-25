@@ -12,7 +12,7 @@ const { auth, admin } = require('../middleware/auth');
 const couponController = require('../controllers/couponController');
 
 // Import validation middleware
-const { body, param, query } = require('express-validator');
+const { body, param, query, validationResult } = require('express-validator');
 
 // 🔓 PUBLIC ROUTES (No Auth)
 router.get('/public/:code', [
@@ -310,8 +310,56 @@ router.put('/:id', [
         throw new Error('Percentage discount cannot exceed 100%');
       }
       return true;
-    })
-], couponController.updateCoupon);
+    }),
+  body('minOrderValue')
+    .optional()
+    .isFloat({ min: 0 })
+    .withMessage('Minimum order value must be a positive number'),
+  body('maxUsageCount')
+    .optional()
+    .isInt({ min: 1 })
+    .withMessage('Max usage count must be a positive integer'),
+  body('usagePerUser')
+    .optional()
+    .isInt({ min: 1 })
+    .withMessage('Usage per user must be a positive integer'),
+  body('budget')
+    .optional()
+    .isFloat({ min: 0 })
+    .withMessage('Budget must be a positive number'),
+  body('startDate')
+    .optional()
+    .isISO8601()
+    .withMessage('Start date must be a valid date'),
+  body('endDate')
+    .optional()
+    .isISO8601()
+    .withMessage('End date must be a valid date'),
+  body('endDate')
+    .optional()
+    .custom((value, { req }) => {
+      if (req.body.startDate && value && new Date(value) <= new Date(req.body.startDate)) {
+        throw new Error('End date must be after start date');
+      }
+      return true;
+    }),
+  body('userGroups')
+    .optional()
+    .isIn(['all', 'new', 'premium'])
+    .withMessage('User groups must be one of: all, new, premium'),
+  body('isActive')
+    .optional()
+    .isBoolean()
+    .withMessage('isActive must be a boolean'),
+  // Add debug middleware
+  (req, res, next) => {
+    console.log('🔍 === UPDATE COUPON VALIDATION ===');
+    console.log('🔍 Request body:', JSON.stringify(req.body, null, 2));
+    console.log('🔍 Validation errors:', validationResult(req).array());
+    console.log('🔍 ================================');
+    next();
+  }
+], couponController.updateCoupon)
 
 // Toggle coupon status
 router.patch('/:id/toggle', [
