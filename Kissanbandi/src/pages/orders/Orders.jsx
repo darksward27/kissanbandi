@@ -1127,7 +1127,7 @@ const Orders = () => {
                                                             <div key={`${order._id}-item-${itemIndex}`} className="group flex items-center space-x-4 bg-white/60 p-4 rounded-xl hover:bg-white transition-all duration-300 hover:shadow-md">
                                                                 <div className="relative w-16 h-16 bg-gradient-to-br from-amber-100 to-orange-100 rounded-xl overflow-hidden">
                                                                     <img
-                                                                        src={"https://bogat.onrender.com"+item?.product?.image || FALLBACK_IMAGE}
+                                                                        src={"http://localhost:5000"+item?.product?.image || FALLBACK_IMAGE}
                                                                         alt={item?.product?.name || 'Product'}
                                                                         className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
                                                                         onError={handleImageError}

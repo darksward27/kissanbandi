@@ -20,17 +20,18 @@ const productSchema = new mongoose.Schema({
     required: true,
     min: 0
   },
-  originalPrice: {
-    type: Number,
-    min: 0,
-    validate: {
-      validator: function(value) {
-        // originalPrice should be greater than or equal to price if provided
-        return !value || value >= this.price;
-      },
-      message: 'Original price should be greater than or equal to current price'
-    }
-  },
+originalPrice: {
+  type: Number,
+  min: 0,
+  validate: {
+    validator: function (value) {
+      // Skip validation if `this.price` is not available (partial update)
+      if (typeof this.price !== 'number') return true;
+      return value >= this.price;
+    },
+    message: 'Original price should be greater than or equal to current price'
+  }
+},
   gst: {
   type: Number,
   min: 0,

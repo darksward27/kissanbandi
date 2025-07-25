@@ -59,11 +59,11 @@ const AdminCouponManagement = () => {
   const [errors, setErrors] = useState({});
 
   // API Base URL - Update this to match your backend
-  const API_BASE_URL = 'https://bogat.onrender.com/api/coupons';
+  const API_BASE_URL = 'http://localhost:5000/api/coupons';
 
   // Get auth token from sessionStorage or your auth context
   const getAuthToken = () => {
-    return sessionStorage.getItem('adminToken') || sessionStorage.getItem('kissanbandi_token');
+    return sessionStorage.getItem('adminToken');
   };
 
   // API Helper function
@@ -202,9 +202,9 @@ const AdminCouponManagement = () => {
         // Create coupon
         const response = await apiCall('/', {
           method: 'POST',
-          body: JSON.stringify(couponData)
-        });
-        
+          body: JSON.stringify(couponData),
+          });
+        console.log("Vaibhav Says : ", couponData);
         if (response.success) {
           showToast('Coupon created successfully!');
         }

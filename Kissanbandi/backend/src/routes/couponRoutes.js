@@ -321,6 +321,9 @@ router.patch('/:id/toggle', [
 ], couponController.toggleCouponStatus);
 
 // Delete coupon
+router.delete('/:id', [
+  param('id').isMongoId().withMessage('Invalid coupon ID')
+], couponController.deleteCoupon);
 
 // Get coupon usage history
 router.get('/:id/usage-history', [

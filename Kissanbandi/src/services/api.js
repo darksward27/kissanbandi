@@ -488,7 +488,7 @@ export const ordersApi = {
     try {
       console.log('Exporting orders with filters:', filters);
       const timestamp = new Date().getTime();
-      const response = await api.get('/orders/export', {
+      const response = await api.get('/orders/admin/export', {
         params: { ...filters, _t: timestamp },
         headers: {
           'Cache-Control': 'no-cache',

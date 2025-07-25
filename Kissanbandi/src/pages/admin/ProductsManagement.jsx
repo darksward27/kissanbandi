@@ -34,11 +34,11 @@ const ProductsManagement = () => {
     }
     
     if (imagePath.startsWith('/uploads')) {
-      return `https://bogat.onrender.com${imagePath}`;
+      return `http://localhost:5000${imagePath}`;
     }
     
     const filename = imagePath.split('/').pop();
-    return `https://bogat.onrender.com/uploads/product/${filename}`;
+    return `http://localhost:5000/uploads/product/${filename}`;
   };
 
   const getProductImages = (product) => {
@@ -122,7 +122,7 @@ const ProductsManagement = () => {
   const loadCategories = async () => {
     try {
       setCategoriesLoading(true);
-      const response = await fetch('https://bogat.onrender.com/api/categories');
+      const response = await fetch('http://localhost:5000/api/categories');
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -504,18 +504,25 @@ const ProductsManagement = () => {
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center">
                             <div className="relative group">
-                              <img
-                                src={productImages[0]}
-                                alt={product.name}
-                                className="w-12 h-12 rounded-xl object-cover shadow-md group-hover:scale-110 transition-transform duration-200"
-                                onError={(e) => {
-                                  console.error('❌ Product image failed to load:', e.target.src);
-                                  e.target.src = 'https://via.placeholder.com/300x200/f3f4f6/9ca3af?text=No+Image';
-                                }}
-                                onLoad={() => {
-                                  console.log('✅ Product image loaded successfully:', productImages[0]);
-                                }}
-                              />
+                             <img
+  src={
+    productImages[0]?.startsWith('http')
+      ? productImages[0]
+      : `${import.meta.env.VITE_BACKEND_URL}${productImages[0]}`
+  }
+  alt={product.name}
+  className="w-12 h-12 rounded-xl object-cover shadow-md group-hover:scale-110 transition-transform duration-200"
+  onError={(e) => {
+    console.error('❌ Product image failed to load:', e.target.src);
+    e.target.onerror = null;
+    e.target.src = '/fallback.jpg'; // Ensure fallback.jpg exists in /public
+  }}
+  onLoad={(e) => {
+    console.log('✅ Product image loaded successfully:', e.target.src);
+  }}
+/>
+
+
                             </div>
                             <div className="ml-4">
                               <div className="text-sm font-bold text-gray-900">

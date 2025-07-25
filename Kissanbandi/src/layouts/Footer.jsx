@@ -126,34 +126,17 @@ const Footer = () => {
             </h3>
             <ul className="space-y-3">
               <li className="flex items-start space-x-3">
-                <MapPin className="w-5 h-5 mt-0.5" style={{ color: '#f59b52' }} />
-                <div>
-                  <div className="font-semibold text-white">Visit Us</div>
-                  <span className="text-white/70 text-sm">
-                    Heritage Spice Market,<br />
-                    Karnataka, India 560001
-                  </span>
-                </div>
-              </li>
-              <li className="flex items-start space-x-3">
                 <Phone className="w-5 h-5 mt-0.5" style={{ color: '#f59b52' }} />
                 <div>
                   <div className="font-semibold text-white">Call Us</div>
-                  <span className="text-white/70 text-sm">+91 9876543210</span>
+                  <span className="text-white/70 text-sm">+91 7795451890</span>
                 </div>
               </li>
               <li className="flex items-start space-x-3">
                 <Mail className="w-5 h-5 mt-0.5" style={{ color: '#f59b52' }} />
                 <div>
                   <div className="font-semibold text-white">Email Us</div>
-                  <span className="text-white/70 text-sm">support@bogat.com</span>
-                </div>
-              </li>
-              <li className="flex items-start space-x-3">
-                <Clock className="w-5 h-5 mt-0.5" style={{ color: '#f59b52' }} />
-                <div>
-                  <div className="font-semibold text-white">Open Hours</div>
-                  <span className="text-white/70 text-sm">Mon - Sat: 9AM - 8PM</span>
+                  <span className="text-white/70 text-sm">support@sribogat.com</span>
                 </div>
               </li>
             </ul>

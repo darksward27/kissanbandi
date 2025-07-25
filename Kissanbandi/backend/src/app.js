@@ -41,7 +41,6 @@ const allowedOrigins = [
   'http://127.0.0.1:5173',
   'http://192.168.158.105:5173',
   'https://bogat.netlify.app',
-  'https://beamish-kitten-183019.netlify.app',
   process.env.CORS_ORIGIN,
 ];
 
@@ -64,10 +63,6 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(morgan('dev'));
-app.use('/uploads', (req, res, next) => {
-  console.log('🧩 Static file request:', req.url);
-  next();
-});
 
 // Serve uploaded images
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));

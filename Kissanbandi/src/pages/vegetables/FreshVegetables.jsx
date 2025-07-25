@@ -48,10 +48,10 @@ const getProductImage = (product) => {
 
   // Your backend serves from: app.use('/uploads', express.static(path.join(__dirname, 'src/uploads')));
   // Your database has: "/uploads/product/filename.jpg"
-  // So the URL should be: "https://bogat.onrender.com/uploads/product/filename.jpg"
+  // So the URL should be: "http://localhost:5000/uploads/product/filename.jpg"
   
   if (imageUrl.startsWith('/uploads')) {
-    return `https://bogat.onrender.com${imageUrl}`;
+    return `http://localhost:5000${imageUrl}`;
   }
 
   // If it's already a full URL, use as is
@@ -60,7 +60,7 @@ const getProductImage = (product) => {
   }
 
   // Default fallback
-  return `https://bogat.onrender.com/uploads/product/${imageUrl}`;
+  return `http://localhost:5000/uploads/product/${imageUrl}`;
 };
 
 // Enhanced debugging with file system check

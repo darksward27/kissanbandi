@@ -95,46 +95,35 @@ exports.getProduct = async (req, res) => {
 // ✅ Updated: Create new product with multiple images support
 exports.createProduct = async (req, res) => {
   try {
-    console.log('Raw request body:', req.body); // Debug log
-    
     const productData = { ...req.body };
 
-    // ✅ Handle numeric fields - ensure they're converted to numbers
-    if (productData.price !== undefined) {
-      productData.price = Number(productData.price);
-    }
-    if (productData.originalPrice !== undefined) {
-      productData.originalPrice = Number(productData.originalPrice);
-    }
-    if (productData.gst !== undefined) {
-      productData.gst = Number(productData.gst);
-      console.log('GST processed:', productData.gst); // Debug log
-    }
-    if (productData.stock !== undefined) {
-      productData.stock = Number(productData.stock);
-    }
+    // Convert numeric fields
+    if (productData.price !== undefined) productData.price = Number(productData.price);
+    if (productData.originalPrice !== undefined) productData.originalPrice = Number(productData.originalPrice);
+    if (productData.gst !== undefined) productData.gst = Number(productData.gst);
+    if (productData.stock !== undefined) productData.stock = Number(productData.stock);
 
-    // ✅ Handle multiple images
+    const baseUrl = `${req.protocol}://${req.get('host')}`; // <-- ✅ Get base URL
+
+    // Handle image uploads
     if (req.body.images) {
-      // If images is a string, convert to array
       if (typeof req.body.images === 'string') {
-        productData.images = [req.body.images];
+        productData.images = [`${baseUrl}${req.body.images}`];
       } else if (Array.isArray(req.body.images)) {
-        productData.images = req.body.images;
+        productData.images = req.body.images.map(img =>
+          img.startsWith('http') ? img : `${baseUrl}${img}`
+        );
       }
-      
-      // Set main image to first image for backward compatibility
       if (productData.images.length > 0) {
         productData.image = productData.images[0];
       }
-    }
-    // If single image is provided but no images array
-    else if (req.body.image) {
-      productData.images = [req.body.image];
-      productData.image = req.body.image;
+    } else if (req.body.image) {
+      const imageUrl = req.body.image.startsWith('http') ? req.body.image : `${baseUrl}${req.body.image}`;
+      productData.images = [imageUrl];
+      productData.image = imageUrl;
     }
 
-    // ✅ Handle features array
+    // Features
     if (req.body.features) {
       if (typeof req.body.features === 'string') {
         productData.features = req.body.features.split(',').map(f => f.trim()).filter(f => f);
@@ -143,7 +132,7 @@ exports.createProduct = async (req, res) => {
       }
     }
 
-    // ✅ Handle tags array
+    // Tags
     if (req.body.tags) {
       if (typeof req.body.tags === 'string') {
         productData.tags = req.body.tags.split(',').map(t => t.trim()).filter(t => t);
@@ -152,36 +141,35 @@ exports.createProduct = async (req, res) => {
       }
     }
 
-    // ✅ Calculate discount if originalPrice is provided
+    // Calculate discount
     if (productData.originalPrice && productData.price) {
       productData.discount = Math.round((1 - productData.price / productData.originalPrice) * 100);
     }
 
-    console.log('Final product data before save:', productData); // Debug log
-
     const product = new Product(productData);
     await product.save();
-    
+
     res.status(201).json({
       success: true,
       message: 'Product created successfully',
       product,
-      uploadedImages: productData.images ? productData.images.length : 0
+      uploadedImages: productData.images?.length || 0
     });
 
   } catch (error) {
     console.error('Product creation error:', error);
-    res.status(400).json({ 
+    res.status(400).json({
       success: false,
-      error: error.message 
+      error: error.message
     });
   }
 };
+
 // ✅ Updated: Update product with multiple images support
 exports.updateProduct = async (req, res) => {
   try {
     const updateData = { ...req.body };
-
+    
     // ✅ Handle multiple images update
     if (req.body.images) {
       if (typeof req.body.images === 'string') {
