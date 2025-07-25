@@ -191,36 +191,37 @@ const ProductsManagement = () => {
     return filtered;
   }, [searchQuery, products, filterCategory, statusFilter, sortBy]);
 
-  const handleAddProduct = async (productData) => {
-    try {
-      console.log('Creating new product:', productData);
-      await productsApi.createProduct(productData);
-      await loadProducts();
-      toast.success('Product added successfully!');
-      setShowAddModal(false);
-    } catch (err) {
-      console.error('Error adding product:', err);
-      toast.error(err.response?.data?.message || 'Failed to add product');
-    }
-  };
+const handleAddProduct = async (productData) => {
+  try {
+    console.log('🔍 ProductsManagement: Product creation completed by ProductForm');
+    
+    // ✅ ProductForm already handled the API call successfully
+    // We just need to reload the products and close the modal
+    await loadProducts();
+    toast.success('Product added successfully!');
+    setShowAddModal(false);
+    
+  } catch (err) {
+    console.error('❌ ProductsManagement: Error after product creation:', err);
+    // Don't show error toast here since ProductForm handles that
+  }
+};
 
-  const handleEditProduct = async (productData) => {
-    try {
-      const productId = productData.id || productData._id;
-      
-      if (!productId) {
-        throw new Error('Product ID is missing');
-      }
-      
-      await productsApi.updateProduct(productId, productData);
-      toast.success('Product updated successfully!');
-      setEditingProduct(null);
-      await loadProducts();
-    } catch (err) {
-      console.error('Error updating product:', err);
-      toast.error(err.response?.data?.message || 'Failed to update product');
-    }
-  };
+const handleEditProduct = async (productData) => {
+  try {
+    console.log('🔍 ProductsManagement: Product update completed by ProductForm');
+    
+    // ✅ ProductForm already handled the API call successfully
+    // We just need to reload the products and close the modal
+    await loadProducts();
+    toast.success('Product updated successfully!');
+    setEditingProduct(null);
+    
+  } catch (err) {
+    console.error('❌ ProductsManagement: Error after product update:', err);
+    // Don't show error toast here since ProductForm handles that
+  }
+};
 
   const handleToggleProductStatus = async (productId, newStatus) => {
     if (!productId) return toast.error('Invalid product ID');
@@ -513,7 +514,7 @@ const ProductsManagement = () => {
   alt={product.name}
   className="w-12 h-12 rounded-xl object-cover shadow-md group-hover:scale-110 transition-transform duration-200"
   onError={(e) => {
-    console.error('❌ Product image failed to load:', e.target.src);
+    // console.error('❌ Product image failed to load:', e.target.src);
     e.target.onerror = null;
     e.target.src = '/fallback.jpg'; // Ensure fallback.jpg exists in /public
   }}
@@ -541,7 +542,7 @@ const ProductsManagement = () => {
                                   alt={`${product.name} ${idx + 1}`}
                                   className="w-8 h-8 rounded-full object-cover border-2 border-white shadow-sm"
                                   onError={(e) => {
-                                    e.target.src = 'https://via.placeholder.com/100x100/f3f4f6/9ca3af?text=No+Image';
+                                    e.target.src = '/fallback.jpeg';
                                   }}
                                 />
                               ))}
@@ -754,7 +755,7 @@ const ProductsManagement = () => {
                   alt={`${selectedProductImages.product.name} ${currentImageIndex + 1}`}
                   className="w-full h-96 object-contain"
                   onError={(e) => {
-                    console.error('❌ Modal image failed to load:', e.target.src);
+                    // console.error('❌ Modal image failed to load:', e.target.src);
                     e.target.src = 'https://via.placeholder.com/600x400/f3f4f6/9ca3af?text=Image+Not+Found';
                   }}
                   onLoad={() => {

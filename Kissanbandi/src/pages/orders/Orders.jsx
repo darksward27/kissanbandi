@@ -16,6 +16,15 @@ const STATUS_COLORS = {
 
 const FALLBACK_IMAGE = '/images/product-placeholder.jpg';
 
+//helper function to check the image path
+const getProductImage = (imagePath) => {
+    if (!imagePath) return FALLBACK_IMAGE;
+    if (imagePath.startsWith('http')) return imagePath;
+    if (imagePath.startsWith('/uploads')) return `https://bogat.onrender.com${imagePath}`;
+    const filename = imagePath.split('/').pop();
+    return `https://bogat.onrender.com/uploads/product/${filename}`;
+};
+
 // Helper function to get actual GST breakdown from order data
 const calculateGSTBreakdown = (orderData, subtotalAfterDiscount) => {
     console.log('🧮 Calculating GST breakdown:', { 
@@ -1126,12 +1135,12 @@ const Orders = () => {
                                                         {(order.items || []).map((item, itemIndex) => (
                                                             <div key={`${order._id}-item-${itemIndex}`} className="group flex items-center space-x-4 bg-white/60 p-4 rounded-xl hover:bg-white transition-all duration-300 hover:shadow-md">
                                                                 <div className="relative w-16 h-16 bg-gradient-to-br from-amber-100 to-orange-100 rounded-xl overflow-hidden">
-                                                                    <img
-                                                                        src={"https://bogat.onrender.com"+item?.product?.image || FALLBACK_IMAGE}
-                                                                        alt={item?.product?.name || 'Product'}
-                                                                        className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
-                                                                        onError={handleImageError}
-                                                                    />
+                                                                   <img
+    src={getProductImage(item?.product?.image)}
+    alt={item?.product?.name || 'Product'}
+    className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
+    onError={handleImageError}
+/>
                                                                 </div>
                                                                 <div className="flex-1">
                                                                     <div className="font-bold text-gray-800 group-hover:text-amber-700 transition-colors">

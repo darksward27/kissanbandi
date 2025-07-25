@@ -221,22 +221,220 @@ export const productsApi = {
     }
   },
 
-  // Create new product (admin only)
+  // ✅ NEW: Upload images only (separate from product creation)
+  uploadImages: async (imageFiles) => {
+    try {
+      console.log('🔄 Uploading images:', imageFiles.length);
+
+      const formData = new FormData();
+      imageFiles.forEach((file) => {
+        formData.append('images', file);
+      });
+
+      const response = await api.post('/products/upload-images', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      console.log('✅ Images uploaded successfully:', response.data);
+      return response.data;
+
+    } catch (error) {
+      console.error('❌ Error uploading images:', error);
+      throw error;
+    }
+  },
+
+  // ✅ NEW: Upload single image
+  uploadSingleImage: async (imageFile) => {
+    try {
+      console.log('🔄 Uploading single image');
+
+      const formData = new FormData();
+      formData.append('image', imageFile);
+
+      const response = await api.post('/products/upload-image', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      console.log('✅ Single image uploaded successfully:', response.data);
+      return response.data;
+
+    } catch (error) {
+      console.error('❌ Error uploading single image:', error);
+      throw error;
+    }
+  },
+
+  // ✅ NEW: Create product with images in one step (using your /create-with-images route)
+  createProductWithImages: async (productData, images = []) => {
+    try {
+      console.log('🔄 Creating product with images:', productData);
+      console.log('📸 Images to upload:', images.length);
+
+      const formData = new FormData();
+
+      // Add product data
+      Object.keys(productData).forEach(key => {
+        if (productData[key] !== null && productData[key] !== undefined) {
+          if (Array.isArray(productData[key])) {
+            // Handle arrays (tags, features)
+            productData[key].forEach(item => {
+              formData.append(key, item);
+            });
+          } else {
+            formData.append(key, productData[key]);
+          }
+        }
+      });
+
+      // Add image files
+      images.forEach((image) => {
+        if (image instanceof File) {
+          formData.append('images', image);
+        }
+      });
+
+      const response = await api.post('/products/create-with-images', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      console.log('✅ Product with images created successfully:', response.data);
+      return response.data;
+
+    } catch (error) {
+      console.error('❌ Error creating product with images:', error);
+      throw error;
+    }
+  },
+
+  // Create new product (admin only) - Your existing method
   createProduct: async (productData) => {
     const response = await api.post('/products', productData);
     return response.data;
   },
 
-  // Update product (admin only)
-  updateProduct: async (id, productData) => {
-    const response = await api.put(`/products/${id}`, productData);
-    return response.data;
+  // Update product (admin only) - Enhanced with image support
+  updateProduct: async (id, productData, images = [], replaceImages = false) => {
+    try {
+      console.log('🔄 Updating product:', id);
+      console.log('📸 New images:', images.length);
+
+      // If no images, use regular JSON update
+      if (!images || images.length === 0) {
+        const response = await api.put(`/products/${id}`, productData);
+        return response.data;
+      }
+
+      // If images provided, use FormData
+      const formData = new FormData();
+
+      // Add product data
+      Object.keys(productData).forEach(key => {
+        if (productData[key] !== null && productData[key] !== undefined) {
+          if (Array.isArray(productData[key])) {
+            productData[key].forEach(item => {
+              formData.append(key, item);
+            });
+          } else {
+            formData.append(key, productData[key]);
+          }
+        }
+      });
+
+      // Add replace images flag
+      formData.append('replaceImages', replaceImages.toString());
+
+      // Add new image files
+      images.forEach((image) => {
+        if (image instanceof File) {
+          formData.append('images', image);
+        }
+      });
+
+      const response = await api.put(`/products/${id}`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      console.log('✅ Product updated successfully:', response.data);
+      return response.data;
+
+    } catch (error) {
+      console.error('❌ Error updating product:', error);
+      throw error;
+    }
   },
 
   // Delete product (admin only)
   deleteProduct: async (id) => {
     const response = await api.delete(`/products/${id}`);
     return response.data;
+  },
+
+  // ✅ NEW: Add single image to existing product
+  addImageToProduct: async (id, imageFile) => {
+    try {
+      console.log('🔄 Adding image to product:', id);
+
+      const formData = new FormData();
+      formData.append('image', imageFile);
+
+      const response = await api.post(`/products/${id}/images`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      console.log('✅ Image added successfully:', response.data);
+      return response.data;
+
+    } catch (error) {
+      console.error('❌ Error adding image:', error);
+      throw error;
+    }
+  },
+
+  // ✅ NEW: Remove image from product
+  removeImageFromProduct: async (id, imageUrl) => {
+    try {
+      console.log('🔄 Removing image from product:', { id, imageUrl });
+
+      const response = await api.delete(`/products/${id}/images`, {
+        data: { imageUrl }
+      });
+
+      console.log('✅ Image removed successfully:', response.data);
+      return response.data;
+
+    } catch (error) {
+      console.error('❌ Error removing image:', error);
+      throw error;
+    }
+  },
+
+  // ✅ NEW: Reorder product images
+  reorderProductImages: async (id, imageUrls) => {
+    try {
+      console.log('🔄 Reordering images for product:', { id, imageUrls });
+
+      const response = await api.put(`/products/${id}/images/reorder`, {
+        imageUrls
+      });
+
+      console.log('✅ Images reordered successfully:', response.data);
+      return response.data;
+
+    } catch (error) {
+      console.error('❌ Error reordering images:', error);
+      throw error;
+    }
   },
 
   InactiveProduct: async (id) => {
@@ -249,6 +447,12 @@ export const productsApi = {
     return response.data;
   },
 
+  // ✅ NEW: Update product stock
+  updateStock: async (id, stock) => {
+    const response = await api.patch(`/products/${id}/stock`, { stock });
+    return response.data;
+  },
+
   // Enhanced Get products by category
   getProductsByCategory: async (category, subcategory = null) => {
     try {
@@ -258,7 +462,9 @@ export const productsApi = {
       if (subcategory) params.subcategory = subcategory;
       
       const timestamp = Date.now();
-      const response = await api.get('/products/category', { 
+      
+      // ✅ FIXED: Use /products endpoint instead of /products/category
+      const response = await api.get('/products', { 
         params: { ...params, _t: timestamp },
         headers: {
           'Cache-Control': 'no-cache',
@@ -289,7 +495,7 @@ export const productsApi = {
   },
 
   // Enhanced Search products
-  searchProducts: async (query) => {
+  searchProducts: async (query, filters = {}) => {
     try {
       console.log('🔄 Searching products with query:', query);
       
@@ -298,8 +504,10 @@ export const productsApi = {
       }
 
       const timestamp = Date.now();
+      
+      // ✅ UPDATED: Use 'q' parameter instead of 'query' to match your backend
       const response = await api.get('/products/search', { 
-        params: { query: query.trim(), _t: timestamp },
+        params: { q: query.trim(), ...filters, _t: timestamp },
         headers: {
           'Cache-Control': 'no-cache',
           'Pragma': 'no-cache'
@@ -329,13 +537,13 @@ export const productsApi = {
   },
 
   // Get featured products
-  getFeaturedProducts: async () => {
+  getFeaturedProducts: async (limit = 8) => {
     try {
       console.log('🔄 Fetching featured products');
       
       const timestamp = Date.now();
       const response = await api.get('/products/featured', {
-        params: { _t: timestamp },
+        params: { limit, _t: timestamp },
         headers: {
           'Cache-Control': 'no-cache',
           'Pragma': 'no-cache'
@@ -360,6 +568,50 @@ export const productsApi = {
 
     } catch (error) {
       console.error('❌ Error fetching featured products:', error);
+      throw error;
+    }
+  },
+
+  // ✅ NEW: Get categories
+  getCategories: async () => {
+    try {
+      const response = await api.get('/products/categories');
+      return response.data;
+    } catch (error) {
+      console.error('❌ Error fetching categories:', error);
+      throw error;
+    }
+  },
+
+  // ✅ NEW: Get brands
+  getBrands: async () => {
+    try {
+      const response = await api.get('/products/brands');
+      return response.data;
+    } catch (error) {
+      console.error('❌ Error fetching brands:', error);
+      throw error;
+    }
+  },
+
+  // ✅ NEW: Get storage info
+  getStorageInfo: async () => {
+    try {
+      const response = await api.get('/products/storage-info');
+      return response.data;
+    } catch (error) {
+      console.error('❌ Error fetching storage info:', error);
+      throw error;
+    }
+  },
+
+  // ✅ NEW: Check upload health
+  checkUploadHealth: async () => {
+    try {
+      const response = await api.get('/products/upload-health');
+      return response.data;
+    } catch (error) {
+      console.error('❌ Error checking upload health:', error);
       throw error;
     }
   }

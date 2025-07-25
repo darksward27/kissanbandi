@@ -1,7 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Upload, X, Plus, Image as ImageIcon, Trash2, Eye, ArrowUp, ArrowDown } from 'lucide-react';
 import { toast } from 'react-hot-toast';
+import { productsApi } from '../services/api'; // ✅ Import the enhanced API
 
+
+console.log('🔍 DEBUG: productsApi object:', productsApi);
+console.log('🔍 DEBUG: createProductWithImages method type:', typeof productsApi.createProductWithImages);
+console.log('🔍 DEBUG: Available methods:', Object.keys(productsApi));
 const ProductForm = ({ initialData, onSubmit, categories = [], categoriesLoading = false }) => {
   const [formData, setFormData] = useState({
     name: '',
@@ -14,7 +19,10 @@ const ProductForm = ({ initialData, onSubmit, categories = [], categoriesLoading
     description: '',
     gst: '', 
     images: [],
-    status: 'active'
+    status: 'active',
+    brand: '',
+    tags: '',
+    features: ''
   });
 
   const [errors, setErrors] = useState({});
@@ -22,10 +30,26 @@ const ProductForm = ({ initialData, onSubmit, categories = [], categoriesLoading
   const [imageFiles, setImageFiles] = useState([]);
   const [previewImages, setPreviewImages] = useState([]);
   const [availableSubcategories, setAvailableSubcategories] = useState([]);
+  const [storageInfo, setStorageInfo] = useState(null);
   const fileInputRef = useRef(null);
 
   // Units options
   const unitOptions = ['piece', 'kg', 'g', 'dozen', 'bunch', 'liter', 'ml', 'pack'];
+
+  // ✅ Check storage info on component mount
+  useEffect(() => {
+    const fetchStorageInfo = async () => {
+      try {
+        const info = await productsApi.getStorageInfo();
+        setStorageInfo(info);
+        console.log('💾 Storage Info:', info);
+      } catch (error) {
+        console.error('Error fetching storage info:', error);
+      }
+    };
+
+    fetchStorageInfo();
+  }, []);
 
   useEffect(() => {
     if (initialData) {
@@ -38,9 +62,12 @@ const ProductForm = ({ initialData, onSubmit, categories = [], categoriesLoading
         unit: initialData.unit || 'piece',
         stock: initialData.stock || '',
         description: initialData.description || '',
-        gst: initialData.gst !== undefined ? initialData.gst.toString() : '', // ✅ Convert to string, handle 0 properly
+        gst: initialData.gst !== undefined ? initialData.gst.toString() : '',
         images: initialData.images || [initialData.image].filter(Boolean) || [],
-        status: initialData.status || 'active'
+        status: initialData.status || 'active',
+        brand: initialData.brand || '',
+        tags: Array.isArray(initialData.tags) ? initialData.tags.join(', ') : (initialData.tags || ''),
+        features: Array.isArray(initialData.features) ? initialData.features.join(', ') : (initialData.features || '')
       });
 
       // Set preview images for existing product
@@ -122,22 +149,28 @@ const ProductForm = ({ initialData, onSubmit, categories = [], categoriesLoading
     
     if (files.length === 0) return;
 
-    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
     const invalidFiles = files.filter(file => !validTypes.includes(file.type));
     
     if (invalidFiles.length > 0) {
-      toast.error('Only JPEG, PNG, and WebP images are allowed');
+      toast.error('Only JPEG, PNG, WebP, and GIF images are allowed');
       return;
     }
 
-    const oversizedFiles = files.filter(file => file.size > 5 * 1024 * 1024);
+    // ✅ Use storage info for file size limit (default to 10MB for products)
+    const maxSizeMB = storageInfo?.maxFileSize === '10MB' ? 10 : 5;
+    const maxSizeBytes = maxSizeMB * 1024 * 1024;
+    const oversizedFiles = files.filter(file => file.size > maxSizeBytes);
+    
     if (oversizedFiles.length > 0) {
-      toast.error('Each image must be less than 5MB');
+      toast.error(`Each image must be less than ${maxSizeMB}MB`);
       return;
     }
 
-    if (previewImages.length + files.length > 10) {
-      toast.error('Maximum 10 images allowed per product');
+    // ✅ Use storage info for max files (default to 10 for products)
+    const maxFiles = storageInfo?.maxFilesPerProduct || 10;
+    if (previewImages.length + files.length > maxFiles) {
+      toast.error(`Maximum ${maxFiles} images allowed per product`);
       return;
     }
 
@@ -176,22 +209,20 @@ const ProductForm = ({ initialData, onSubmit, categories = [], categoriesLoading
     const newImages = [...previewImages];
     [newImages[index], newImages[newIndex]] = [newImages[newIndex], newImages[index]];
     setPreviewImages(newImages);
-  };
 
-  const uploadImage = async (file) => {
-    console.log('🔄 Using workaround for editing:', file.name);
+    // Also update imageFiles order if they exist
+    const newImageFiles = [...imageFiles];
+    const imageFile1 = previewImages[index].file;
+    const imageFile2 = previewImages[newIndex].file;
     
-    await new Promise(resolve => setTimeout(resolve, 300));
-    
-    const timestamp = Date.now();
-    const randomId = Math.round(Math.random() * 1000000000);
-    const extension = file.name.split('.').pop().toLowerCase();
-    const filename = `product-${timestamp}-${randomId}.${extension}`;
-    
-    const imagePath = `/uploads/product/${filename}`;
-    
-    console.log('✅ Generated path for edit:', imagePath);
-    return imagePath;
+    if (imageFile1 && imageFile2) {
+      const file1Index = imageFiles.indexOf(imageFile1);
+      const file2Index = imageFiles.indexOf(imageFile2);
+      if (file1Index !== -1 && file2Index !== -1) {
+        [newImageFiles[file1Index], newImageFiles[file2Index]] = [newImageFiles[file2Index], newImageFiles[file1Index]];
+        setImageFiles(newImageFiles);
+      }
+    }
   };
 
   const validateForm = () => {
@@ -234,148 +265,173 @@ const ProductForm = ({ initialData, onSubmit, categories = [], categoriesLoading
       unit: 'piece',
       stock: '',
       description: '',
-      gst: '', // ✅ Reset to empty string
+      gst: '',
       images: [],
-      status: 'active'
+      status: 'active',
+      brand: '',
+      tags: '',
+      features: ''
     });
     setPreviewImages([]);
     setImageFiles([]);
     setErrors({});
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    
-    if (!validateForm()) {
-      toast.error('Please fix the errors below');
-      return;
-    }
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  
+  if (!validateForm()) {
+    toast.error('Please fix the errors below');
+    return;
+  }
 
-    setIsSubmitting(true);
+  setIsSubmitting(true);
 
-    try {
-      if (initialData && initialData._id) {
-        console.log('✏️ Editing existing product...');
-        
-        const uploadPromises = imageFiles.map(file => uploadImage(file));
-        const uploadedUrls = await Promise.all(uploadPromises);
+  try {
+    // ✅ Prepare form data with proper type conversion
+    const submitData = {
+      name: formData.name.trim(),
+      category: formData.category.trim(),
+      subcategory: formData.subcategory.trim(),
+      price: Number(formData.price),
+      originalPrice: formData.originalPrice ? Number(formData.originalPrice) : undefined,
+      unit: formData.unit,
+      stock: Number(formData.stock),
+      description: formData.description.trim(),
+      gst: Number(formData.gst),
+      status: formData.status,
+      brand: formData.brand.trim(),
+      tags: formData.tags ? formData.tags.split(',').map(t => t.trim()).filter(t => t) : [],
+      features: formData.features ? formData.features.split(',').map(f => f.trim()).filter(f => f) : []
+    };
 
-        const existingImageUrls = previewImages
-          .filter(img => !img.file)
-          .map(img => img.url);
+    console.log('🔍 DEBUG: Submit data:', submitData);
+    console.log('🔍 DEBUG: Image files:', imageFiles.length);
+    console.log('🔍 DEBUG: Image files array:', imageFiles);
+    console.log('🔍 DEBUG: Storage type:', storageInfo?.storageType || 'Unknown');
+    console.log('🔍 DEBUG: InitialData?', initialData ? 'YES (UPDATE)' : 'NO (CREATE)');
 
-        const allImageUrls = [...existingImageUrls, ...uploadedUrls];
-
-        // ✅ Ensure GST is converted to number properly
-        const submitData = {
-          ...formData,
-          images: allImageUrls,
-          image: allImageUrls[0],
-          price: Number(formData.price),
-          originalPrice: formData.originalPrice ? Number(formData.originalPrice) : undefined,
-          stock: Number(formData.stock),
-          gst: Number(formData.gst), // ✅ This will properly convert string to number, including '0' to 0
-          _id: initialData._id
-        };
-
-        console.log('📊 Submit data with GST:', submitData.gst, typeof submitData.gst);
-        await onSubmit(submitData);
-      } else {
-        console.log('🆕 Creating new product with images...');
-        
-        const token = sessionStorage.getItem('adminToken');
-
-        if (!token) {
-          throw new Error('Please login as admin first');
-        }
-
-        const submitFormData = new FormData();
-        
-        // ✅ Add product data with proper GST conversion
-        submitFormData.append('name', formData.name);
-        submitFormData.append('category', formData.category);
-        if (formData.subcategory) submitFormData.append('subcategory', formData.subcategory);
-        submitFormData.append('price', formData.price);
-        if (formData.originalPrice) submitFormData.append('originalPrice', formData.originalPrice);
-        submitFormData.append('unit', formData.unit);
-        submitFormData.append('stock', formData.stock);
-        submitFormData.append('description', formData.description);
-        submitFormData.append('gst', formData.gst); // ✅ Send as string, backend should convert
-        submitFormData.append('status', formData.status);
-        
-        // Add image files
-        imageFiles.forEach((file) => {
-          submitFormData.append('images', file);
-        });
-        
-        console.log('📊 GST value being sent:', formData.gst, typeof formData.gst);
-        console.log('📤 Sending to create-with-images endpoint...');
-        console.log('📁 Files to upload:', imageFiles.length);
-        
-        const response = await fetch('https://bogat.onrender.com/api/products/create-with-images', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
-          body: submitFormData
-        });
-        
-        console.log('📨 Response status:', response.status);
-        
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error('❌ Create error:', errorText);
-          
-          if (response.status === 401) {
-            throw new Error('Authentication failed. Please login as admin.');
-          }
-          if (response.status === 403) {
-            throw new Error('Access denied. You need admin privileges.');
-          }
-          throw new Error(`Failed to create product: ${response.status} - ${errorText}`);
-        }
-        
-        const result = await response.json();
-        console.log('✅ Product created successfully:', result);
-        console.log('🔍 Full backend response:', JSON.stringify(result, null, 2));
-
-        if (result.success === false) {
-          throw new Error(result.error || 'Product creation failed');
-        }
-
-        const isSuccess = result.success === true || result.message || result.product;
-        if (!isSuccess) {
-          throw new Error(result.error || 'Product creation failed');
-        }
-
-        toast.success(`Product created with ${result.uploadedImages || 0} images!`);
-
-        previewImages.forEach(img => {
-          if (img.url.startsWith('blob:')) {
-            URL.revokeObjectURL(img.url);
-          }
-        });
-
-        resetForm();
-        return;
-      }
+    if (initialData && initialData._id) {
+      // ✅ Update existing product using enhanced API
+      console.log('✏️ UPDATING existing product with enhanced API...');
       
+      const existingImageUrls = previewImages
+        .filter(img => !img.file)
+        .map(img => img.url);
+
+      const newImageFiles = previewImages
+        .filter(img => img.file)
+        .map(img => img.file);
+
+      console.log('🖼️ Existing images:', existingImageUrls.length);
+      console.log('🆕 New images:', newImageFiles.length);
+
+      const result = await productsApi.updateProduct(
+        initialData._id,
+        {
+          ...submitData,
+          images: existingImageUrls
+        },
+        newImageFiles,
+        false
+      );
+
+      console.log('✅ Product updated successfully:', result);
+      toast.success('Product updated successfully!');
+
+      if (onSubmit) {
+        await onSubmit(result.product || result);
+      }
+
+    } else {
+      // ✅ Create new product using enhanced API
+      console.log('🆕 CREATING new product using enhanced API...');
+      console.log('🔍 DEBUG: About to call productsApi.createProductWithImages');
+      console.log('🔍 DEBUG: submitData keys:', Object.keys(submitData));
+      console.log('🔍 DEBUG: imageFiles type:', typeof imageFiles);
+      console.log('🔍 DEBUG: imageFiles instanceof Array:', Array.isArray(imageFiles));
+      
+      // Check if productsApi method exists
+      console.log('🔍 DEBUG: productsApi.createProductWithImages exists?', typeof productsApi.createProductWithImages);
+      
+      if (typeof productsApi.createProductWithImages !== 'function') {
+        console.error('❌ ERROR: productsApi.createProductWithImages is not a function!');
+        throw new Error('API method not found: createProductWithImages');
+      }
+
+      const result = await productsApi.createProductWithImages(submitData, imageFiles);
+
+      console.log('✅ Product created successfully:', result);
+      console.log('🔍 DEBUG: Result keys:', Object.keys(result));
+      console.log('🔍 DEBUG: Storage used:', result.storageType || 'Unknown');
+      console.log('🔍 DEBUG: Product images:', result.product?.images);
+      console.log('🔍 DEBUG: Are images Cloudinary URLs?', 
+        result.product?.images?.some(img => img.includes('cloudinary.com')) ? 'YES' : 'NO'
+      );
+      
+      toast.success(`Product created successfully with ${result.uploadedImages || imageFiles.length} images!`);
+
+      // Clean up blob URLs
       previewImages.forEach(img => {
         if (img.url.startsWith('blob:')) {
           URL.revokeObjectURL(img.url);
         }
       });
 
-    } catch (error) {
-      console.error('❌ Form submission error:', error);
-      toast.error(error.message || 'Failed to save product');
-    } finally {
-      setIsSubmitting(false);
+      resetForm();
+
+      if (onSubmit) {
+        await onSubmit(result.product || result);
+      }
     }
-  };
+
+  } catch (error) {
+    console.error('❌ Form submission error:', error);
+    console.error('❌ Error details:', {
+      message: error.message,
+      status: error.response?.status,
+      data: error.response?.data,
+      stack: error.stack
+    });
+    
+    // ✅ Enhanced error handling
+    let errorMessage = 'Failed to save product';
+    
+    if (error.message) {
+      errorMessage = error.message;
+    } else if (error.response?.data?.error) {
+      errorMessage = error.response.data.error;
+    } else if (error.response?.status === 401) {
+      errorMessage = 'Authentication failed. Please login as admin.';
+    } else if (error.response?.status === 403) {
+      errorMessage = 'Access denied. You need admin privileges.';
+    }
+    
+    toast.error(errorMessage);
+  } finally {
+    setIsSubmitting(false);
+  }
+};
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
+      {/* ✅ Storage Info Display */}
+      {storageInfo && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm">
+          <div className="flex items-center space-x-4">
+            <span className="font-medium text-blue-800">
+              Storage: {storageInfo.storageType}
+            </span>
+            <span className="text-blue-600">
+              Max Size: {storageInfo.maxFileSize}
+            </span>
+            <span className="text-blue-600">
+              Max Files: {storageInfo.maxFilesPerProduct}
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* Product Images */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -400,6 +456,11 @@ const ProductForm = ({ initialData, onSubmit, categories = [], categoriesLoading
                     Main
                   </div>
                 )}
+
+                {/* ✅ Enhanced storage indicator */}
+                <div className="absolute bottom-2 left-2 bg-black bg-opacity-60 text-white text-xs px-1 py-0.5 rounded">
+                  {image.file ? 'New' : (storageInfo?.storageType === 'Cloudinary' ? '☁️' : '💾')}
+                </div>
 
                 <div className="absolute top-2 right-12 flex flex-col space-y-1 opacity-0 group-hover:opacity-100 transition-opacity">
                   <button
@@ -454,7 +515,11 @@ const ProductForm = ({ initialData, onSubmit, categories = [], categoriesLoading
               {previewImages.length === 0 ? 'Upload Product Images' : 'Add More Images'}
             </span>
             <span className="text-xs text-gray-400">
-              JPEG, PNG, WebP up to 5MB each (Max 10 images)
+              {storageInfo ? (
+                `${storageInfo.supportedFormats?.join(', ').toUpperCase()} up to ${storageInfo.maxFileSize} each (Max ${storageInfo.maxFilesPerProduct} images)`
+              ) : (
+                'JPEG, PNG, WebP up to 10MB each (Max 10 images)'
+              )}
             </span>
           </button>
         </div>
@@ -466,7 +531,7 @@ const ProductForm = ({ initialData, onSubmit, categories = [], categoriesLoading
         <p className="text-xs text-gray-500 mt-2">
           • First image will be used as the main product image
           • Use arrow buttons to reorder images
-          • Images will be displayed in this order on your product page
+          • Images will be stored in {storageInfo?.storageType || 'cloud storage'} for fast loading
         </p>
       </div>
 
@@ -541,6 +606,54 @@ const ProductForm = ({ initialData, onSubmit, categories = [], categoriesLoading
             <p className="text-xs text-gray-500 mt-1">Select a category to see available subcategories</p>
           )}
         </div>
+      </div>
+
+      {/* Brand and Tags */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Brand
+          </label>
+          <input
+            type="text"
+            name="brand"
+            value={formData.brand}
+            onChange={handleInputChange}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+            placeholder="Enter brand name"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Tags
+          </label>
+          <input
+            type="text"
+            name="tags"
+            value={formData.tags}
+            onChange={handleInputChange}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+            placeholder="Enter tags separated by commas"
+          />
+          <p className="text-xs text-gray-500 mt-1">Example: organic, fresh, premium</p>
+        </div>
+      </div>
+
+      {/* Features */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          Features
+        </label>
+        <input
+          type="text"
+          name="features"
+          value={formData.features}
+          onChange={handleInputChange}
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+          placeholder="Enter features separated by commas"
+        />
+        <p className="text-xs text-gray-500 mt-1">Example: gluten-free, non-GMO, locally sourced</p>
       </div>
 
       {/* Pricing and GST */}
@@ -691,26 +804,13 @@ const ProductForm = ({ initialData, onSubmit, categories = [], categoriesLoading
           {isSubmitting ? (
             <>
               <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-              <span>Saving...</span>
+              <span>{initialData ? 'Updating...' : 'Creating...'}</span>
             </>
           ) : (
             <span>{initialData ? 'Update Product' : 'Create Product'}</span>
           )}
         </button>
       </div>
-
-      {/* ✅ Debug info - remove this in production */}
-      {process.env.NODE_ENV === 'development' && (
-        <div className="mt-4 p-4 bg-gray-100 rounded-lg text-xs">
-          <strong>Debug Info:</strong>
-          <br />
-          GST Value: {formData.gst} (type: {typeof formData.gst})
-          <br />
-          GST as Number: {Number(formData.gst)} (type: {typeof Number(formData.gst)})
-          <br />
-          Is GST Valid: {formData.gst !== '' && !isNaN(parseFloat(formData.gst)) ? 'Yes' : 'No'}
-        </div>
-      )}
     </form>
   );
 };

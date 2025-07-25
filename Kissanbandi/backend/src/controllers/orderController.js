@@ -178,7 +178,7 @@ const updateCouponAfterPayment = async (couponId, orderId, userId, discountAmoun
 };
 
 // ✅ NEW: Enhanced Razorpay order creation (if you have a separate function)
-// ...existing code...
+
 
 exports.createRazorpayOrder = async (req, res) => {
   try {
@@ -366,7 +366,7 @@ exports.createRazorpayOrder = async (req, res) => {
   }
 };
 
-// ...existing code...
+
 
 // Get all orders (admin)
 // Updated getAllOrders function to support all the frontend filters

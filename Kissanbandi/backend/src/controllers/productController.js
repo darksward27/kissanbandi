@@ -1,4 +1,5 @@
 const Product = require('../models/Product');
+const { processUploadedFiles, deleteImages, useCloudinary } = require('../middleware/upload');
 
 // Get all products with filtering, sorting, and pagination
 exports.getProducts = async (req, res) => {
@@ -78,7 +79,6 @@ exports.getProducts = async (req, res) => {
   }
 };
 
-
 // Get single product by ID
 exports.getProduct = async (req, res) => {
   try {
@@ -92,7 +92,7 @@ exports.getProduct = async (req, res) => {
   }
 };
 
-// ✅ Updated: Create new product with multiple images support
+// ✅ Updated: Create new product with multiple images support (Cloudinary/Local)
 exports.createProduct = async (req, res) => {
   try {
     const productData = { ...req.body };
@@ -103,24 +103,49 @@ exports.createProduct = async (req, res) => {
     if (productData.gst !== undefined) productData.gst = Number(productData.gst);
     if (productData.stock !== undefined) productData.stock = Number(productData.stock);
 
-    const baseUrl = `${req.protocol}://${req.get('host')}`; // <-- ✅ Get base URL
+    // Handle uploaded files using the updated upload middleware
+    if (req.files && req.files.length > 0) {
+      console.log('📁 Processing uploaded files:', req.files.length);
+      const uploadedImages = processUploadedFiles(req.files);
+      productData.images = uploadedImages.map(img => img.url || img.secure_url);
+      productData.image = productData.images[0]; // Set first image as main image
+      
+      console.log('✅ Images processed successfully:', {
+        count: uploadedImages.length,
+        storageType: useCloudinary ? 'Cloudinary' : 'Local',
+        urls: productData.images
+      });
+    } else if (req.file) {
+      // Single image upload
+      console.log('📁 Processing single uploaded file');
+      const uploadedImage = processUploadedFiles(req.file);
+      productData.images = [uploadedImage[0].url || uploadedImage[0].secure_url];
+      productData.image = uploadedImage[0].url || uploadedImage[0].secure_url;
+      
+      console.log('✅ Single image processed successfully:', {
+        storageType: useCloudinary ? 'Cloudinary' : 'Local',
+        url: productData.image
+      });
+    } else {
+      // Fallback to old logic for backward compatibility
+      const baseUrl = `${req.protocol}://${req.get('host')}`;
 
-    // Handle image uploads
-    if (req.body.images) {
-      if (typeof req.body.images === 'string') {
-        productData.images = [`${baseUrl}${req.body.images}`];
-      } else if (Array.isArray(req.body.images)) {
-        productData.images = req.body.images.map(img =>
-          img.startsWith('http') ? img : `${baseUrl}${img}`
-        );
+      if (req.body.images) {
+        if (typeof req.body.images === 'string') {
+          productData.images = [`${baseUrl}${req.body.images}`];
+        } else if (Array.isArray(req.body.images)) {
+          productData.images = req.body.images.map(img =>
+            img.startsWith('http') ? img : `${baseUrl}${img}`
+          );
+        }
+        if (productData.images.length > 0) {
+          productData.image = productData.images[0];
+        }
+      } else if (req.body.image) {
+        const imageUrl = req.body.image.startsWith('http') ? req.body.image : `${baseUrl}${req.body.image}`;
+        productData.images = [imageUrl];
+        productData.image = imageUrl;
       }
-      if (productData.images.length > 0) {
-        productData.image = productData.images[0];
-      }
-    } else if (req.body.image) {
-      const imageUrl = req.body.image.startsWith('http') ? req.body.image : `${baseUrl}${req.body.image}`;
-      productData.images = [imageUrl];
-      productData.image = imageUrl;
     }
 
     // Features
@@ -153,11 +178,25 @@ exports.createProduct = async (req, res) => {
       success: true,
       message: 'Product created successfully',
       product,
-      uploadedImages: productData.images?.length || 0
+      uploadedImages: productData.images?.length || 0,
+      storageType: useCloudinary ? 'Cloudinary' : 'Local'
     });
 
   } catch (error) {
     console.error('Product creation error:', error);
+    
+    // If product creation fails but images were uploaded, clean them up
+    if (req.files && req.files.length > 0) {
+      try {
+        const uploadedImages = processUploadedFiles(req.files);
+        const imageUrls = uploadedImages.map(img => img.url || img.secure_url);
+        await deleteImages(imageUrls);
+        console.log('🧹 Cleaned up uploaded images after error');
+      } catch (cleanupError) {
+        console.error('Error cleaning up images:', cleanupError);
+      }
+    }
+    
     res.status(400).json({
       success: false,
       error: error.message
@@ -165,22 +204,62 @@ exports.createProduct = async (req, res) => {
   }
 };
 
-// ✅ Updated: Update product with multiple images support
+// ✅ Updated: Update product with multiple images support (Cloudinary/Local)
 exports.updateProduct = async (req, res) => {
   try {
     const updateData = { ...req.body };
+    const productId = req.params.id;
     
-    // ✅ Handle multiple images update
-    if (req.body.images) {
-      if (typeof req.body.images === 'string') {
-        updateData.images = [req.body.images];
-      } else if (Array.isArray(req.body.images)) {
-        updateData.images = req.body.images;
+    // Get existing product to handle image deletion
+    const existingProduct = await Product.findById(productId);
+    if (!existingProduct) {
+      return res.status(404).json({ error: 'Product not found' });
+    }
+
+    // Handle new image uploads
+    if (req.files && req.files.length > 0) {
+      console.log('📁 Processing new uploaded files for update:', req.files.length);
+      const uploadedImages = processUploadedFiles(req.files);
+      const newImageUrls = uploadedImages.map(img => img.url || img.secure_url);
+      
+      // Decide whether to replace or append images
+      if (req.body.replaceImages === 'true') {
+        // Delete old images
+        if (existingProduct.images && existingProduct.images.length > 0) {
+          try {
+            await deleteImages(existingProduct.images);
+            console.log('🧹 Deleted old images during update');
+          } catch (deleteError) {
+            console.error('Error deleting old images:', deleteError);
+          }
+        }
+        updateData.images = newImageUrls;
+      } else {
+        // Append new images to existing ones
+        updateData.images = [...(existingProduct.images || []), ...newImageUrls];
       }
       
-      // Update main image to first image
-      if (updateData.images.length > 0) {
-        updateData.image = updateData.images[0];
+      // Update main image
+      updateData.image = updateData.images[0];
+      
+      console.log('✅ Images updated successfully:', {
+        count: uploadedImages.length,
+        storageType: useCloudinary ? 'Cloudinary' : 'Local',
+        totalImages: updateData.images.length
+      });
+    } else {
+      // Fallback to old logic for backward compatibility
+      if (req.body.images) {
+        if (typeof req.body.images === 'string') {
+          updateData.images = [req.body.images];
+        } else if (Array.isArray(req.body.images)) {
+          updateData.images = req.body.images;
+        }
+        
+        // Update main image to first image
+        if (updateData.images.length > 0) {
+          updateData.image = updateData.images[0];
+        }
       }
     }
 
@@ -205,18 +284,15 @@ exports.updateProduct = async (req, res) => {
     }
 
     const product = await Product.findByIdAndUpdate(
-      req.params.id,
+      productId,
       { $set: updateData },
       { new: true, runValidators: true }
     );
 
-    if (!product) {
-      return res.status(404).json({ error: 'Product not found' });
-    }
-
     res.json({
       message: 'Product updated successfully',
-      product
+      product,
+      storageType: useCloudinary ? 'Cloudinary' : 'Local'
     });
   } catch (error) {
     console.error('Product update error:', error);
@@ -224,13 +300,26 @@ exports.updateProduct = async (req, res) => {
   }
 };
 
-// ✅ New: Add image to existing product
+// ✅ Updated: Add image to existing product (Cloudinary/Local)
 exports.addImage = async (req, res) => {
   try {
-    const { imageUrl } = req.body;
-    
-    if (!imageUrl) {
-      return res.status(400).json({ error: 'Image URL is required' });
+    let imageUrl;
+
+    if (req.file) {
+      // Handle uploaded file
+      console.log('📁 Processing new image upload for existing product');
+      const uploadedImage = processUploadedFiles(req.file);
+      imageUrl = uploadedImage[0].url || uploadedImage[0].secure_url;
+      
+      console.log('✅ New image processed:', {
+        storageType: useCloudinary ? 'Cloudinary' : 'Local',
+        url: imageUrl
+      });
+    } else if (req.body.imageUrl) {
+      // Handle provided URL (backward compatibility)
+      imageUrl = req.body.imageUrl;
+    } else {
+      return res.status(400).json({ error: 'No image file or URL provided' });
     }
 
     const product = await Product.findByIdAndUpdate(
@@ -240,19 +329,30 @@ exports.addImage = async (req, res) => {
     );
 
     if (!product) {
+      // If product not found, clean up the uploaded image
+      if (req.file) {
+        try {
+          await deleteImages([imageUrl]);
+        } catch (cleanupError) {
+          console.error('Error cleaning up image:', cleanupError);
+        }
+      }
       return res.status(404).json({ error: 'Product not found' });
     }
 
     res.json({
       message: 'Image added successfully',
-      product
+      product,
+      addedImage: imageUrl,
+      storageType: useCloudinary ? 'Cloudinary' : 'Local'
     });
   } catch (error) {
+    console.error('Add image error:', error);
     res.status(400).json({ error: error.message });
   }
 };
 
-// ✅ New: Remove image from product
+// ✅ Updated: Remove image from product (Cloudinary/Local)
 exports.removeImage = async (req, res) => {
   try {
     const { imageUrl } = req.body;
@@ -277,11 +377,21 @@ exports.removeImage = async (req, res) => {
       await product.save();
     }
 
+    // Delete image from storage (Cloudinary or local)
+    try {
+      await deleteImages([imageUrl]);
+      console.log('🧹 Image deleted from storage:', imageUrl);
+    } catch (deleteError) {
+      console.error('Error deleting image from storage:', deleteError);
+    }
+
     res.json({
       message: 'Image removed successfully',
-      product
+      product,
+      removedImage: imageUrl
     });
   } catch (error) {
+    console.error('Remove image error:', error);
     res.status(400).json({ error: error.message });
   }
 };
@@ -319,16 +429,31 @@ exports.reorderImages = async (req, res) => {
   }
 };
 
-// Delete product (soft delete)
+// ✅ Updated: Delete product with image cleanup (Cloudinary/Local)
 exports.deleteProduct = async (req, res) => {
   try {
-    const deletedProduct = await Product.findByIdAndDelete(req.params.id);
+    const product = await Product.findById(req.params.id);
 
-    if (!deletedProduct) {
+    if (!product) {
       return res.status(404).json({ error: 'Product not found' });
     }
 
-    res.json({ message: 'Product deleted successfully' });
+    // Delete images from storage before deleting product
+    if (product.images && product.images.length > 0) {
+      try {
+        await deleteImages(product.images);
+        console.log('🧹 Deleted product images from storage');
+      } catch (deleteError) {
+        console.error('Error deleting images from storage:', deleteError);
+      }
+    }
+
+    await Product.findByIdAndDelete(req.params.id);
+
+    res.json({ 
+      message: 'Product and associated images deleted successfully',
+      deletedImages: product.images?.length || 0
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
