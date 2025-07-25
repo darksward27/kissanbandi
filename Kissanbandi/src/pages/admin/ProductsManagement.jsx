@@ -122,7 +122,7 @@ const ProductsManagement = () => {
   const loadCategories = async () => {
     try {
       setCategoriesLoading(true);
-      const response = await fetch('/api/categories');
+      const response = await fetch('https://bogat.onrender.com/api/categories');
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);

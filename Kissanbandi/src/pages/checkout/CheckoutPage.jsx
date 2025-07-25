@@ -379,7 +379,7 @@ const CheckoutPage = () => {
 
           const options = {
             key: razorpayKey,
-            amount: totals.total * 100,
+            amount: orderResponse.amount,
             currency: "INR",
             name: "Bogat",
             description: "Purchase of premium products",
