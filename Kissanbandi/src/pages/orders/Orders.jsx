@@ -20,9 +20,9 @@ const FALLBACK_IMAGE = '/images/product-placeholder.jpg';
 const getProductImage = (imagePath) => {
     if (!imagePath) return FALLBACK_IMAGE;
     if (imagePath.startsWith('http')) return imagePath;
-    if (imagePath.startsWith('/uploads')) return `http://localhost:5000${imagePath}`;
+    if (imagePath.startsWith('/uploads')) return `https://bogat.onrender.com${imagePath}`;
     const filename = imagePath.split('/').pop();
-    return `http://localhost:5000/uploads/product/${filename}`;
+    return `https://bogat.onrender.com/uploads/product/${filename}`;
 };
 
 // Helper function to get actual GST breakdown from order data

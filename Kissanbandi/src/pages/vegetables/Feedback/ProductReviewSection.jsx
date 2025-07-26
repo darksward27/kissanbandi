@@ -24,10 +24,10 @@ const VerifiedReviewsSection = ({ productId = null, showProductInfo = false }) =
     const nodeEnv = import.meta.env.VITE_NODE_ENV;
     
     if (nodeEnv === 'production') {
-      return 'http://localhost:5000/api';
+      return 'https://bogat.onrender.com/api';
     }
     
-    return apiUrl || 'http://localhost:5000/api';
+    return apiUrl || 'https://bogat.onrender.com/api';
   };
 
   // Helper function to construct proper image URLs

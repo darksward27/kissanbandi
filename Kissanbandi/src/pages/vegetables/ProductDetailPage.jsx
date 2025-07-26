@@ -78,12 +78,12 @@ const ProductDetailPage = () => {
     
     // If it starts with /uploads, use it directly with your backend
     if (imagePath.startsWith('/uploads')) {
-      return `http://localhost:5000${imagePath}`;
+      return `https://bogat.onrender.com${imagePath}`;
     }
     
     // If it's just a filename, put it in product folder
     const filename = imagePath.split('/').pop();
-    return `http://localhost:5000/uploads/product/${filename}`;
+    return `https://bogat.onrender.com/uploads/product/${filename}`;
   };
 
   // ✅ FIXED: Enhanced getProductImages function
