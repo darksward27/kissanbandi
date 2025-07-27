@@ -1,12 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Upload, X, Plus, Image as ImageIcon, Trash2, Eye, ArrowUp, ArrowDown } from 'lucide-react';
 import { toast } from 'react-hot-toast';
-import { productsApi } from '../services/api'; // ✅ Import the enhanced API
+import { productsApi } from '../services/api';
 
-
-console.log('🔍 DEBUG: productsApi object:', productsApi);
-console.log('🔍 DEBUG: createProductWithImages method type:', typeof productsApi.createProductWithImages);
-console.log('🔍 DEBUG: Available methods:', Object.keys(productsApi));
 const ProductForm = ({ initialData, onSubmit, categories = [], categoriesLoading = false }) => {
   const [formData, setFormData] = useState({
     name: '',
@@ -73,15 +69,17 @@ const ProductForm = ({ initialData, onSubmit, categories = [], categoriesLoading
       // Set preview images for existing product
       if (initialData.images && initialData.images.length > 0) {
         setPreviewImages(initialData.images.map((url, index) => ({
-          id: index,
+          id: `existing_${index}_${Date.now()}`, // ✅ Better ID generation for existing images
           url: url,
-          file: null
+          file: null,
+          isExisting: true
         })));
       } else if (initialData.image) {
         setPreviewImages([{
-          id: 0,
+          id: `existing_0_${Date.now()}`,
           url: initialData.image,
-          file: null
+          file: null,
+          isExisting: true
         }]);
       }
 
@@ -174,29 +172,52 @@ const ProductForm = ({ initialData, onSubmit, categories = [], categoriesLoading
       return;
     }
 
+    // ✅ Better ID generation for new images
+    const timestamp = Date.now();
     const newPreviews = files.map((file, index) => ({
-      id: Date.now() + index,
+      id: `new_${timestamp}_${index}`, // More unique ID
       url: URL.createObjectURL(file),
-      file: file
+      file: file,
+      isExisting: false
     }));
 
     setPreviewImages(prev => [...prev, ...newPreviews]);
     setImageFiles(prev => [...prev, ...files]);
+
+    // Clear the file input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
   };
 
+  // ✅ Fixed handleRemoveImage function
   const handleRemoveImage = (imageId) => {
+    console.log('🗑️ Removing image with ID:', imageId);
+    
     setPreviewImages(prev => {
       const imageToRemove = prev.find(img => img.id === imageId);
-      if (imageToRemove && imageToRemove.url.startsWith('blob:')) {
-        URL.revokeObjectURL(imageToRemove.url);
+      if (!imageToRemove) {
+        console.warn('Image not found with ID:', imageId);
+        return prev;
       }
+
+      console.log('Found image to remove:', imageToRemove);
+      
+      // Clean up blob URL if it's a new image
+      if (imageToRemove.url && imageToRemove.url.startsWith('blob:')) {
+        URL.revokeObjectURL(imageToRemove.url);
+        console.log('Revoked blob URL:', imageToRemove.url);
+      }
+      
       return prev.filter(img => img.id !== imageId);
     });
 
+    // Remove from imageFiles array if it's a new file
     setImageFiles(prev => {
-      const imageIndex = previewImages.findIndex(img => img.id === imageId);
-      if (imageIndex !== -1 && previewImages[imageIndex].file) {
-        return prev.filter((_, index) => index !== imageIndex);
+      const imageToRemove = previewImages.find(img => img.id === imageId);
+      if (imageToRemove && imageToRemove.file) {
+        console.log('Removing file from imageFiles array');
+        return prev.filter(file => file !== imageToRemove.file);
       }
       return prev;
     });
@@ -256,6 +277,13 @@ const ProductForm = ({ initialData, onSubmit, categories = [], categoriesLoading
   };
 
   const resetForm = () => {
+    // Clean up any blob URLs before resetting
+    previewImages.forEach(img => {
+      if (img.url && img.url.startsWith('blob:')) {
+        URL.revokeObjectURL(img.url);
+      }
+    });
+
     setFormData({
       name: '',
       category: '',
@@ -277,141 +305,114 @@ const ProductForm = ({ initialData, onSubmit, categories = [], categoriesLoading
     setErrors({});
   };
 
-const handleSubmit = async (e) => {
-  e.preventDefault();
-  
-  if (!validateForm()) {
-    toast.error('Please fix the errors below');
-    return;
-  }
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    
+    if (!validateForm()) {
+      toast.error('Please fix the errors below');
+      return;
+    }
 
-  setIsSubmitting(true);
+    setIsSubmitting(true);
 
-  try {
-    // ✅ Prepare form data with proper type conversion
-    const submitData = {
-      name: formData.name.trim(),
-      category: formData.category.trim(),
-      subcategory: formData.subcategory.trim(),
-      price: Number(formData.price),
-      originalPrice: formData.originalPrice ? Number(formData.originalPrice) : undefined,
-      unit: formData.unit,
-      stock: Number(formData.stock),
-      description: formData.description.trim(),
-      gst: Number(formData.gst),
-      status: formData.status,
-      brand: formData.brand.trim(),
-      tags: formData.tags ? formData.tags.split(',').map(t => t.trim()).filter(t => t) : [],
-      features: formData.features ? formData.features.split(',').map(f => f.trim()).filter(f => f) : []
-    };
+    try {
+      // ✅ Prepare form data with proper type conversion
+      const submitData = {
+        name: formData.name.trim(),
+        category: formData.category.trim(),
+        subcategory: formData.subcategory.trim(),
+        price: Number(formData.price),
+        originalPrice: formData.originalPrice ? Number(formData.originalPrice) : undefined,
+        unit: formData.unit,
+        stock: Number(formData.stock),
+        description: formData.description.trim(),
+        gst: Number(formData.gst),
+        status: formData.status,
+        brand: formData.brand.trim(),
+        tags: formData.tags ? formData.tags.split(',').map(t => t.trim()).filter(t => t) : [],
+        features: formData.features ? formData.features.split(',').map(f => f.trim()).filter(f => f) : []
+      };
 
-    console.log('🔍 DEBUG: Submit data:', submitData);
-    console.log('🔍 DEBUG: Image files:', imageFiles.length);
-    console.log('🔍 DEBUG: Image files array:', imageFiles);
-    console.log('🔍 DEBUG: Storage type:', storageInfo?.storageType || 'Unknown');
-    console.log('🔍 DEBUG: InitialData?', initialData ? 'YES (UPDATE)' : 'NO (CREATE)');
+      console.log('🔍 DEBUG: Submit data:', submitData);
+      console.log('🔍 DEBUG: Image files:', imageFiles.length);
+      console.log('🔍 DEBUG: Preview images:', previewImages.length);
 
-    if (initialData && initialData._id) {
-      // ✅ Update existing product using enhanced API
-      console.log('✏️ UPDATING existing product with enhanced API...');
-      
-      const existingImageUrls = previewImages
-        .filter(img => !img.file)
-        .map(img => img.url);
+      if (initialData && initialData._id) {
+        // ✅ Update existing product using enhanced API
+        console.log('✏️ UPDATING existing product with enhanced API...');
+        
+        const existingImageUrls = previewImages
+          .filter(img => img.isExisting && !img.file)
+          .map(img => img.url);
 
-      const newImageFiles = previewImages
-        .filter(img => img.file)
-        .map(img => img.file);
+        const newImageFiles = previewImages
+          .filter(img => !img.isExisting && img.file)
+          .map(img => img.file);
 
-      console.log('🖼️ Existing images:', existingImageUrls.length);
-      console.log('🆕 New images:', newImageFiles.length);
+        console.log('🖼️ Existing images:', existingImageUrls.length);
+        console.log('🆕 New images:', newImageFiles.length);
 
-      const result = await productsApi.updateProduct(
-        initialData._id,
-        {
-          ...submitData,
-          images: existingImageUrls
-        },
-        newImageFiles,
-        false
-      );
+        const result = await productsApi.updateProduct(
+          initialData._id,
+          {
+            ...submitData,
+            images: existingImageUrls
+          },
+          newImageFiles,
+          false
+        );
 
-      console.log('✅ Product updated successfully:', result);
-      toast.success('Product updated successfully!');
+        console.log('✅ Product updated successfully:', result);
+        toast.success('Product updated successfully!');
 
-      if (onSubmit) {
-        await onSubmit(result.product || result);
-      }
-
-    } else {
-      // ✅ Create new product using enhanced API
-      console.log('🆕 CREATING new product using enhanced API...');
-      console.log('🔍 DEBUG: About to call productsApi.createProductWithImages');
-      console.log('🔍 DEBUG: submitData keys:', Object.keys(submitData));
-      console.log('🔍 DEBUG: imageFiles type:', typeof imageFiles);
-      console.log('🔍 DEBUG: imageFiles instanceof Array:', Array.isArray(imageFiles));
-      
-      // Check if productsApi method exists
-      console.log('🔍 DEBUG: productsApi.createProductWithImages exists?', typeof productsApi.createProductWithImages);
-      
-      if (typeof productsApi.createProductWithImages !== 'function') {
-        console.error('❌ ERROR: productsApi.createProductWithImages is not a function!');
-        throw new Error('API method not found: createProductWithImages');
-      }
-
-      const result = await productsApi.createProductWithImages(submitData, imageFiles);
-
-      console.log('✅ Product created successfully:', result);
-      console.log('🔍 DEBUG: Result keys:', Object.keys(result));
-      console.log('🔍 DEBUG: Storage used:', result.storageType || 'Unknown');
-      console.log('🔍 DEBUG: Product images:', result.product?.images);
-      console.log('🔍 DEBUG: Are images Cloudinary URLs?', 
-        result.product?.images?.some(img => img.includes('cloudinary.com')) ? 'YES' : 'NO'
-      );
-      
-      toast.success(`Product created successfully with ${result.uploadedImages || imageFiles.length} images!`);
-
-      // Clean up blob URLs
-      previewImages.forEach(img => {
-        if (img.url.startsWith('blob:')) {
-          URL.revokeObjectURL(img.url);
+        if (onSubmit) {
+          await onSubmit(result.product || result);
         }
-      });
 
-      resetForm();
+      } else {
+        // ✅ Create new product using enhanced API
+        console.log('🆕 CREATING new product using enhanced API...');
+        
+        const result = await productsApi.createProductWithImages(submitData, imageFiles);
 
-      if (onSubmit) {
-        await onSubmit(result.product || result);
+        console.log('✅ Product created successfully:', result);
+        toast.success(`Product created successfully with ${result.uploadedImages || imageFiles.length} images!`);
+
+        // Clean up blob URLs
+        previewImages.forEach(img => {
+          if (img.url && img.url.startsWith('blob:')) {
+            URL.revokeObjectURL(img.url);
+          }
+        });
+
+        resetForm();
+
+        if (onSubmit) {
+          await onSubmit(result.product || result);
+        }
       }
-    }
 
-  } catch (error) {
-    console.error('❌ Form submission error:', error);
-    console.error('❌ Error details:', {
-      message: error.message,
-      status: error.response?.status,
-      data: error.response?.data,
-      stack: error.stack
-    });
-    
-    // ✅ Enhanced error handling
-    let errorMessage = 'Failed to save product';
-    
-    if (error.message) {
-      errorMessage = error.message;
-    } else if (error.response?.data?.error) {
-      errorMessage = error.response.data.error;
-    } else if (error.response?.status === 401) {
-      errorMessage = 'Authentication failed. Please login as admin.';
-    } else if (error.response?.status === 403) {
-      errorMessage = 'Access denied. You need admin privileges.';
+    } catch (error) {
+      console.error('❌ Form submission error:', error);
+      
+      // ✅ Enhanced error handling
+      let errorMessage = 'Failed to save product';
+      
+      if (error.message) {
+        errorMessage = error.message;
+      } else if (error.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      } else if (error.response?.status === 401) {
+        errorMessage = 'Authentication failed. Please login as admin.';
+      } else if (error.response?.status === 403) {
+        errorMessage = 'Access denied. You need admin privileges.';
+      }
+      
+      toast.error(errorMessage);
+    } finally {
+      setIsSubmitting(false);
     }
-    
-    toast.error(errorMessage);
-  } finally {
-    setIsSubmitting(false);
-  }
-};
+  };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
@@ -459,7 +460,7 @@ const handleSubmit = async (e) => {
 
                 {/* ✅ Enhanced storage indicator */}
                 <div className="absolute bottom-2 left-2 bg-black bg-opacity-60 text-white text-xs px-1 py-0.5 rounded">
-                  {image.file ? 'New' : (storageInfo?.storageType === 'Cloudinary' ? '☁️' : '💾')}
+                  {image.isExisting ? (storageInfo?.storageType === 'Cloudinary' ? '☁️' : '💾') : 'New'}
                 </div>
 
                 <div className="absolute top-2 right-12 flex flex-col space-y-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -481,10 +482,17 @@ const handleSubmit = async (e) => {
                   </button>
                 </div>
 
+                {/* ✅ Fixed remove button with better event handling */}
                 <button
                   type="button"
-                  onClick={() => handleRemoveImage(image.id)}
-                  className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('🖱️ Remove button clicked for image ID:', image.id);
+                    handleRemoveImage(image.id);
+                  }}
+                  className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600 z-10"
+                  title="Remove image"
                 >
                   <X className="w-4 h-4" />
                 </button>

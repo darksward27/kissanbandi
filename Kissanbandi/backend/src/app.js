@@ -41,6 +41,7 @@ const allowedOrigins = [
   'http://127.0.0.1:5173',
   'http://192.168.158.105:5173',
   'https://bogat.netlify.app',
+  'https://sribogat.com',
   process.env.CORS_ORIGIN,
 ];
 
