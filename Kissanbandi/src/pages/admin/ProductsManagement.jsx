@@ -122,7 +122,7 @@ const ProductsManagement = () => {
   const loadCategories = async () => {
     try {
       setCategoriesLoading(true);
-      const response = await fetch('/api/categories');
+      const response = await fetch('https://bogat.onrender.com/api/categories');
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -191,36 +191,37 @@ const ProductsManagement = () => {
     return filtered;
   }, [searchQuery, products, filterCategory, statusFilter, sortBy]);
 
-  const handleAddProduct = async (productData) => {
-    try {
-      console.log('Creating new product:', productData);
-      await productsApi.createProduct(productData);
-      await loadProducts();
-      toast.success('Product added successfully!');
-      setShowAddModal(false);
-    } catch (err) {
-      console.error('Error adding product:', err);
-      toast.error(err.response?.data?.message || 'Failed to add product');
-    }
-  };
+const handleAddProduct = async (productData) => {
+  try {
+    console.log('🔍 ProductsManagement: Product creation completed by ProductForm');
+    
+    // ✅ ProductForm already handled the API call successfully
+    // We just need to reload the products and close the modal
+    await loadProducts();
+    toast.success('Product added successfully!');
+    setShowAddModal(false);
+    
+  } catch (err) {
+    console.error('❌ ProductsManagement: Error after product creation:', err);
+    // Don't show error toast here since ProductForm handles that
+  }
+};
 
-  const handleEditProduct = async (productData) => {
-    try {
-      const productId = productData.id || productData._id;
-      
-      if (!productId) {
-        throw new Error('Product ID is missing');
-      }
-      
-      await productsApi.updateProduct(productId, productData);
-      toast.success('Product updated successfully!');
-      setEditingProduct(null);
-      await loadProducts();
-    } catch (err) {
-      console.error('Error updating product:', err);
-      toast.error(err.response?.data?.message || 'Failed to update product');
-    }
-  };
+const handleEditProduct = async (productData) => {
+  try {
+    console.log('🔍 ProductsManagement: Product update completed by ProductForm');
+    
+    // ✅ ProductForm already handled the API call successfully
+    // We just need to reload the products and close the modal
+    await loadProducts();
+    toast.success('Product updated successfully!');
+    setEditingProduct(null);
+    
+  } catch (err) {
+    console.error('❌ ProductsManagement: Error after product update:', err);
+    // Don't show error toast here since ProductForm handles that
+  }
+};
 
   const handleToggleProductStatus = async (productId, newStatus) => {
     if (!productId) return toast.error('Invalid product ID');
@@ -504,18 +505,25 @@ const ProductsManagement = () => {
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center">
                             <div className="relative group">
-                              <img
-                                src={productImages[0]}
-                                alt={product.name}
-                                className="w-12 h-12 rounded-xl object-cover shadow-md group-hover:scale-110 transition-transform duration-200"
-                                onError={(e) => {
-                                  console.error('❌ Product image failed to load:', e.target.src);
-                                  e.target.src = 'https://via.placeholder.com/300x200/f3f4f6/9ca3af?text=No+Image';
-                                }}
-                                onLoad={() => {
-                                  console.log('✅ Product image loaded successfully:', productImages[0]);
-                                }}
-                              />
+                             <img
+  src={
+    productImages[0]?.startsWith('http')
+      ? productImages[0]
+      : `${import.meta.env.VITE_BACKEND_URL}${productImages[0]}`
+  }
+  alt={product.name}
+  className="w-12 h-12 rounded-xl object-cover shadow-md group-hover:scale-110 transition-transform duration-200"
+  onError={(e) => {
+    // console.error('❌ Product image failed to load:', e.target.src);
+    e.target.onerror = null;
+    e.target.src = '/fallback.jpg'; // Ensure fallback.jpg exists in /public
+  }}
+  onLoad={(e) => {
+    console.log('✅ Product image loaded successfully:', e.target.src);
+  }}
+/>
+
+
                             </div>
                             <div className="ml-4">
                               <div className="text-sm font-bold text-gray-900">
@@ -534,7 +542,7 @@ const ProductsManagement = () => {
                                   alt={`${product.name} ${idx + 1}`}
                                   className="w-8 h-8 rounded-full object-cover border-2 border-white shadow-sm"
                                   onError={(e) => {
-                                    e.target.src = 'https://via.placeholder.com/100x100/f3f4f6/9ca3af?text=No+Image';
+                                    e.target.src = '/fallback.jpeg';
                                   }}
                                 />
                               ))}
@@ -747,7 +755,7 @@ const ProductsManagement = () => {
                   alt={`${selectedProductImages.product.name} ${currentImageIndex + 1}`}
                   className="w-full h-96 object-contain"
                   onError={(e) => {
-                    console.error('❌ Modal image failed to load:', e.target.src);
+                    // console.error('❌ Modal image failed to load:', e.target.src);
                     e.target.src = 'https://via.placeholder.com/600x400/f3f4f6/9ca3af?text=Image+Not+Found';
                   }}
                   onLoad={() => {

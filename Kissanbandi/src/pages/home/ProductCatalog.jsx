@@ -18,7 +18,7 @@ import sample3 from '../../assets/sample3.jpeg';
 import bgHero from '../../assets/bogat1.jpg'; // background image
 
 const BOGATProductsShowcase = () => {
-  const [selectedProduct, setSelectedProduct] = useState(0);
+  const [selectedProduct, setSelectedProduct] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [wishlist, setWishlist] = useState(new Set());
   const [cartAnimation, setCartAnimation] = useState('');
@@ -141,7 +141,7 @@ const BOGATProductsShowcase = () => {
     <div className="min-h-screen bg-gradient-to-br from-[#F5EFE6] via-[#EBDACD] to-[#D8C3A5]">
       <div className="container mx-auto px-4 py-12">
         <h2 className="text-4xl font-bold text-center bg-gradient-to-r from-[#23150c] to-[#dda64e] bg-clip-text text-transparent mb-12">
-          Complete BOGAT Collection
+          Complete SRI BOGAT Collection
         </h2>
 
         <div className="grid md:grid-cols-3 gap-8">
@@ -156,12 +156,14 @@ const BOGATProductsShowcase = () => {
               }`}
               style={{ height: '300px' }}
             >
+              {/* Fixed image container with consistent sizing */}
               <div className="relative w-full h-full overflow-hidden">
                 <img
                   src={product.images[0]}
                   alt={product.name}
-                  className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-500"
+                  className="w-full h-full object-cover object-center transform group-hover:scale-110 transition-transform duration-500"
                 />
+
                 <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                   <div className="bg-white/90 backdrop-blur-sm rounded-full p-2 shadow-lg">
                     <ChevronRight className="w-4 h-4 text-orange-600" />
@@ -208,7 +210,7 @@ const BOGATProductsShowcase = () => {
           <div className="text-center max-w-4xl mx-auto">
             <div className="inline-flex items-center space-x-2 bg-white/10 backdrop-blur-sm rounded-full px-6 py-2 mb-6">
               <Sparkles className="w-5 h-5 text-yellow-300" />
-              <span className="text-sm font-semibold text-white">Premium BOGAT Collection</span>
+              <span className="text-sm font-semibold text-white">Premium SRI BOGAT Collection</span>
             </div>
             <h1 className="text-5xl md:text-7xl font-bold mb-6 text-white drop-shadow-2xl">
               Authentic Indian

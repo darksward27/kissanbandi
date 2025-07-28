@@ -11,11 +11,14 @@ const CategoryManagementModal = ({ isOpen, onClose }) => {
   const [newSubcategory, setNewSubcategory] = useState('');
   const [addingSubcategoryTo, setAddingSubcategoryTo] = useState(null);
 
-  // Real API calls
+  // Get API base URL from Vite environment variables
+  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://bogat.onrender.com/api';
+
+  // Real API calls with environment variable
   const categoryAPI = {
     getAll: async () => {
       try {
-        const response = await fetch('/api/categories');
+        const response = await fetch(`${API_BASE_URL}/categories`);
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
@@ -28,7 +31,7 @@ const CategoryManagementModal = ({ isOpen, onClose }) => {
 
     create: async (data) => {
       try {
-        const response = await fetch('/api/categories', {
+        const response = await fetch(`${API_BASE_URL}/categories`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -47,7 +50,7 @@ const CategoryManagementModal = ({ isOpen, onClose }) => {
 
     update: async (id, data) => {
       try {
-        const response = await fetch(`/api/categories/${id}`, {
+        const response = await fetch(`${API_BASE_URL}/categories/${id}`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
@@ -66,7 +69,7 @@ const CategoryManagementModal = ({ isOpen, onClose }) => {
 
     delete: async (id) => {
       try {
-        const response = await fetch(`/api/categories/${id}`, {
+        const response = await fetch(`${API_BASE_URL}/categories/${id}`, {
           method: 'DELETE'
         });
         if (!response.ok) {
@@ -81,7 +84,7 @@ const CategoryManagementModal = ({ isOpen, onClose }) => {
 
     addSubcategory: async (id, subcategory) => {
       try {
-        const response = await fetch(`/api/categories/${id}/subcategory`, {
+        const response = await fetch(`${API_BASE_URL}/categories/${id}/subcategory`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -100,7 +103,7 @@ const CategoryManagementModal = ({ isOpen, onClose }) => {
 
     removeSubcategory: async (id, subcategory) => {
       try {
-        const response = await fetch(`/api/categories/${id}/subcategory`, {
+        const response = await fetch(`${API_BASE_URL}/categories/${id}/subcategory`, {
           method: 'DELETE',
           headers: {
             'Content-Type': 'application/json',
