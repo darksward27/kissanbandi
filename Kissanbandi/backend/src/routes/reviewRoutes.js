@@ -15,6 +15,7 @@ router.get('/product/:productId/public', reviewController.getPublicProductReview
 router.get('/verified', reviewController.getVerifiedReviews);
 router.get('/verified/product/:productId', reviewController.getVerifiedProductReviews);
 router.get('/verified/count', reviewController.getVerifiedReviewsCount);
+router.get('/can-review/:productId', auth, reviewController.canReviewProduct);
 
 //replies from admin
 router.get('/product/:productId/replies', reviewController.getProductReviewReplies);

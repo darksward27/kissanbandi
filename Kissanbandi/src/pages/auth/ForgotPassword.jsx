@@ -11,8 +11,7 @@ const ForgotPassword = () => {
   const isSubmittingRef = useRef(false);
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    
+    e.preventDefault();a
     // Prevent duplicate submissions
     if (isSubmittingRef.current || loading) {
       return;

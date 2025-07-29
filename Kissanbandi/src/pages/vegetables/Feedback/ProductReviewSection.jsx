@@ -18,10 +18,16 @@ const VerifiedReviewsSection = ({ productId = null, showProductInfo = false }) =
   const [imageModalOpen, setImageModalOpen] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
-  // Fixed API URL handling
+  // ✅ FIXED: Enhanced API URL handling
   const getApiUrl = () => {
     const apiUrl = import.meta.env.VITE_API_URL;
     const nodeEnv = import.meta.env.VITE_NODE_ENV;
+    
+    // Debug logging
+    console.log('🔧 Environment Variables:', {
+      VITE_API_URL: apiUrl,
+      VITE_NODE_ENV: nodeEnv
+    });
     
     if (nodeEnv === 'production') {
       return 'https://bogat.onrender.com/api';
@@ -30,25 +36,107 @@ const VerifiedReviewsSection = ({ productId = null, showProductInfo = false }) =
     return apiUrl || 'https://bogat.onrender.com/api';
   };
 
-  // Helper function to construct proper image URLs
+  // ✅ FIXED: Updated image URL handling for Cloudinary
   const getImageUrl = (imagePath) => {
-    if (!imagePath) return null;
+    console.log('🖼️ Processing image path:', imagePath);
     
-    const baseUrl = getApiUrl().replace('/api', '');
-    
-    // If it's already a full URL, return as is
-    if (imagePath.startsWith('http')) {
-      return imagePath;
+    if (!imagePath) {
+      console.log('❌ No image path provided');
+      return null;
     }
+    
+    // Clean up the image path
+    const cleanPath = imagePath.trim();
+    
+    // If it's already a full URL (Cloudinary, external, or local server), return as is
+    if (cleanPath.startsWith('http://') || cleanPath.startsWith('https://')) {
+      console.log('✅ Full URL detected (Cloudinary/External):', cleanPath);
+      return cleanPath;
+    }
+    
+    // If it's a Cloudinary path without protocol, add https
+    if (cleanPath.includes('cloudinary.com') || cleanPath.includes('res.cloudinary.com')) {
+      const cloudinaryUrl = cleanPath.startsWith('//') ? `https:${cleanPath}` : `https://${cleanPath}`;
+      console.log('✅ Cloudinary URL constructed:', cloudinaryUrl);
+      return cloudinaryUrl;
+    }
+    
+    // For local paths, construct with server base URL
+    const baseUrl = getApiUrl().replace('/api', '');
+    console.log('🌐 Base URL:', baseUrl);
     
     // If it starts with /uploads, use it directly
-    if (imagePath.startsWith('/uploads')) {
-      return `${baseUrl}${imagePath}`;
+    if (cleanPath.startsWith('/uploads')) {
+      const fullUrl = `${baseUrl}${cleanPath}`;
+      console.log('✅ Local uploads path detected:', fullUrl);
+      return fullUrl;
     }
     
-    // If it's just a filename, construct the full path
-    const filename = imagePath.split('/').pop();
-    return `${baseUrl}/uploads/reviews/${filename}`;
+    // If it's just a filename, try uploads directory
+    const filename = cleanPath.split('/').pop();
+    const localUrl = `${baseUrl}/uploads/reviews/${filename}`;
+    console.log('✅ Local filename constructed:', localUrl);
+    return localUrl;
+  };
+
+  // ✅ UPDATED: Image validation function with better error handling
+  const validateImageUrl = async (url) => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      const timeout = setTimeout(() => {
+        resolve(false);
+      }, 5000); // 5 second timeout
+      
+      img.onload = () => {
+        clearTimeout(timeout);
+        resolve(true);
+      };
+      img.onerror = () => {
+        clearTimeout(timeout);
+        resolve(false);
+      };
+      img.src = url;
+    });
+  };
+
+  // ✅ UPDATED: Generate fallback image URLs including Cloudinary transforms
+  const getImageFallbacks = (originalPath) => {
+    if (!originalPath) return [];
+    
+    const fallbacks = [];
+    
+    // If it's a Cloudinary URL, try different transformations
+    if (originalPath.includes('cloudinary.com')) {
+      fallbacks.push(originalPath); // Original
+      
+      // Try with different quality settings
+      if (originalPath.includes('/upload/')) {
+        const qualityUrl = originalPath.replace('/upload/', '/upload/q_auto,f_auto/');
+        fallbacks.push(qualityUrl);
+        
+        const compressedUrl = originalPath.replace('/upload/', '/upload/q_80,f_auto/');
+        fallbacks.push(compressedUrl);
+      }
+    } else {
+      // For local images, try different paths
+      const baseUrl = getApiUrl().replace('/api', '');
+      const filename = originalPath.split('/').pop();
+      
+      fallbacks.push(
+        `${baseUrl}/uploads/reviews/${filename}`,
+        `${baseUrl}/uploads/review/${filename}`,
+        `${baseUrl}/uploads/images/${filename}`,
+        `${baseUrl}/uploads/${filename}`
+      );
+    }
+    
+    // Add placeholder images as final fallbacks
+    fallbacks.push(
+      `https://via.placeholder.com/200x200/f3f4f6/9ca3af?text=Review+Image`,
+      `https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?w=200&h=200&fit=crop`
+    );
+    
+    return fallbacks;
   };
 
   const fetchVerifiedReviews = async (page = 1) => {
@@ -75,8 +163,6 @@ const VerifiedReviewsSection = ({ productId = null, showProductInfo = false }) =
         : `${API_BASE_URL}/reviews/verified?${params}`;
 
       console.log('🔍 Fetching from:', endpoint);
-      console.log('🌍 Environment:', import.meta.env.VITE_NODE_ENV);
-      console.log('🔗 API Base URL:', API_BASE_URL);
 
       const response = await fetch(endpoint);
       
@@ -89,14 +175,64 @@ const VerifiedReviewsSection = ({ productId = null, showProductInfo = false }) =
       const data = await response.json();
       
       if (data.success) {
-        setReviews(data.reviews || []);
+        // ✅ ENHANCED: Process reviews and validate image URLs
+        const processedReviews = await Promise.all(
+          (data.reviews || []).map(async (review) => {
+            if (review.images && review.images.length > 0) {
+              console.log(`🔍 Processing ${review.images.length} images for review ${review._id}`);
+              
+              // Process each image
+              const validatedImages = [];
+              
+              for (let i = 0; i < review.images.length; i++) {
+                const imagePath = review.images[i];
+                console.log(`📸 Processing image ${i + 1}:`, imagePath);
+                
+                const primaryUrl = getImageUrl(imagePath);
+                if (primaryUrl) {
+                  // For Cloudinary URLs, we can trust they work, for others validate
+                  if (imagePath.includes('cloudinary.com')) {
+                    console.log('✅ Cloudinary URL - adding directly:', primaryUrl);
+                    validatedImages.push(primaryUrl);
+                  } else {
+                    // Validate non-Cloudinary URLs
+                    const isValid = await validateImageUrl(primaryUrl);
+                    if (isValid) {
+                      console.log('✅ Local image validated:', primaryUrl);
+                      validatedImages.push(primaryUrl);
+                    } else {
+                      console.log('❌ Local image failed validation:', primaryUrl);
+                      // Try fallbacks for local images
+                      const fallbacks = getImageFallbacks(imagePath);
+                      for (const fallbackUrl of fallbacks.slice(1)) { // Skip first as it's the same as primaryUrl
+                        const isValidFallback = await validateImageUrl(fallbackUrl);
+                        if (isValidFallback) {
+                          console.log('✅ Fallback image found:', fallbackUrl);
+                          validatedImages.push(fallbackUrl);
+                          break;
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+              
+              review.validatedImages = validatedImages;
+              console.log(`🖼️ Review ${review._id}: ${validatedImages.length}/${review.images.length} images processed`);
+            }
+            
+            return review;
+          })
+        );
+        
+        setReviews(processedReviews);
         setStats(data.stats || data.ratingStats || null);
         
         if (data.pagination) {
           setCurrentPage(data.pagination.currentPage);
           setTotalPages(data.pagination.totalPages);
         }
-        console.log('✅ Reviews loaded successfully:', data.reviews?.length || 0);
+        console.log('✅ Reviews loaded successfully:', processedReviews.length);
       } else {
         throw new Error(data.error || 'Failed to fetch verified reviews');
       }
@@ -120,9 +256,9 @@ const VerifiedReviewsSection = ({ productId = null, showProductInfo = false }) =
   }, [currentPage]);
 
   const openImageModal = (images, startIndex = 0) => {
-    // Process images to ensure proper URLs
-    const processedImages = images.map(img => getImageUrl(img)).filter(Boolean);
-    setSelectedImages(processedImages);
+    // Use validated images if available, otherwise process them
+    const imagesToShow = images.filter(Boolean);
+    setSelectedImages(imagesToShow);
     setCurrentImageIndex(startIndex);
     setImageModalOpen(true);
   };
@@ -187,47 +323,120 @@ const VerifiedReviewsSection = ({ productId = null, showProductInfo = false }) =
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  // ✅ UPDATED: Smart Image Component with better Cloudinary support
+  const SmartImage = ({ src, alt, className, onClick, showIndex = false, index = 0 }) => {
+    const [currentSrc, setCurrentSrc] = useState(src);
+    const [isLoading, setIsLoading] = useState(true);
+    const [hasError, setHasError] = useState(false);
+    const [fallbackIndex, setFallbackIndex] = useState(0);
+
+    const fallbacks = getImageFallbacks(src);
+
+    const handleImageError = () => {
+      console.log(`❌ Image failed to load: ${currentSrc}`);
+      
+      if (fallbackIndex < fallbacks.length - 1) {
+        const nextFallback = fallbacks[fallbackIndex + 1];
+        console.log(`🔄 Trying fallback ${fallbackIndex + 1}: ${nextFallback}`);
+        setCurrentSrc(nextFallback);
+        setFallbackIndex(prev => prev + 1);
+        setIsLoading(true);
+      } else {
+        console.log('💥 All fallbacks exhausted');
+        setHasError(true);
+        setIsLoading(false);
+      }
+    };
+
+    const handleImageLoad = () => {
+      console.log(`✅ Image loaded successfully: ${currentSrc}`);
+      setIsLoading(false);
+      setHasError(false);
+    };
+
+    // Reset state when src changes
+    useEffect(() => {
+      setCurrentSrc(src);
+      setIsLoading(true);
+      setHasError(false);
+      setFallbackIndex(0);
+    }, [src]);
+
+    if (hasError) {
+      return (
+        <div className={`${className} bg-gray-200 flex items-center justify-center text-gray-400 text-xs`}>
+          <div className="text-center">
+            <AlertCircle className="w-6 h-6 mx-auto mb-1" />
+            <span>Image Error</span>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="relative">
+        {isLoading && (
+          <div className={`${className} bg-gray-200 flex items-center justify-center`}>
+            <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
+          </div>
+        )}
+        <img
+          src={currentSrc}
+          alt={alt}
+          className={`${className} ${isLoading ? 'absolute invisible' : ''} w-40 h-40`}
+          onClick={onClick}
+          onError={handleImageError}
+          onLoad={handleImageLoad}
+        />
+        {showIndex && !isLoading && (
+          <div className="absolute top-1 left-1 bg-amber-600 text-white text-xs px-1 rounded">
+            {index + 1}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   // Enhanced Admin Reply Component
   const AdminReply = ({ reply }) => {
-  if (!reply || !reply.text) return null;
+    if (!reply || !reply.text) return null;
 
-  return (
-    <div className="mt-4 border-l-4 border-blue-500 bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-r-lg shadow-sm">
-      <div className="flex items-start gap-3">
-        <div className="bg-gradient-to-br from-blue-100 to-indigo-100 rounded-full p-2 flex-shrink-0 shadow-sm">
-          <Shield className="w-5 h-5 text-blue-600" />
-        </div>
-        <div className="flex-1">
-          <div className="flex items-center gap-2 mb-2 flex-wrap">
-            <div className="flex items-center gap-1">
-              <Crown className="w-4 h-4 text-blue-600" />
-              <h6 className="font-semibold text-blue-900">Store Administrator</h6>
-            </div>
-            <span className="bg-gradient-to-r from-blue-100 to-indigo-100 text-blue-700 px-3 py-1 rounded-full text-xs font-medium border border-blue-200">
-              Official Response
-            </span>
+    return (
+      <div className="mt-4 border-l-4 border-blue-500 bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-r-lg shadow-sm">
+        <div className="flex items-start gap-3">
+          <div className="bg-gradient-to-br from-blue-100 to-indigo-100 rounded-full p-2 flex-shrink-0 shadow-sm">
+            <Shield className="w-5 h-5 text-blue-600" />
           </div>
-          <p className="text-gray-700 leading-relaxed mb-3">{reply.text}</p>
-          <div className="flex items-center gap-4 text-sm">
-            <div className="flex items-center gap-1">
-              <Clock className="w-4 h-4 text-blue-500" />
-              <span className="text-blue-600 font-medium">
-                {reply.date ? formatRelativeTime(reply.date) : 'Recently'}
+          <div className="flex-1">
+            <div className="flex items-center gap-2 mb-2 flex-wrap">
+              <div className="flex items-center gap-1">
+                <Crown className="w-4 h-4 text-blue-600" />
+                <h6 className="font-semibold text-blue-900">Store Administrator</h6>
+              </div>
+              <span className="bg-gradient-to-r from-blue-100 to-indigo-100 text-blue-700 px-3 py-1 rounded-full text-xs font-medium border border-blue-200">
+                Official Response
               </span>
             </div>
-            {reply.adminName && (
+            <p className="text-gray-700 leading-relaxed mb-3">{reply.text}</p>
+            <div className="flex items-center gap-4 text-sm">
               <div className="flex items-center gap-1">
-                <User className="w-4 h-4 text-blue-500" />
-                <span className="text-gray-600">by {reply.adminName}</span>
+                <Clock className="w-4 h-4 text-blue-500" />
+                <span className="text-blue-600 font-medium">
+                  {reply.date ? formatRelativeTime(reply.date) : 'Recently'}
+                </span>
               </div>
-            )}
+              {reply.adminName && (
+                <div className="flex items-center gap-1">
+                  <User className="w-4 h-4 text-blue-500" />
+                  <span className="text-gray-600">by {reply.adminName}</span>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
-    </div>
-  );
-};
-
+    );
+  };
 
   if (loading && reviews.length === 0) {
     return (
@@ -411,49 +620,45 @@ const VerifiedReviewsSection = ({ productId = null, showProductInfo = false }) =
               {/* Review Content */}
               <p className="text-gray-700 leading-relaxed mb-4">{review.comment}</p>
 
-              {/* Review Images */}
-              {review.images && review.images.length > 0 && (
+              {/* ✅ FIXED: Review Images - prioritize validatedImages, fallback to original processing */}
+              {((review.validatedImages && review.validatedImages.length > 0) || 
+                (review.images && review.images.length > 0)) && (
                 <div className="mb-4">
                   <p className="text-sm font-medium text-gray-700 mb-3">Photos from this review:</p>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                    {review.images.map((imageUrl, idx) => {
-                      const processedImageUrl = getImageUrl(imageUrl);
-                      
-                      if (!processedImageUrl) {
-                        return null;
-                      }
-
-                      return (
-                        <div
-                          key={idx}
-                          className="relative group cursor-pointer w-24 h-24"
-                          onClick={() => openImageModal(review.images, idx)}
-                        >
-                          <img
-                            src={processedImageUrl}
-                            alt={`Review image ${idx + 1}`}
-                            className="w-24 h-24 object-cover rounded-lg border border-amber-200 hover:opacity-80 transition-opacity"
-                            onError={(e) => {
-                              console.error('Image failed to load:', processedImageUrl);
-                              // Fallback to placeholder
-                              e.target.src = `https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?w=600&h=400&fit=crop`;
-                            }}
-                            onLoad={() => {
-                              console.log('Image loaded successfully:', processedImageUrl);
-                            }}
-                          />
-                          
-                          <div className="absolute top-1 left-1 bg-amber-600 text-white text-xs px-1 rounded">
-                            {idx + 1}
-                          </div>
-                          
-                          <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all duration-200 rounded-lg flex items-center justify-center">
-                            <Eye className="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
-                          </div>
+                    {(review.validatedImages && review.validatedImages.length > 0 
+                      ? review.validatedImages 
+                      : review.images.map(img => getImageUrl(img)).filter(Boolean)
+                    ).map((imageUrl, idx) => (
+                      <div
+                        key={idx}
+                        className="relative group cursor-pointer"
+                        onClick={() => openImageModal(
+                          review.validatedImages && review.validatedImages.length > 0 
+                            ? review.validatedImages 
+                            : review.images.map(img => getImageUrl(img)).filter(Boolean), 
+                          idx
+                        )}
+                      >
+                        <SmartImage
+                          src={imageUrl}
+                          alt={`Review image ${idx + 1}`}
+                          className="w-24 h-24 object-cover rounded-lg border border-amber-200 hover:opacity-80 transition-opacity"
+                          showIndex={true}
+                          index={idx}
+                        />
+                        
+                        <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all duration-200 rounded-lg flex items-center justify-center">
+                          <Eye className="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
                         </div>
-                      );
-                    })}
+                      </div>
+                    ))}
                   </div>
+                  {review.validatedImages && review.images && (
+                    <p className="text-xs text-gray-500 mt-2">
+                      {review.validatedImages.length} of {review.images.length} images loaded successfully
+                    </p>
+                  )}
                 </div>
               )}
 
@@ -523,7 +728,7 @@ const VerifiedReviewsSection = ({ productId = null, showProductInfo = false }) =
         </div>
       )}
 
-      {/* Image Modal */}
+      {/* ✅ FIXED: Image Modal with Smart Image Component */}
       {imageModalOpen && selectedImages.length > 0 && (
         <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50">
           <div className="relative max-w-4xl max-h-4xl w-full h-full p-4">
@@ -552,17 +757,10 @@ const VerifiedReviewsSection = ({ productId = null, showProductInfo = false }) =
             )}
 
             <div className="w-full h-full flex items-center justify-center">
-              <img
+              <SmartImage
                 src={selectedImages[currentImageIndex]}
                 alt={`Review image ${currentImageIndex + 1}`}
                 className="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
-                onError={(e) => {
-                  console.error('Modal image failed to load:', selectedImages[currentImageIndex]);
-                  e.target.src = `https://via.placeholder.com/600x400/d4a574/ffffff?text=Image+Not+Found`;
-                }}
-                onLoad={() => {
-                  console.log('Modal image loaded successfully:', selectedImages[currentImageIndex]);
-                }}
               />
             </div>
 

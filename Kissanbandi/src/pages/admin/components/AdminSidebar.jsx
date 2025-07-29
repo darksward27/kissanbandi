@@ -24,7 +24,7 @@ const AdminSidebar = () => {
     { title: 'Customers', icon: Users, path: '/admin/customers' },
     { title: 'Blogs', icon: BookOpen, path: '/admin/blogs' },
     { title: 'Coupons', icon: Coupon, path: '/admin/coupons' },
-  ];
+  ];a
 
   const handleLogout = () => {
     // Clear admin token

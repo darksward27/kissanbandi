@@ -749,7 +749,7 @@ export const ordersApi = {
         responseType: 'blob'
       });
 
-      // Verify that we received a CSV blob
+      // Verify that we received a CSV  b
       if (!response.data || !(response.data instanceof Blob)) {
         throw new Error('Invalid response format from export endpoint');
       }
