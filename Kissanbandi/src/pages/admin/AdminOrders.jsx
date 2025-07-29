@@ -1385,261 +1385,253 @@ const AdminOrders = () => {
     );
   };
 
+  // ✅ FIXED: Responsive table without horizontal scroll
   const renderTableView = () => {
     if (!Array.isArray(orders)) {
       return null;
     }
 
     return (
-      <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-amber-200">
-          <thead className="bg-amber-50">
-            <tr>
-              <th className="px-3 sm:px-6 py-3 text-left">
-                <input
-                  type="checkbox"
-                  checked={selectedOrders.size === orders.length && orders.length > 0}
-                  onChange={toggleAllOrders}
-                  className="rounded border-amber-300 text-amber-600 focus:ring-amber-500"
-                />
-              </th>
-              <th 
-                className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-amber-800 uppercase tracking-wider cursor-pointer hover:bg-amber-100"
-                onClick={() => handleSort('_id')}
-              >
-                <div className="flex items-center space-x-1">
-                  <span>Order ID</span>
-                  <SortIcon field="_id" />
-                </div>
-              </th>
-              <th 
-                className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-amber-800 uppercase tracking-wider cursor-pointer hover:bg-amber-100 hidden sm:table-cell"
-                onClick={() => handleSort('user.name')}
-              >
-                <div className="flex items-center space-x-1">
-                  <span>Customer</span>
-                  <SortIcon field="user.name" />
-                </div>
-              </th>
-              <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-amber-800 uppercase tracking-wider hidden md:table-cell">Items</th>
-              <th 
-                className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-amber-800 uppercase tracking-wider cursor-pointer hover:bg-amber-100"
-                onClick={() => handleSort('totalAmount')}
-              >
-                <div className="flex items-center space-x-1">
-                  <span>Total</span>
-                  <SortIcon field="totalAmount" />
-                </div>
-              </th>
-              <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-amber-800 uppercase tracking-wider">Status</th>
-              <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-amber-800 uppercase tracking-wider hidden lg:table-cell">Contact</th>
-              <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-amber-800 uppercase tracking-wider">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-amber-100">
-            {orders.map((order) => (
-              <React.Fragment key={order._id}>
-                <tr className="hover:bg-amber-50 transition-colors">
-                  <td className="px-3 sm:px-6 py-4">
-                    <input
-                      type="checkbox"
-                      checked={selectedOrders.has(order._id)}
-                      onChange={() => toggleOrderSelection(order._id)}
-                      className="rounded border-amber-300 text-amber-600 focus:ring-amber-500"
-                    />
-                  </td>
-                  <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    <div className="font-medium">#{order._id.slice(-8)}</div>
-                    <div className="text-xs text-gray-500 sm:hidden">
-                      {order.user?.name || 'N/A'}
+      <div className="space-y-4">
+        {orders.map((order) => (
+          <div key={order._id} className="bg-white border border-amber-100 rounded-lg shadow-sm hover:shadow-md transition-shadow">
+            {/* ✅ Main Order Info - Always visible */}
+            <div className="p-4">
+              <div className="flex items-start justify-between mb-3">
+                <div className="flex items-center space-x-3">
+                  <input
+                    type="checkbox"
+                    checked={selectedOrders.has(order._id)}
+                    onChange={() => toggleOrderSelection(order._id)}
+                    className="rounded border-amber-300 text-amber-600 focus:ring-amber-500"
+                  />
+                  <div>
+                    <h3 className="font-medium text-gray-900">#{order._id.slice(-8)}</h3>
+                    <div className="text-sm text-gray-500">
+                      {new Date(order.createdAt).toLocaleDateString()}
                     </div>
-                  </td>
-                  <td className="px-3 sm:px-6 py-4 hidden sm:table-cell">
-                    <div className="text-sm font-medium text-gray-900">{order.user?.name || 'N/A'}</div>
-                    <div className="text-sm text-gray-500">{new Date(order.createdAt).toLocaleDateString()}</div>
-                  </td>
-                  <td className="px-3 sm:px-6 py-4 hidden md:table-cell">
-                    <div className="text-sm text-gray-900 max-w-xs">
-                      {order.items?.slice(0, 2).map((item, index) => (
-                        <div key={index} className="truncate">
-                          {item.product?.name || 'Unknown Product'} × {item.quantity}
-                        </div>
+                  </div>
+                </div>
+                
+                <div className="flex items-center space-x-2">
+                  <span className={`px-2 py-1 rounded-full text-xs font-medium border flex items-center space-x-1 ${getStatusBadgeClass(order.status)}`}>
+                    {getStatusIcon(order.status)}
+                    <span className="capitalize">{order.status || 'pending'}</span>
+                  </span>
+                  <span className="text-lg font-semibold text-gray-900">
+                    ₹{(order.totalAmount || 0).toLocaleString()}
+                  </span>
+                </div>
+              </div>
+
+              {/* ✅ Customer & Order Details */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div>
+                  <h4 className="text-sm font-medium text-gray-700 mb-2">Customer</h4>
+                  <div className="space-y-1">
+                    <div className="flex items-center space-x-2 text-sm text-gray-600">
+                      <Users className="w-4 h-4" />
+                      <span>{order.user?.name || 'N/A'}</span>
+                    </div>
+                    {order.user?.phone && (
+                      <div className="flex items-center space-x-2 text-sm text-gray-600">
+                        <Phone className="w-4 h-4" />
+                        <span>{order.user.phone}</span>
+                      </div>
+                    )}
+                    {order.user?.email && (
+                      <div className="flex items-center space-x-2 text-sm text-gray-600">
+                        <Mail className="w-4 h-4" />
+                        <span className="truncate">{order.user.email}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                
+                <div>
+                  <h4 className="text-sm font-medium text-gray-700 mb-2">Items ({order.items?.length || 0})</h4>
+                  <div className="space-y-1 max-h-20 overflow-y-auto">
+                    {order.items?.slice(0, 3).map((item, index) => (
+                      <div key={index} className="text-sm text-gray-600 truncate">
+                        {item.product?.name || 'Unknown Product'} × {item.quantity}
+                      </div>
+                    ))}
+                    {order.items?.length > 3 && (
+                      <div className="text-xs text-gray-500">+{order.items.length - 3} more items</div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* ✅ Shipping Address */}
+              {order.shippingAddress && (
+                <div className="mb-4">
+                  <h4 className="text-sm font-medium text-gray-700 mb-2">Shipping Address</h4>
+                  <div className="flex items-start space-x-2 text-sm text-gray-600">
+                    <MapPin className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                    <span>
+                      {order.shippingAddress.address}, {order.shippingAddress.city}, {order.shippingAddress.state} - {order.shippingAddress.pincode}
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {/* ✅ Actions Row */}
+              <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-gray-100">
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={() => handleViewDetails(order)}
+                    className="px-3 py-2 text-sm bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors flex items-center space-x-1"
+                  >
+                    <Eye className="w-4 h-4" />
+                    <span>View Details</span>
+                  </button>
+                  
+                  <button
+                    onClick={() => handleDownloadInvoice(order._id)}
+                    disabled={downloadingInvoice === order._id}
+                    className="px-3 py-2 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center space-x-1 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                    title="Download Invoice"
+                  >
+                    {downloadingInvoice === order._id ? (
+                      <Loader className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <FileText className="w-4 h-4" />
+                    )}
+                    <span className="hidden sm:inline">
+                      {downloadingInvoice === order._id ? 'Generating...' : 'Invoice'}
+                    </span>
+                  </button>
+                  
+                  <button
+                    onClick={() => handleEditNote(order._id, order.adminNote)}
+                    className="px-3 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-1"
+                    title="Add/Edit Note"
+                  >
+                    <StickyNote className="w-4 h-4" />
+                    <span className="hidden sm:inline">Note</span>
+                  </button>
+                </div>
+                
+                <div className="flex items-center space-x-2">
+                  <span className="text-sm text-gray-500">Status:</span>
+                  {updatingStatus === order._id ? (
+                    <div className="flex items-center px-3 py-2 bg-gray-100 rounded-lg">
+                      <Loader className="w-4 h-4 animate-spin mr-2 text-amber-600" />
+                      <span className="text-sm text-gray-500">Updating...</span>
+                    </div>
+                  ) : (
+                    <select
+                      value={order.status || 'pending'}
+                      onChange={(e) => handleStatusUpdate(order._id, e.target.value)}
+                      className="px-3 py-2 text-sm border border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 bg-white min-w-[120px]"
+                      disabled={updatingStatus === order._id}
+                    >
+                      {STATUS_OPTIONS.map(status => (
+                        <option key={status} value={status}>
+                          {status.charAt(0).toUpperCase() + status.slice(1)}
+                        </option>
                       ))}
-                      {order.items?.length > 2 && (
-                        <div className="text-xs text-gray-500">+{order.items.length - 2} more</div>
+                    </select>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* ✅ Admin Note Section */}
+            <div className={`border-t ${getNoteTypeConfig(order.status).borderColor} ${getNoteTypeConfig(order.status).bgColor}`}>
+              <div className="p-4">
+                <div className="flex items-start space-x-3">
+                  <div className="flex-shrink-0 mt-1">
+                    <span className={getNoteTypeConfig(order.status).iconColor}>
+                      {getNoteTypeConfig(order.status).icon}
+                    </span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className={`text-sm font-medium ${getNoteTypeConfig(order.status).textColor}`}>
+                        {getNoteTypeConfig(order.status).title}
+                      </h4>
+                      {editingNote !== order._id && (
+                        <button
+                          onClick={() => handleEditNote(order._id, order.adminNote)}
+                          className={`${getNoteTypeConfig(order.status).iconColor} hover:opacity-80 transition-colors flex items-center space-x-1`}
+                          title={`Edit ${getNoteTypeConfig(order.status).title.toLowerCase()}`}
+                        >
+                          <Edit3 className="w-4 h-4" />
+                          <span className="text-xs hidden sm:inline">Edit Note</span>
+                        </button>
                       )}
                     </div>
-                  </td>
-                  <td className="px-3 sm:px-6 py-4 text-sm font-medium text-gray-900">
-                    ₹{(order.totalAmount || 0).toLocaleString()}
-                  </td>
-                  <td className="px-3 sm:px-6 py-4">
-                    {updatingStatus === order._id ? (
-                      <div className="flex items-center">
-                        <Loader className="w-4 h-4 animate-spin mr-2 text-amber-600" />
-                        <span className="text-sm text-gray-500">Updating...</span>
+                    
+                    {editingNote === order._id ? (
+                      <div className="space-y-3">
+                        <textarea
+                          value={noteText}
+                          onChange={(e) => setNoteText(e.target.value)}
+                          placeholder={getNoteTypeConfig(order.status).placeholder}
+                          className={`w-full p-3 text-sm border ${getNoteTypeConfig(order.status).borderColor} rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 resize-none`}
+                          rows="3"
+                        />
+                        <div className="flex items-center space-x-2">
+                          <button
+                            onClick={() => handleSaveNote(order._id)}
+                            disabled={savingNote}
+                            className="px-4 py-2 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center space-x-1 disabled:opacity-50"
+                          >
+                            {savingNote ? (
+                              <Loader className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <Save className="w-4 h-4" />
+                            )}
+                            <span>{savingNote ? 'Saving...' : 'Save Note'}</span>
+                          </button>
+                          <button
+                            onClick={handleCancelEdit}
+                            className="px-4 py-2 text-sm bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors flex items-center space-x-1"
+                          >
+                            <X className="w-4 h-4" />
+                            <span>Cancel</span>
+                          </button>
+                        </div>
                       </div>
                     ) : (
-                      <select
-                        value={order.status || 'pending'}
-                        onChange={(e) => handleStatusUpdate(order._id, e.target.value)}
-                        className={`px-2 py-1 rounded-full text-xs font-medium border ${getStatusBadgeClass(order.status)} focus:ring-2 focus:ring-amber-500`}
-                        disabled={updatingStatus === order._id}
-                      >
-                        {STATUS_OPTIONS.map(status => (
-                          <option key={status} value={status}>
-                            {status.charAt(0).toUpperCase() + status.slice(1)}
-                          </option>
-                        ))}
-                      </select>
-                    )}
-                  </td>
-                  <td className="px-3 sm:px-6 py-4 hidden lg:table-cell">
-                    <div className="text-sm text-gray-900">{order.user?.phone || 'N/A'}</div>
-                    <div className="text-sm text-gray-500">
-                      {order.shippingAddress ? (
-                        `${order.shippingAddress.city || 'N/A'}, ${order.shippingAddress.state || 'N/A'}`
-                      ) : (
-                        'Address not available'
-                      )}
-                    </div>
-                  </td>
-                  <td className="px-3 sm:px-6 py-4">
-                    <div className="flex items-center space-x-2">
-                      <button
-                        onClick={() => handleViewDetails(order)}
-                        className="text-amber-600 hover:text-amber-900 text-sm font-medium flex items-center space-x-1"
-                        title="View Details"
-                      >
-                        <Eye className="w-4 h-4" />
-                        <span className="hidden sm:inline">View</span>
-                      </button>
-                      
-                      {/* ✅ Download Invoice Button in Table */}
-                      <button
-                        onClick={() => handleDownloadInvoice(order._id)}
-                        disabled={downloadingInvoice === order._id}
-                        className="text-green-600 hover:text-green-900 text-sm font-medium flex items-center space-x-1 disabled:text-gray-400 disabled:cursor-not-allowed"
-                        title="Download Invoice"
-                      >
-                        {downloadingInvoice === order._id ? (
-                          <Loader className="w-4 h-4 animate-spin" />
-                        ) : (
-                          <FileText className="w-4 h-4" />
-                        )}
-                        <span className="hidden sm:inline">
-                          {downloadingInvoice === order._id ? 'Generating...' : 'Invoice'}
-                        </span>
-                      </button>
-                      
-                      <button
-                        onClick={() => handleEditNote(order._id, order.adminNote)}
-                        className="text-blue-600 hover:text-blue-900 text-sm font-medium flex items-center space-x-1"
-                        title="Add/Edit Note"
-                      >
-                        <StickyNote className="w-4 h-4" />
-                        <span className="hidden sm:inline">Note</span>
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-                
-                {/* Admin Note Row for All Orders */}
-                <tr className={`${getNoteTypeConfig(order.status).bgColor} border-t ${getNoteTypeConfig(order.status).borderColor}`}>
-                  <td colSpan="8" className="px-3 sm:px-6 py-3">
-                    <div className="flex items-start space-x-3">
-                      <div className="flex-shrink-0 mt-1">
-                        <span className={getNoteTypeConfig(order.status).iconColor}>
-                          {getNoteTypeConfig(order.status).icon}
-                        </span>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between mb-2">
-                          <h4 className={`text-sm font-medium ${getNoteTypeConfig(order.status).textColor}`}>
-                            {getNoteTypeConfig(order.status).title}
-                          </h4>
-                          {editingNote !== order._id && (
-                            <button
-                              onClick={() => handleEditNote(order._id, order.adminNote)}
-                              className={`${getNoteTypeConfig(order.status).iconColor} hover:opacity-80 transition-colors flex items-center space-x-1`}
-                              title={`Edit ${getNoteTypeConfig(order.status).title.toLowerCase()}`}
-                            >
-                              <Edit3 className="w-4 h-4" />
-                              <span className="text-xs hidden sm:inline">Edit Note</span>
-                            </button>
-                          )}
-                        </div>
-                        
-                        {editingNote === order._id ? (
-                          <div className="space-y-3">
-                            <textarea
-                              value={noteText}
-                              onChange={(e) => setNoteText(e.target.value)}
-                              placeholder={getNoteTypeConfig(order.status).placeholder}
-                              className={`w-full p-3 text-sm border ${getNoteTypeConfig(order.status).borderColor} rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 resize-none`}
-                              rows="3"
-                            />
-                            <div className="flex items-center space-x-2">
-                              <button
-                                onClick={() => handleSaveNote(order._id)}
-                                disabled={savingNote}
-                                className="px-4 py-2 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center space-x-1 disabled:opacity-50"
-                              >
-                                {savingNote ? (
-                                  <Loader className="w-4 h-4 animate-spin" />
-                                ) : (
-                                  <Save className="w-4 h-4" />
-                                )}
-                                <span>{savingNote ? 'Saving...' : 'Save Note'}</span>
-                              </button>
-                              <button
-                                onClick={handleCancelEdit}
-                                className="px-4 py-2 text-sm bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors flex items-center space-x-1"
-                              >
-                                <X className="w-4 h-4" />
-                                <span>Cancel</span>
-                              </button>
+                      <div className="bg-white/60 p-3 rounded-lg border border-gray-200">
+                        {order.adminNote ? (
+                          <div className="text-sm text-black">
+                            <div className="flex items-start space-x-2">
+                              <MessageSquare className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                              <div className="flex-1">
+                                <p className="leading-relaxed">{order.adminNote}</p>
+                                <p className="text-xs text-gray-600 mt-1 opacity-75">
+                                  Added by admin
+                                </p>
+                              </div>
                             </div>
                           </div>
                         ) : (
-                          <div className="bg-white/60 p-3 rounded-lg border border-gray-200">
-                            {order.adminNote ? (
-                              <div className="text-sm text-black">
-                                <div className="flex items-start space-x-2">
-                                  <MessageSquare className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                                  <div className="flex-1">
-                                    <p className="leading-relaxed">{order.adminNote}</p>
-                                    <p className="text-xs text-gray-600 mt-1 opacity-75">
-                                      Added by admin
-                                    </p>
-                                  </div>
-                                </div>
-                              </div>
-                            ) : (
-                              <div className="flex items-center justify-between">
-                                <div className={`flex items-center space-x-2 ${getNoteTypeConfig(order.status).iconColor}`}>
-                                  <MessageSquare className="w-4 h-4" />
-                                  <span className="text-sm italic">No {getNoteTypeConfig(order.status).title.toLowerCase()} added yet</span>
-                                </div>
-                                <button
-                                  onClick={() => handleEditNote(order._id, '')}
-                                  className={`px-3 py-1 text-xs text-white rounded hover:opacity-80 transition-colors flex items-center space-x-1 ${getNoteTypeConfig(order.status).buttonColor}`}
-                                >
-                                  <Plus className="w-3 h-3" />
-                                  <span>Add Note</span>
-                                </button>
-                              </div>
-                            )}
+                          <div className="flex items-center justify-between">
+                            <div className={`flex items-center space-x-2 ${getNoteTypeConfig(order.status).iconColor}`}>
+                              <MessageSquare className="w-4 h-4" />
+                              <span className="text-sm italic">No {getNoteTypeConfig(order.status).title.toLowerCase()} added yet</span>
+                            </div>
+                            <button
+                              onClick={() => handleEditNote(order._id, '')}
+                              className={`px-3 py-1 text-xs text-white rounded hover:opacity-80 transition-colors flex items-center space-x-1 ${getNoteTypeConfig(order.status).buttonColor}`}
+                            >
+                              <Plus className="w-3 h-3" />
+                              <span>Add Note</span>
+                            </button>
                           </div>
                         )}
                       </div>
-                    </div>
-                  </td>
-                </tr>
-              </React.Fragment>
-            ))}
-          </tbody>
-        </table>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        ))}
       </div>
     );
   };
@@ -1677,7 +1669,7 @@ const AdminOrders = () => {
 
   return (
     <div className="min-h-screen bg-amber-50">
-      <div className="container mx-auto px-4 py-6 sm:py-8">
+      <div className="max-w-7xl mx-auto px-4 py-6 sm:py-8">
         {/* Header */}
         <div className="mb-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4">
@@ -1958,16 +1950,8 @@ const AdminOrders = () => {
                 </button>
               </div>
             ) : (
-              <div className="p-0">
-                {viewMode === 'table' ? (
-                  <div className="overflow-hidden">
-                    {renderTableView()}
-                  </div>
-                ) : (
-                  <div className="p-4">
-                    {renderCardView()}
-                  </div>
-                )}
+              <div className="p-4">
+                {viewMode === 'table' ? renderTableView() : renderCardView()}
               </div>
             )}
           </div>
