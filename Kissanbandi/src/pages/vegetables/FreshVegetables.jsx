@@ -23,83 +23,80 @@ const BogatProducts = () => {
   const { dispatch } = useCart();
 
   // Helper function to get the first image from the images array
-// Replace your getProductImage function with this fixed version:
-
-const getProductImage = (product) => {
-  if (!product) {
-    return 'https://via.placeholder.com/300x200/f3f4f6/9ca3af?text=No+Product';
-  }
-
-  let imageUrl = null;
-
-  // First try the images array
-  if (product.images && Array.isArray(product.images) && product.images.length > 0) {
-    imageUrl = product.images[0];
-  } 
-  // Fallback to the single image field
-  else if (product.image) {
-    imageUrl = product.image;
-  }
-
-  // If no image found, return placeholder
-  if (!imageUrl) {
-    return 'https://via.placeholder.com/300x200/f3f4f6/9ca3af?text=No+Image';
-  }
-
-  // Your backend serves from: app.use('/uploads', express.static(path.join(__dirname, 'src/uploads')));
-  // Your database has: "/uploads/product/filename.jpg"
-  // So the URL should be: "https://bogat.onrender.com/uploads/product/filename.jpg"
-  
-  if (imageUrl.startsWith('/uploads')) {
-    return `https://bogat.onrender.com${imageUrl}`;
-  }
-
-  // If it's already a full URL, use as is
-  if (imageUrl.startsWith('http')) {
-    return imageUrl;
-  }
-
-  // Default fallback
-  return `https://bogat.onrender.com/uploads/product/${imageUrl}`;
-};
-
-// Enhanced debugging with file system check
-const debugProducts = () => {
-  console.log('=== PRODUCTS & IMAGES DEBUG ===');
-  products.slice(0, 3).forEach((product, index) => {
-    const processedUrl = getProductImage(product);
-    console.log(`Product ${index + 1}:`, {
-      name: product.name,
-      'images array': product.images,
-      'images length': product.images?.length,
-      'first image from array': product.images?.[0],
-      'single image field': product.image,
-      'final processed URL': processedUrl
-    });
-    
-    // Test if the URL actually works
-    console.log(`Testing URL for ${product.name}:`, processedUrl);
-    testImageUrl(processedUrl);
-  });
-  console.log('=== END DEBUG ===');
-};
-
-// Test function to check if images load
-const memoizedGetProductImage = React.useMemo(() => {
-  const cache = new Map();
-  return (product) => {
-    const productId = product?._id || product?.id;
-    if (!productId) return getProductImage(product);
-    
-    if (cache.has(productId)) {
-      return cache.get(productId);
+  const getProductImage = (product) => {
+    if (!product) {
+      return 'https://via.placeholder.com/300x200/f3f4f6/9ca3af?text=No+Product';
     }
+
+    let imageUrl = null;
+
+    // First try the images array
+    if (product.images && Array.isArray(product.images) && product.images.length > 0) {
+      imageUrl = product.images[0];
+    } 
+    // Fallback to the single image field
+    else if (product.image) {
+      imageUrl = product.image;
+    }
+
+    // If no image found, return placeholder
+    if (!imageUrl) {
+      return 'https://via.placeholder.com/300x200/f3f4f6/9ca3af?text=No+Image';
+    }
+
+    // Your backend serves from: app.use('/uploads', express.static(path.join(__dirname, 'src/uploads')));
+    // Your database has: "/uploads/product/filename.jpg"
+    // So the URL should be: "https://bogat.onrender.com/uploads/product/filename.jpg"
     
-    const result = getProductImage(product);
-    cache.set(productId, result);
-    return result;
+    if (imageUrl.startsWith('/uploads')) {
+      return `https://bogat.onrender.com${imageUrl}`;
+    }
+
+    // If it's already a full URL, use as is
+    if (imageUrl.startsWith('http')) {
+      return imageUrl;
+    }
+
+    // Default fallback
+    return `https://bogat.onrender.com/uploads/product/${imageUrl}`;
   };
-}, []);
+
+  // Enhanced debugging with file system check
+  const debugProducts = () => {
+    console.log('=== PRODUCTS & IMAGES DEBUG ===');
+    products.slice(0, 3).forEach((product, index) => {
+      const processedUrl = getProductImage(product);
+      console.log(`Product ${index + 1}:`, {
+        name: product.name,
+        'images array': product.images,
+        'images length': product.images?.length,
+        'first image from array': product.images?.[0],
+        'single image field': product.image,
+        'final processed URL': processedUrl
+      });
+      
+      // Test if the URL actually works
+      console.log(`Testing URL for ${product.name}:`, processedUrl);
+    });
+    console.log('=== END DEBUG ===');
+  };
+
+  // Memoized function to cache product images
+  const memoizedGetProductImage = React.useMemo(() => {
+    const cache = new Map();
+    return (product) => {
+      const productId = product?._id || product?.id;
+      if (!productId) return getProductImage(product);
+      
+      if (cache.has(productId)) {
+        return cache.get(productId);
+      }
+      
+      const result = getProductImage(product);
+      cache.set(productId, result);
+      return result;
+    };
+  }, []);
 
   useEffect(() => {
     document.documentElement.style.scrollBehavior = 'smooth';
@@ -280,10 +277,9 @@ const memoizedGetProductImage = React.useMemo(() => {
     navigate('/login');
   };
 
-  // Navigate to product detail page (for card click)
+  // Navigate to product detail page (for card click) - Updated with authentication check
   const navigateToProduct = (productId) => {
     console.log('🔄 Card clicked - Navigating to product:', productId);
-    console.log('🔄 URL will be:', `/products/${productId}`);
     
     if (!productId) {
       console.error('❌ Product ID is missing!');
@@ -291,6 +287,15 @@ const memoizedGetProductImage = React.useMemo(() => {
       return;
     }
     
+    // Check if user is authenticated before allowing product navigation
+    if (!isAuthenticated) {
+      console.log('🔒 User not authenticated, redirecting to login');
+      toast.error('Please login to view product details');
+      navigate('/login');
+      return;
+    }
+    
+    console.log('🔄 URL will be:', `/products/${productId}`);
     navigate(`/products/${productId}`);
     console.log('✅ Card navigation triggered');
   };
@@ -422,7 +427,9 @@ const memoizedGetProductImage = React.useMemo(() => {
                     <div className="bg-white/90 backdrop-blur-sm rounded-full px-4 py-2 transform translate-y-4 group-hover:translate-y-0 transition-transform duration-300">
                       <div className="flex items-center space-x-2 text-amber-700 font-medium">
                         <Eye className="w-4 h-4" />
-                        <span className="text-sm">View Details</span>
+                        <span className="text-sm">
+                          {!isAuthenticated ? 'Login to View' : 'View Details'}
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -519,11 +526,15 @@ const memoizedGetProductImage = React.useMemo(() => {
                       </button>
                     ) : !isAuthenticated ? (
                       <button 
-                        onClick={(e) => handleViewProduct(e, product)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toast.error('Please login to view product details');
+                          navigate('/login');
+                        }}
                         className="bg-gradient-to-r from-blue-500 to-blue-600 text-white px-4 py-2 rounded-xl hover:from-blue-600 hover:to-blue-700 transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl flex items-center group/btn font-medium text-sm whitespace-nowrap"
                       >
-                        <Eye className="w-4 h-4 mr-1" />
-                        View Product
+                        <Lock className="w-4 h-4 mr-1" />
+                        Login to View
                       </button>
                     ) : (
                       <button 

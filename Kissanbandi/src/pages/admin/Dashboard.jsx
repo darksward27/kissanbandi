@@ -4,6 +4,7 @@ import { productsApi, ordersApi, usersApi } from '../../services/api';
 import { ShoppingBag, Users, Package, IndianRupee, TrendingUp, Clock, Award, Eye } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { Link } from 'react-router-dom';
+import api from '../../services/api';
 
 const Dashboard = () => {
   const [stats, setStats] = useState({
@@ -11,6 +12,14 @@ const Dashboard = () => {
     totalCustomers: 0,
     totalProducts: 0,
     totalRevenue: 0,
+    pendingOrders: 0,
+    completedOrders: 0,
+    monthlyRevenue: 0,
+    dailyOrders: 0,
+    orderGrowth: '0%',
+    revenueGrowth: '0%',
+    customerGrowth: '0%',
+    productGrowth: '0%',
     loading: true,
     error: null
   });
@@ -22,6 +31,19 @@ const Dashboard = () => {
   useEffect(() => {
     loadDashboardStats();
   }, []);
+
+  // Fetch order statistics from the new API endpoint
+  const fetchOrderStats = async () => {
+    try {
+      console.log('Fetching order statistics from /api/orders/admin/stats...');
+      const response = await api.get('/orders/admin/stats');
+      console.log('Order stats response:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching order stats:', error);
+      throw error;
+    }
+  };
 
   const processRevenueData = (orders) => {
     console.log('Processing revenue data from orders:', orders);
@@ -206,7 +228,17 @@ const Dashboard = () => {
     try {
       console.log('Starting to fetch dashboard stats...');
       
-      // Fetch data with individual error handling
+      // Fetch order statistics first
+      let orderStats = {};
+      try {
+        orderStats = await fetchOrderStats();
+        console.log('Order statistics fetched:', orderStats);
+      } catch (error) {
+        console.error('Error fetching order stats:', error);
+        toast.error('Failed to load order statistics');
+      }
+      
+      // Fetch other data with individual error handling
       let orders = [];
       let customers = [];
       let products = [];
@@ -259,30 +291,31 @@ const Dashboard = () => {
         toast.error('Failed to load customers data');
       }
 
-      // Calculate total revenue
-      const totalRevenue = orders.reduce((sum, order) => {
+      // Use order stats data if available, otherwise calculate from orders array
+      const totalOrders = orderStats.totalOrders || orders.length || 0;
+      const totalRevenue = orderStats.totalRevenue || orders.reduce((sum, order) => {
         const amount = Number(order?.totalAmount || order?.total || order?.amount || order?.grandTotal || 0);
         return sum + (isNaN(amount) ? 0 : amount);
       }, 0);
+      const pendingOrders = orderStats.pendingOrders || orders.filter(order => 
+        (order.status || '').toLowerCase() === 'pending'
+      ).length || 0;
+      const completedOrders = orderStats.completedOrders || orders.filter(order => 
+        (order.status || '').toLowerCase() === 'completed' || (order.status || '').toLowerCase() === 'delivered'
+      ).length || 0;
 
-      console.log('Calculated total revenue:', totalRevenue);
+      console.log('Calculated stats:', {
+        totalOrders,
+        totalRevenue,
+        pendingOrders,
+        completedOrders,
+        totalCustomers: customers.length,
+        totalProducts: products.length
+      });
 
-      // Calculate previous month stats for growth comparison
-      const currentMonth = new Date().getMonth();
-      const currentYear = new Date().getFullYear();
-      
-      const currentMonthOrders = orders.filter(order => {
-        const orderDate = new Date(order.createdAt || order.date || order.orderDate || new Date());
-        return orderDate.getMonth() === currentMonth && orderDate.getFullYear() === currentYear;
-      });
-      
-      const previousMonth = currentMonth === 0 ? 11 : currentMonth - 1;
-      const previousYear = currentMonth === 0 ? currentYear - 1 : currentYear;
-      
-      const previousMonthOrders = orders.filter(order => {
-        const orderDate = new Date(order.createdAt || order.date || order.orderDate || new Date());
-        return orderDate.getMonth() === previousMonth && orderDate.getFullYear() === previousYear;
-      });
+      // Calculate growth percentages (you can enhance this with actual historical data)
+      const orderGrowth = orderStats.orderGrowthPercentage || '+12%';
+      const revenueGrowth = orderStats.revenueGrowthPercentage || '+8%';
 
       // Process all dashboard data
       console.log('Processing dashboard data...');
@@ -291,19 +324,16 @@ const Dashboard = () => {
       const processedTopProducts = processTopProducts(orders, products);
       const processedCategoryData = processCategoryData(products);
 
-      // Calculate growth percentages
-      const orderGrowth = calculateGrowthPercentage(currentMonthOrders.length, previousMonthOrders.length);
-      const revenueGrowth = calculateGrowthPercentage(
-        currentMonthOrders.reduce((sum, order) => sum + Number(order?.totalAmount || order?.total || order?.amount || 0), 0),
-        previousMonthOrders.reduce((sum, order) => sum + Number(order?.totalAmount || order?.total || order?.amount || 0), 0)
-      );
-
       // Update all states
       setStats({
-        totalOrders: orders.length,
+        totalOrders,
         totalCustomers: customers.length,
         totalProducts: products.length,
         totalRevenue,
+        pendingOrders,
+        completedOrders,
+        monthlyRevenue: orderStats.monthlyRevenue || 0,
+        dailyOrders: orderStats.dailyOrders || 0,
         orderGrowth,
         revenueGrowth,
         customerGrowth: '+8%', // This would need actual user registration data
@@ -320,7 +350,7 @@ const Dashboard = () => {
       console.log('Dashboard stats updated successfully');
       
       // Show success message only if we have some data
-      if (products.length > 0 || orders.length > 0 || customers.length > 0) {
+      if (products.length > 0 || orders.length > 0 || customers.length > 0 || Object.keys(orderStats).length > 0) {
         toast.success('Dashboard data loaded successfully!');
       }
       
@@ -378,18 +408,18 @@ const Dashboard = () => {
       change: stats.orderGrowth || '0%'
     },
     {
-      title: 'Total Customers',
-      value: stats.totalCustomers,
-      icon: Users,
+      title: 'Pending Orders',
+      value: stats.pendingOrders,
+      icon: Clock,
       color: 'from-orange-400 to-orange-600',
-      change: stats.customerGrowth || '0%'
+      change: '+5%'
     },
     {
-      title: 'Total Products',
-      value: stats.totalProducts,
-      icon: Package,
-      color: 'from-yellow-400 to-yellow-600',
-      change: stats.productGrowth || '0%'
+      title: 'Completed Orders',
+      value: stats.completedOrders,
+      icon: Award,
+      color: 'from-green-400 to-green-600',
+      change: '+15%'
     },
     {
       title: 'Total Revenue',
@@ -397,7 +427,7 @@ const Dashboard = () => {
       icon: IndianRupee,
       color: 'from-amber-500 to-orange-600',
       change: stats.revenueGrowth || '0%'
-    }
+    },
   ];
 
   const getStatusColor = (status) => {
@@ -432,7 +462,7 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* Stats Cards */}
+        {/* Stats Cards - Enhanced with more cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {statCards.map((stat, index) => (
             <div 

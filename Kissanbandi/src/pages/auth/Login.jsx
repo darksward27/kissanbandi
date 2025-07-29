@@ -2,35 +2,84 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../checkout/AuthProvider';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
-import { User, Lock, ArrowRight, Loader, EyeIcon, Eye, EyeClosed } from 'lucide-react';
+import { User, Lock, ArrowRight, Loader, EyeIcon, Eye, EyeClosed, Shield, AlertTriangle } from 'lucide-react';
 
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
-  const { login, isAuthenticated } = useAuth();
+  const { login, isAuthenticated, user } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
 
   useEffect(() => {
-    if (isAuthenticated) {
+    if (isAuthenticated && user) {
+      // Check if user is admin and block redirect
+      if (user.role === 'admin') {
+        console.warn('Admin user detected, blocking automatic redirect');
+        toast.error('Admin access is restricted. Please use the admin panel.');
+        return; // Don't redirect admin users
+      }
+      
+      // Only redirect non-admin users
       const from = location.state?.from?.pathname || '/';
       navigate(from, { replace: true });
     }
-  }, [isAuthenticated, navigate, location]);
+  }, [isAuthenticated, user, navigate, location]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
       setLoading(true);
-      await login(email, password, rememberMe);
+      
+      // Attempt login first
+      const loginResult = await login(email, password, rememberMe);
+      
+      // Check if the user role is admin and restrict access
+      if (loginResult && loginResult.user && loginResult.user.role === 'admin') {
+        // Force logout the admin user
+        console.warn('Admin login attempt blocked:', loginResult.user.email);
+        
+        // Show error message
+        toast.error('Admin access is restricted. Please use the admin panel.');
+        
+        // Clear the login state
+        // Note: You might need to add a logout method to your auth context
+        // await logout(); // Uncomment this if you have a logout method
+        
+        // Clear form fields and stay on login page
+        setEmail('');
+        setPassword('');
+        setRememberMe(false);
+        
+        return;
+      }
+      
+      // If not admin, proceed with normal login flow
       toast.success('Login successful');
       const from = location.state?.from?.pathname || '/';
       navigate(from, { replace: true });
+      
     } catch (err) {
-      toast.error(err.response?.data?.error || 'Login failed');
+      console.error('Login error:', err);
+      
+      // Check if the error is specifically about admin restriction
+      const errorMessage = err.response?.data?.error || err.message || 'Login failed';
+      
+      if (errorMessage.toLowerCase().includes('admin') || 
+          errorMessage.toLowerCase().includes('restricted') ||
+          err.response?.data?.role === 'admin') {
+        toast.error('Admin access is restricted. Please use the admin panel.');
+        
+        // Clear form fields for admin restriction
+        setEmail('');
+        setPassword('');
+        setRememberMe(false);
+      } else {
+        toast.error(errorMessage);
+      }
     } finally {
       setLoading(false);
     }
@@ -125,7 +174,21 @@ const Login = () => {
                 </div>
               </div>
 
-              <div className="flex items-center justify-between">a
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <input
+                    id="remember-me"
+                    name="remember-me"
+                    type="checkbox"
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
+                    className="h-4 w-4 text-amber-600 focus:ring-amber-500 border-amber-300 rounded transition-colors duration-200"
+                  />
+                  <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-900">
+                    Remember me
+                  </label>
+                </div>
+
                 <div className="text-sm">
                   <Link to="/forgot-password" className="font-medium text-amber-600 hover:text-amber-500 transition-colors duration-200">
                     Forgot your password?

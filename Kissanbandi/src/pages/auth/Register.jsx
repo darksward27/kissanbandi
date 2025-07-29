@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
-import { User, Mail, Lock, Phone, MapPin, CreditCard, Building2, ArrowLeft, Loader, ChevronDown } from 'lucide-react';
+import { User, Mail, Lock, Phone, MapPin, CreditCard, Building2, ArrowLeft, Loader, ChevronDown, Home } from 'lucide-react';
 import api from '../../services/api';
 import { Eye, EyeOff } from 'lucide-react';
 
@@ -39,9 +39,73 @@ const Register = () => {
   const [isBusinessAccount, setIsBusinessAccount] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [validationErrors, setValidationErrors] = useState({});
+  const [passwordStrength, setPasswordStrength] = useState('');
   
+  const getPasswordStrength = (password) => {
+    if (!password) {
+      return { strength: '', message: '', color: '' };
+    }
+
+    let score = 0;
+    let message = '';
+    let color = '';
+
+    // Length check
+    if (password.length >= 8) score += 1;
+    
+    // Lowercase check
+    if (/[a-z]/.test(password)) score += 1;
+    
+    // Uppercase check
+    if (/[A-Z]/.test(password)) score += 1;
+    
+    // Number check
+    if (/\d/.test(password)) score += 1;
+    
+    // Special character check
+    if (/[@$!%*?&]/.test(password)) score += 1;
+
+    switch (score) {
+      case 0:
+      case 1:
+        message = 'Very Weak - Add more characters';
+        color = 'text-red-600';
+        break;
+      case 2:
+        message = 'Weak - Add uppercase, numbers, and special characters';
+        color = 'text-red-500';
+        break;
+      case 3:
+        message = 'Fair - Add more character types';
+        color = 'text-yellow-600';
+        break;
+      case 4:
+        message = 'Good - Consider adding more special characters';
+        color = 'text-yellow-500';
+        break;
+      case 5:
+        message = 'Strong - Password meets all requirements';
+        color = 'text-green-600';
+        break;
+      default:
+        message = '';
+        color = '';
+    }
+
+    return { strength: score, message, color };
+  };
+
   const handleChange = (e) => {
     const { name, value } = e.target;
+    
+    // Clear validation error when user starts typing
+    if (validationErrors[name]) {
+      setValidationErrors(prev => ({
+        ...prev,
+        [name]: false
+      }));
+    }
     
     // Special handling for name field - only allow letters and spaces
     if (name === 'name') {
@@ -73,8 +137,28 @@ const Register = () => {
       return;
     }
     
+    // Special handling for password field - update strength indicator
+    if (name === 'password') {
+      const strength = getPasswordStrength(value);
+      setPasswordStrength(strength);
+      setFormData(prev => ({
+        ...prev,
+        [name]: value
+      }));
+      return;
+    }
+    
     if (name.includes('.')) {
       const [parent, child] = name.split('.');
+      
+      // Clear nested validation errors
+      if (validationErrors[name]) {
+        setValidationErrors(prev => ({
+          ...prev,
+          [name]: false
+        }));
+      }
+      
       setFormData(prev => ({
         ...prev,
         [parent]: {
@@ -90,46 +174,125 @@ const Register = () => {
     }
   };
 
+  const validateRequiredFields = () => {
+    const errors = {};
+    
+    // Required fields validation
+    if (!formData.name.trim()) errors.name = true;
+    if (!formData.email.trim()) errors.email = true;
+    if (!formData.password.trim()) errors.password = true;
+    if (!formData.confirmPassword.trim()) errors.confirmPassword = true;
+    if (!formData.phone.trim()) errors.phone = true;
+    if (!formData.address.locality.trim()) errors['address.locality'] = true;
+    if (!formData.address.city.trim()) errors['address.city'] = true;
+    if (!formData.address.state.trim()) errors['address.state'] = true;
+    if (!formData.address.pincode.trim()) errors['address.pincode'] = true;
+    
+    // Business account GST validation
+    if (isBusinessAccount && !formData.gst.trim()) {
+      errors.gst = true;
+    }
+    
+    setValidationErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
   const validateForm = () => {
+    if (!validateRequiredFields()) {
+      toast.error('Please fill in all required fields');
+      return false;
+    }
+
     if (formData.password !== formData.confirmPassword) {
       toast.error('Passwords do not match');
+      setValidationErrors(prev => ({
+        ...prev,
+        password: true,
+        confirmPassword: true
+      }));
       return false;
     }
 
     const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
     if (!passwordRegex.test(formData.password)) {
       toast.error('Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character');
+      setValidationErrors(prev => ({
+        ...prev,
+        password: true
+      }));
       return false;
     }
 
     const phoneRegex = /^(\+91[\-\s]?)?[0]?(91)?[6789]\d{9}$/;
     if (!phoneRegex.test(formData.phone)) {
       toast.error('Please provide a valid Indian phone number');
+      setValidationErrors(prev => ({
+        ...prev,
+        phone: true
+      }));
       return false;
     }
 
     if (formData.alternatePhone && !phoneRegex.test(formData.alternatePhone)) {
       toast.error('Please provide a valid Indian alternate phone number');
+      setValidationErrors(prev => ({
+        ...prev,
+        alternatePhone: true
+      }));
       return false;
     }
 
     if (isBusinessAccount && !formData.gst) {
       toast.error('GST number is required for business accounts');
+      setValidationErrors(prev => ({
+        ...prev,
+        gst: true
+      }));
       return false;
     }
 
     if (formData.gst && !/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/.test(formData.gst)) {
       toast.error('Please provide a valid GST number');
+      setValidationErrors(prev => ({
+        ...prev,
+        gst: true
+      }));
       return false;
     }
 
     const pincodeRegex = /^\d{6}$/;
     if (formData.address.pincode && !pincodeRegex.test(formData.address.pincode)) {
       toast.error('Please provide a valid 6-digit pincode');
+      setValidationErrors(prev => ({
+        ...prev,
+        'address.pincode': true
+      }));
       return false;
     }
 
     return true;
+  };
+
+  const getInputClasses = (fieldName, isRequired = false) => {
+    const baseClasses = "appearance-none block w-full px-3 py-2 border rounded-md shadow-sm placeholder-gray-400 focus:outline-none sm:text-sm transition-colors duration-200";
+    const hasError = validationErrors[fieldName];
+    
+    if (hasError) {
+      return `${baseClasses} border-red-500 focus:ring-red-500 focus:border-red-500 bg-red-50`;
+    }
+    
+    return `${baseClasses} border-amber-200 focus:ring-amber-500 focus:border-amber-500 hover:border-amber-300`;
+  };
+
+  const getSelectClasses = (fieldName) => {
+    const baseClasses = "appearance-none block w-full px-3 py-2 pr-10 border rounded-md shadow-sm bg-white text-gray-900 focus:outline-none sm:text-sm transition-colors duration-200";
+    const hasError = validationErrors[fieldName];
+    
+    if (hasError) {
+      return `${baseClasses} border-red-500 focus:ring-red-500 focus:border-red-500 bg-red-50`;
+    }
+    
+    return `${baseClasses} border-amber-200 focus:ring-amber-500 focus:border-amber-500 hover:border-amber-300`;
   };
 
   const handleSubmit = async (e) => {
@@ -213,6 +376,10 @@ const Register = () => {
       if (err.response?.status === 400 && err.response?.data?.error?.includes('already registered')) {
         console.log('🔄 User already exists');
         toast.error('Email already registered. Please login or use a different email.');
+        setValidationErrors(prev => ({
+          ...prev,
+          email: true
+        }));
         setTimeout(() => {
           navigate('/login');
         }, 2000);
@@ -316,12 +483,25 @@ const Register = () => {
                 <ArrowLeft className="mr-1 h-4 w-4" /> Sign in here
               </Link>
             </p>
+            
+            {/* Home Button */}
+            <div className="mt-4 text-center">
+              <Link 
+                to="/" 
+                className="inline-flex items-center px-4 py-2 text-sm font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-lg hover:bg-amber-100 hover:text-amber-800 transition-all duration-200 shadow-sm hover:shadow-md"
+              >
+                <Home className="w-4 h-4 mr-2" />
+                Back to Home
+              </Link>
+            </div>
           </div>
 
           <div className="bg-white p-6 rounded-xl shadow-lg border border-amber-200">
             {/* Account Type Selection */}
             <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Account Type</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Account Type <span className="text-red-500">*</span>
+              </label>
               <div className="grid grid-cols-2 gap-4">
                 <button
                   type="button"
@@ -355,7 +535,7 @@ const Register = () => {
               <div className="space-y-4">
                 <div>
                   <label htmlFor="name" className="block text-sm font-medium text-gray-700">
-                    Full Name
+                    Full Name <span className="text-red-500">*</span>
                   </label>
                   <div className="mt-1 relative">
                     <input
@@ -363,19 +543,24 @@ const Register = () => {
                       name="name"
                       type="text"
                       required
-                      className="appearance-none block w-full px-3 py-2 border border-amber-200 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-amber-500 focus:border-amber-500 sm:text-sm hover:border-amber-300 transition-colors duration-200"
+                      className={getInputClasses('name', true)}
                       placeholder="Enter your full name"
                       value={formData.name}
                       onChange={handleChange}
                       pattern="^[a-zA-Z\s]+$"
                       title="Name can only contain letters and spaces"
                     />
+                    {validationErrors.name && (
+                      <div className="absolute inset-y-0 right-0 flex items-center pr-3">
+                        <span className="text-red-500 text-sm">!</span>
+                      </div>
+                    )}
                   </div>
                 </div>
 
                 <div>
                   <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                    Email address
+                    Email address <span className="text-red-500">*</span>
                   </label>
                   <div className="mt-1 relative">
                     <input
@@ -383,20 +568,25 @@ const Register = () => {
                       name="email"
                       type="email"
                       required
-                      className="appearance-none block w-full px-3 py-2 border border-amber-200 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-amber-500 focus:border-amber-500 sm:text-sm hover:border-amber-300 transition-colors duration-200"
+                      className={getInputClasses('email', true)}
                       placeholder="Enter your email address"
                       value={formData.email}
                       onChange={handleChange}
                       pattern="^[a-zA-Z][a-zA-Z0-9._-]*@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
                       title="Email must start with a letter and be in valid format"
                     />
+                    {validationErrors.email && (
+                      <div className="absolute inset-y-0 right-0 flex items-center pr-3">
+                        <span className="text-red-500 text-sm">!</span>
+                      </div>
+                    )}
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                      Password
+                      Password <span className="text-red-500">*</span>
                     </label>
                     <div className="relative mt-1">
                       <input
@@ -404,7 +594,7 @@ const Register = () => {
                         name="password"
                         type={showPassword ? "text" : "password"}
                         required
-                        className="appearance-none block w-full px-3 py-2 pr-10 border border-amber-200 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-amber-500 focus:border-amber-500 sm:text-sm hover:border-amber-300 transition-colors duration-200"
+                        className={`${getInputClasses('password', true)} pr-10`}
                         placeholder="Enter your password"
                         value={formData.password}
                         onChange={handleChange}
@@ -416,11 +606,16 @@ const Register = () => {
                       >
                         {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                       </button>
+                      {validationErrors.password && (
+                        <div className="absolute inset-y-0 right-8 flex items-center pr-3">
+                          <span className="text-red-500 text-sm">!</span>
+                        </div>
+                      )}
                     </div>
                   </div>
                   <div>
                     <label htmlFor="confirm-password" className="block text-sm font-medium text-gray-700">
-                      Confirm Password
+                      Confirm Password <span className="text-red-500">*</span>
                     </label>
                     <div className="relative mt-1">
                       <input
@@ -428,7 +623,7 @@ const Register = () => {
                         name="confirmPassword"
                         type={showConfirmPassword ? "text" : "password"}
                         required
-                        className="appearance-none block w-full px-3 py-2 pr-10 border border-amber-200 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-amber-500 focus:border-amber-500 sm:text-sm hover:border-amber-300 transition-colors duration-200"
+                        className={`${getInputClasses('confirmPassword', true)} pr-10`}
                         placeholder="Confirm your password"
                         value={formData.confirmPassword}
                         onChange={handleChange}
@@ -440,6 +635,11 @@ const Register = () => {
                       >
                         {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                       </button>
+                      {validationErrors.confirmPassword && (
+                        <div className="absolute inset-y-0 right-8 flex items-center pr-3">
+                          <span className="text-red-500 text-sm">!</span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -451,39 +651,51 @@ const Register = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label htmlFor="phone" className="block text-sm font-medium text-gray-700">
-                      Phone Number
+                      Phone Number <span className="text-red-500">*</span>
                     </label>
-                    <div className="mt-1">
+                    <div className="mt-1 relative">
                       <input
                         id="phone"
                         name="phone"
                         type="tel"
+                        maxLength={10}
                         required
-                        className="appearance-none block w-full px-3 py-2 border border-amber-200 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-amber-500 focus:border-amber-500 sm:text-sm hover:border-amber-300 transition-colors duration-200"
+                        className={getInputClasses('phone', true)}
                         placeholder="Enter your phone number"
                         value={formData.phone}
                         onChange={handleChange}
                         pattern="^[0-9+\-\s]+$"
                         title="Phone number can only contain numbers, +, -, and spaces"
                       />
+                      {validationErrors.phone && (
+                        <div className="absolute inset-y-0 right-0 flex items-center pr-3">
+                          <span className="text-red-500 text-sm">!</span>
+                        </div>
+                      )}
                     </div>
                   </div>
                   <div>
                     <label htmlFor="alternate-phone" className="block text-sm font-medium text-gray-700">
                       Alternate Phone (Optional)
                     </label>
-                    <div className="mt-1">
+                    <div className="mt-1 relative">
                       <input
                         id="alternate-phone"
                         name="alternatePhone"
                         type="tel"
-                        className="appearance-none block w-full px-3 py-2 border border-amber-200 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-amber-500 focus:border-amber-500 sm:text-sm hover:border-amber-300 transition-colors duration-200"
+                        maxLength={10}
+                        className={getInputClasses('alternatePhone')}
                         placeholder="Enter your alternate phone number"
                         value={formData.alternatePhone}
                         onChange={handleChange}
                         pattern="^[0-9+\-\s]+$"
                         title="Phone number can only contain numbers, +, -, and spaces"
                       />
+                      {validationErrors.alternatePhone && (
+                        <div className="absolute inset-y-0 right-0 flex items-center pr-3">
+                          <span className="text-red-500 text-sm">!</span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -495,19 +707,24 @@ const Register = () => {
                 {isBusinessAccount && (
                   <div>
                     <label htmlFor="gst" className="block text-sm font-medium text-gray-700">
-                      GST Number
+                      GST Number <span className="text-red-500">*</span>
                     </label>
-                    <div className="mt-1">
+                    <div className="mt-1 relative">
                       <input
                         id="gst"
                         name="gst"
                         type="text"
                         required={isBusinessAccount}
-                        className="appearance-none block w-full px-3 py-2 border border-amber-200 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-amber-500 focus:border-amber-500 sm:text-sm hover:border-amber-300 transition-colors duration-200"
+                        className={getInputClasses('gst', isBusinessAccount)}
                         placeholder="Enter your GST number"
                         value={formData.gst}
                         onChange={handleChange}
                       />
+                      {validationErrors.gst && (
+                        <div className="absolute inset-y-0 right-0 flex items-center pr-3">
+                          <span className="text-red-500 text-sm">!</span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
@@ -526,7 +743,7 @@ const Register = () => {
                         id="street"
                         name="address.street"
                         type="text"
-                        className="appearance-none block w-full px-3 py-2 border border-amber-200 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-amber-500 focus:border-amber-500 sm:text-sm hover:border-amber-300 transition-colors duration-200"
+                        className={getInputClasses('address.street')}
                         placeholder="Enter your street address"
                         value={formData.address.street}
                         onChange={handleChange}
@@ -536,73 +753,90 @@ const Register = () => {
 
                   <div>
                     <label htmlFor="locality" className="block text-sm font-medium text-gray-700">
-                      Locality/Area
+                      Locality/Area <span className="text-red-500">*</span>
                     </label>
-                    <div className="mt-1">
+                    <div className="mt-1 relative">
                       <input
                         id="locality"
                         name="address.locality"
                         type="text"
-                        className="appearance-none block w-full px-3 py-2 border border-amber-200 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-amber-500 focus:border-amber-500 sm:text-sm hover:border-amber-300 transition-colors duration-200"
+                        className={getInputClasses('address.locality', true)}
                         placeholder="Enter your locality or area"
                         value={formData.address.locality}
                         onChange={handleChange}
                         required
                       />
+                      {validationErrors['address.locality'] && (
+                        <div className="absolute inset-y-0 right-0 flex items-center pr-3">
+                          <span className="text-red-500 text-sm">!</span>
+                        </div>
+                      )}
                     </div>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label htmlFor="city" className="block text-sm font-medium text-gray-700">
-                        City
+                        City <span className="text-red-500">*</span>
                       </label>
-                      <div className="mt-1">
+                      <div className="mt-1 relative">
                         <input
                           id="city"
                           name="address.city"
                           type="text"
-                          className="appearance-none block w-full px-3 py-2 border border-amber-200 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-amber-500 focus:border-amber-500 sm:text-sm hover:border-amber-300 transition-colors duration-200"
+                          className={getInputClasses('address.city', true)}
                           placeholder="Enter your city"
                           value={formData.address.city}
                           onChange={handleChange}
                           required
                         />
+                        {validationErrors['address.city'] && (
+                          <div className="absolute inset-y-0 right-0 flex items-center pr-3">
+                            <span className="text-red-500 text-sm">!</span>
+                          </div>
+                        )}
                       </div>
                     </div>
 
                     <div>
                       <label htmlFor="pincode" className="block text-sm font-medium text-gray-700">
-                        Pincode
+                        Pincode <span className="text-red-500">*</span>
                       </label>
-                      <div className="mt-1">
-                        <input
-                          id="pincode"
-                          name="address.pincode"
-                          type="text"
-                          className="appearance-none block w-full px-3 py-2 border border-amber-200 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-amber-500 focus:border-amber-500 sm:text-sm hover:border-amber-300 transition-colors duration-200"
-                          placeholder="Enter your pincode"
-                          value={formData.address.pincode}
-                          onChange={handleChange}
-                          pattern="^\d{6}$"
-                          title="Please enter a valid 6-digit pincode"
-                          required
-                        />
+                      <div className="mt-1 relative">
+                       <input
+  type="text"
+  id="pincode"
+  value={formData.pincode}
+  onChange={(e) => {
+    const value = e.target.value.replace(/[^0-9]/g, ''); // Allow only digits
+    setFormData((prev) => ({ ...prev, pincode: value }));
+  }}
+  maxLength={6} // Optional: limit to 6 digits (standard for Indian PIN codes)
+  required
+  className={getInputClasses('pincode')}
+  placeholder="Enter Pincode (Only Numbers)"
+/>
+                        {validationErrors['address.pincode'] && (
+                          <div className="absolute inset-y-0 right-0 flex items-center pr-3">
+                            <span className="text-red-500 text-sm">!</span>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
 
                   <div>
                     <label htmlFor="state" className="block text-sm font-medium text-gray-700">
-                      State
+                      State <span className="text-red-500">*</span>
                     </label>
                     <div className="mt-1 relative">
                       <select
                         id="state"
                         name="address.state"
-                        className="appearance-none block w-full px-3 py-2 pr-10 border border-amber-200 rounded-md shadow-sm bg-white text-gray-900 focus:outline-none focus:ring-amber-500 focus:border-amber-500 sm:text-sm hover:border-amber-300 transition-colors duration-200"
+                        className={getSelectClasses('address.state')}
                         value={formData.address.state}
                         onChange={handleChange}
+                        required
                       >
                         <option value="" className="text-gray-400">Select your state</option>
                         {INDIAN_STATES.map(state => (
@@ -612,6 +846,11 @@ const Register = () => {
                       <div className="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none">
                         <ChevronDown className="h-4 w-4 text-amber-600" />
                       </div>
+                      {validationErrors['address.state'] && (
+                        <div className="absolute inset-y-0 right-8 flex items-center pr-3">
+                          <span className="text-red-500 text-sm">!</span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
