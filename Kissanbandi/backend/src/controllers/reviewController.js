@@ -833,7 +833,7 @@ exports.getVerifiedProductReviews = async (req, res) => {
           } else {
             // For local storage, ensure proper path
             if (imageUrl.startsWith('/uploads')) {
-              const localUrl = `${process.env.BASE_URL || 'http://localhost:5000'}${imageUrl}`;
+              const localUrl = `${process.env.BASE_URL || 'https://bogat.onrender.com'}${imageUrl}`;
               console.log(`📁 Local URL ${index + 1}:`, localUrl);
               return localUrl;
             } else {

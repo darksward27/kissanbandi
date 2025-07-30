@@ -27,7 +27,7 @@ const BlogsPage = () => {
   const navigate = useNavigate();
 
   // API Base URL
-  const API_BASE_URL = 'http://localhost:5000/api';
+  const API_BASE_URL = 'https://bogat.onrender.com/api';
 
   // Fetch published blogs
   useEffect(() => {
@@ -74,20 +74,20 @@ const BlogsPage = () => {
     // If it's a local file path with full system path, extract filename
     if (imagePath.includes('uploads/blog/') || imagePath.includes('uploads\\blog\\')) {
       const filename = imagePath.split(/[/\\]/).pop(); // Handle both / and \ separators
-      const imageUrl = `http://localhost:5000/uploads/blog/${filename}`;
+      const imageUrl = `https://bogat.onrender.com/uploads/blog/${filename}`;
       console.log('Converted image URL:', imageUrl); // Debug log
       return imageUrl;
     }
     
     // If it's just a filename, construct full URL
     if (!imagePath.includes('/') && !imagePath.includes('\\')) {
-      const imageUrl = `http://localhost:5000/uploads/blog/${imagePath}`;
+      const imageUrl = `https://bogat.onrender.com/uploads/blog/${imagePath}`;
       console.log('Filename to URL:', imageUrl); // Debug log
       return imageUrl;
     }
     
     // Default case - assume it's a relative path
-    const imageUrl = `http://localhost:5000/${imagePath}`;
+    const imageUrl = `https://bogat.onrender.com/${imagePath}`;
     console.log('Default case URL:', imageUrl); // Debug log
     return imageUrl;
   };
