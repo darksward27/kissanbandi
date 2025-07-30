@@ -321,8 +321,8 @@ const Register = () => {
           <div className="bg-white p-6 rounded-xl shadow-lg border border-amber-200">
             {/* Account Type Selection */}
             <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Account Type</label>
-              <div className="grid grid-cols-2 gap-4">
+              
+              <div className="grid grid-cols-1 gap-4">
                 <button
                   type="button"
                   onClick={() => setIsBusinessAccount(false)}
@@ -334,18 +334,6 @@ const Register = () => {
                 >
                   <User className="h-6 w-6 mx-auto mb-2" />
                   <span className="block font-medium">Individual</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setIsBusinessAccount(true)}
-                  className={`p-4 text-center rounded-lg border transition-all duration-200 ${
-                    isBusinessAccount
-                      ? 'border-amber-500 bg-amber-50 text-amber-700 shadow-md'
-                      : 'border-amber-200 hover:border-amber-300 hover:bg-amber-50'
-                  }`}
-                >
-                  <Building2 className="h-6 w-6 mx-auto mb-2" />
-                  <span className="block font-medium">Business</span>
                 </button>
               </div>
             </div>
@@ -362,6 +350,7 @@ const Register = () => {
                       id="name"
                       name="name"
                       type="text"
+                      maxLength={50}
                       required
                       className="appearance-none block w-full px-3 py-2 border border-amber-200 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-amber-500 focus:border-amber-500 sm:text-sm hover:border-amber-300 transition-colors duration-200"
                       placeholder="Enter your full name"
@@ -458,6 +447,7 @@ const Register = () => {
                         id="phone"
                         name="phone"
                         type="tel"
+                        maxLength={10}
                         required
                         className="appearance-none block w-full px-3 py-2 border border-amber-200 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-amber-500 focus:border-amber-500 sm:text-sm hover:border-amber-300 transition-colors duration-200"
                         placeholder="Enter your phone number"
@@ -476,6 +466,7 @@ const Register = () => {
                       <input
                         id="alternate-phone"
                         name="alternatePhone"
+                        maxLength={10}
                         type="tel"
                         className="appearance-none block w-full px-3 py-2 border border-amber-200 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-amber-500 focus:border-amber-500 sm:text-sm hover:border-amber-300 transition-colors duration-200"
                         placeholder="Enter your alternate phone number"
@@ -571,25 +562,39 @@ const Register = () => {
                       </div>
                     </div>
 
-                    <div>
-                      <label htmlFor="pincode" className="block text-sm font-medium text-gray-700">
-                        Pincode
-                      </label>
-                      <div className="mt-1">
-                        <input
-                          id="pincode"
-                          name="address.pincode"
-                          type="text"
-                          className="appearance-none block w-full px-3 py-2 border border-amber-200 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-amber-500 focus:border-amber-500 sm:text-sm hover:border-amber-300 transition-colors duration-200"
-                          placeholder="Enter your pincode"
-                          value={formData.address.pincode}
-                          onChange={handleChange}
-                          pattern="^\d{6}$"
-                          title="Please enter a valid 6-digit pincode"
-                          required
-                        />
-                      </div>
-                    </div>
+                  <div>
+  <label htmlFor="pincode" className="block text-sm font-medium text-gray-700">
+    Pincode
+  </label>
+  <div className="mt-1">
+    <input
+      id="pincode"
+      name="address.pincode"
+      type="text"
+      inputMode="numeric"
+      pattern="\d{6}"
+      maxLength={6}
+      className="appearance-none block w-full px-3 py-2 border border-amber-200 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-amber-500 focus:border-amber-500 sm:text-sm hover:border-amber-300 transition-colors duration-200"
+      placeholder="Enter your 6-digit pincode"
+      value={formData.address.pincode}
+      onChange={(e) => {
+        const value = e.target.value;
+        if (/^\d{0,6}$/.test(value)) {
+          setFormData((prev) => ({
+            ...prev,
+            address: {
+              ...prev.address,
+              pincode: value
+            }
+          }));
+        }
+      }}
+      title="Please enter a valid 6-digit pincode"
+      required
+    />
+  </div>
+</div>
+
                   </div>
 
                   <div>

@@ -243,12 +243,12 @@ const ProductDetailPage = () => {
     
     // If it starts with /uploads, use it directly with your backend
     if (imagePath.startsWith('/uploads')) {
-      return `${import.meta.env.VITE_API_URL?.replace('/api', '') || 'https://bogat.onrender.com'}${imagePath}`;
+      return `${import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000'}${imagePath}`;
     }
     
     // If it's just a filename, put it in product folder
     const filename = imagePath.split('/').pop();
-    return `${import.meta.env.VITE_API_URL?.replace('/api', '') || 'https://bogat.onrender.com'}/uploads/product/${filename}`;
+    return `${import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000'}/uploads/product/${filename}`;
   }, []);
 
   // Enhanced getProductImages function
