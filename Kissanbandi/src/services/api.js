@@ -270,48 +270,86 @@ export const productsApi = {
   },
 
   // ✅ NEW: Create product with images in one step (using your /create-with-images route)
-  createProductWithImages: async (productData, images = []) => {
-    try {
-      console.log('🔄 Creating product with images:', productData);
-      console.log('📸 Images to upload:', images.length);
+createProductWithImages: async (productData, images = []) => {
+  try {
+    console.log('🔄 Creating product with images:', productData);
+    console.log('🏷️ HSN Code in productData:', productData.hsn || productData.hsnCode);
+    console.log('📸 Images to upload:', images.length);
 
-      const formData = new FormData();
+    const formData = new FormData();
 
-      // Add product data
-      Object.keys(productData).forEach(key => {
-        if (productData[key] !== null && productData[key] !== undefined) {
-          if (Array.isArray(productData[key])) {
-            // Handle arrays (tags, features)
-            productData[key].forEach(item => {
-              formData.append(key, item);
-            });
-          } else {
-            formData.append(key, productData[key]);
-          }
+    // Add product data with specific HSN logging
+    Object.keys(productData).forEach(key => {
+      const value = productData[key];
+      
+      // Special logging for HSN field
+      if (key === 'hsn' || key === 'hsnCode') {
+        console.log(`🏷️ Processing HSN field: ${key} = "${value}"`);
+      }
+      
+      if (value !== null && value !== undefined && value !== '') {
+        if (Array.isArray(value)) {
+          // Handle arrays (tags, features)
+          value.forEach(item => {
+            console.log(`📝 Adding array field: ${key}[] = "${item}"`);
+            formData.append(key, item);
+          });
+        } else {
+          console.log(`📝 Adding field: ${key} = "${value}"`);
+          formData.append(key, value);
         }
-      });
+      } else {
+        console.warn(`⚠️ Skipping empty/null field: ${key} = ${value}`);
+      }
+    });
 
-      // Add image files
-      images.forEach((image) => {
-        if (image instanceof File) {
-          formData.append('images', image);
-        }
-      });
-
-      const response = await api.post('/products/create-with-images', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
-
-      console.log('✅ Product with images created successfully:', response.data);
-      return response.data;
-
-    } catch (error) {
-      console.error('❌ Error creating product with images:', error);
-      throw error;
+    // Debug: Log all FormData entries
+    console.log('📋 FormData contents:');
+    for (let [key, value] of formData.entries()) {
+      if (key === 'hsn' || key === 'hsnCode') {
+        console.log(`🏷️ FormData HSN: ${key} = "${value}"`);
+      } else {
+        console.log(`📄 FormData: ${key} = ${value instanceof File ? '[File]' : value}`);
+      }
     }
-  },
+
+    // Add image files
+    images.forEach((image, index) => {
+      if (image instanceof File) {
+        console.log(`📸 Adding image ${index + 1}: ${image.name}`);
+        formData.append('images', image);
+      }
+    });
+
+    const response = await api.post('/products/create-with-images', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+
+    console.log('✅ Product with images created successfully:', response.data);
+    
+    // Check if HSN is in the response
+    const createdProduct = response.data?.product || response.data?.data || response.data;
+    if (createdProduct) {
+      console.log('🏷️ HSN in created product:', createdProduct.hsn || createdProduct.hsnCode || 'NOT FOUND');
+    }
+    
+    return response.data;
+
+  } catch (error) {
+    console.error('❌ Error creating product with images:', error);
+    
+    // Enhanced error logging
+    if (error.response) {
+      console.error('❌ Response status:', error.response.status);
+      console.error('❌ Response data:', error.response.data);
+      console.error('❌ Response headers:', error.response.headers);
+    }
+    
+    throw error;
+  }
+},
 
   // Create new product (admin only) - Your existing method
   createProduct: async (productData) => {
@@ -320,57 +358,137 @@ export const productsApi = {
   },
 
   // Update product (admin only) - Enhanced with image support
-  updateProduct: async (id, productData, images = [], replaceImages = false) => {
-    try {
-      console.log('🔄 Updating product:', id);
-      console.log('📸 New images:', images.length);
+updateProduct: async (id, productData, images = [], replaceImages = false) => {
+  try {
+    console.log('🔄 Updating product:', id);
+    console.log('🏷️ HSN Code in update data:', productData.hsn || productData.hsnCode);
+    console.log('📸 New images:', images.length);
 
-      // If no images, use regular JSON update
-      if (!images || images.length === 0) {
-        const response = await api.put(`/products/${id}`, productData);
-        return response.data;
+    // If no images, use regular JSON update
+    if (!images || images.length === 0) {
+      console.log('📝 Updating without images (JSON)');
+      console.log('🏷️ HSN in JSON update:', productData.hsn || productData.hsnCode);
+      
+      const response = await api.put(`/products/${id}`, productData);
+      
+      // Check if HSN is in the response
+      const updatedProduct = response.data?.product || response.data?.data || response.data;
+      if (updatedProduct) {
+        console.log('🏷️ HSN in updated product:', updatedProduct.hsn || updatedProduct.hsnCode || 'NOT FOUND');
       }
-
-      // If images provided, use FormData
-      const formData = new FormData();
-
-      // Add product data
-      Object.keys(productData).forEach(key => {
-        if (productData[key] !== null && productData[key] !== undefined) {
-          if (Array.isArray(productData[key])) {
-            productData[key].forEach(item => {
-              formData.append(key, item);
-            });
-          } else {
-            formData.append(key, productData[key]);
-          }
-        }
-      });
-
-      // Add replace images flag
-      formData.append('replaceImages', replaceImages.toString());
-
-      // Add new image files
-      images.forEach((image) => {
-        if (image instanceof File) {
-          formData.append('images', image);
-        }
-      });
-
-      const response = await api.put(`/products/${id}`, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
-
-      console.log('✅ Product updated successfully:', response.data);
+      
       return response.data;
-
-    } catch (error) {
-      console.error('❌ Error updating product:', error);
-      throw error;
     }
-  },
+
+    // If images provided, use FormData
+    console.log('📝 Updating with images (FormData)');
+    const formData = new FormData();
+
+    // Add product data with HSN debugging
+    Object.keys(productData).forEach(key => {
+      const value = productData[key];
+      
+      // Special logging for HSN field
+      if (key === 'hsn' || key === 'hsnCode') {
+        console.log(`🏷️ Processing HSN field in update: ${key} = "${value}"`);
+      }
+      
+      if (value !== null && value !== undefined && value !== '') {
+        if (Array.isArray(value)) {
+          value.forEach(item => {
+            console.log(`📝 Adding array field: ${key}[] = "${item}"`);
+            formData.append(key, item);
+          });
+        } else {
+          console.log(`📝 Adding field: ${key} = "${value}"`);
+          formData.append(key, value);
+        }
+      } else {
+        console.warn(`⚠️ Skipping empty/null field in update: ${key} = ${value}`);
+      }
+    });
+
+    // Add replace images flag
+    formData.append('replaceImages', replaceImages.toString());
+
+    // Debug: Log all FormData entries for update
+    console.log('📋 Update FormData contents:');
+    for (let [key, value] of formData.entries()) {
+      if (key === 'hsn' || key === 'hsnCode') {
+        console.log(`🏷️ FormData HSN: ${key} = "${value}"`);
+      } else {
+        console.log(`📄 FormData: ${key} = ${value instanceof File ? '[File]' : value}`);
+      }
+    }
+
+    // Add new image files
+    images.forEach((image, index) => {
+      if (image instanceof File) {
+        console.log(`📸 Adding new image ${index + 1}: ${image.name}`);
+        formData.append('images', image);
+      }
+    });
+
+    const response = await api.put(`/products/${id}`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+
+    console.log('✅ Product updated successfully:', response.data);
+    
+    // Check if HSN is in the response
+    const updatedProduct = response.data?.product || response.data?.data || response.data;
+    if (updatedProduct) {
+      console.log('🏷️ HSN in updated product:', updatedProduct.hsn || updatedProduct.hsnCode || 'NOT FOUND');
+    }
+    
+    return response.data;
+
+  } catch (error) {
+    console.error('❌ Error updating product:', error);
+    
+    // Enhanced error logging
+    if (error.response) {
+      console.error('❌ Response status:', error.response.status);
+      console.error('❌ Response data:', error.response.data);
+      console.error('❌ Response headers:', error.response.headers);
+    }
+    
+    throw error;
+  }
+},
+
+// 🔍 Debug function to test HSN field specifically
+debugHSNField: async (productData) => {
+  try {
+    console.log('🔍 === HSN DEBUG TEST ===');
+    console.log('🏷️ Original productData:', productData);
+    console.log('🏷️ HSN field value:', productData.hsn);
+    console.log('🏷️ HSN field type:', typeof productData.hsn);
+    console.log('🏷️ HSN field length:', productData.hsn?.length);
+    console.log('🏷️ HSN field isEmpty:', !productData.hsn || productData.hsn.trim() === '');
+    
+    // Test FormData creation
+    const formData = new FormData();
+    formData.append('hsn', productData.hsn || '');
+    
+    console.log('📋 FormData HSN test:');
+    for (let [key, value] of formData.entries()) {
+      if (key === 'hsn') {
+        console.log(`🏷️ FormData HSN: "${value}" (type: ${typeof value})`);
+      }
+    }
+    
+    // Test JSON stringification
+    console.log('🔄 JSON.stringify test:', JSON.stringify({ hsn: productData.hsn }));
+    
+    console.log('🔍 === END HSN DEBUG ===');
+    
+  } catch (error) {
+    console.error('❌ HSN Debug error:', error);
+  }
+},
 
   // Delete product (admin only)
   deleteProduct: async (id) => {

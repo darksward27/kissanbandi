@@ -1,4 +1,4 @@
-// Updated ProductDetailPage.js with fixed review form that maintains focus
+// Updated ProductDetailPage.js - Fetch price and GST from database
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
@@ -204,6 +204,32 @@ const ProductDetailPage = () => {
   const [showReviewForm, setShowReviewForm] = useState(false);
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
 
+  // Function to get price data from database (no calculation needed)
+  const getPriceData = useCallback((product) => {
+    // Check if the product has pre-calculated total price from database
+    if (product.totalPrice !== undefined && product.totalPrice !== null) {
+      return {
+        basePrice: product.price || 0,
+        gstRate: product.gst || 18,
+        gstAmount: product.gstAmount || 0,
+        totalPrice: product.totalPrice
+      };
+    }
+    
+    // Fallback: If database doesn't have totalPrice, calculate it
+    const basePrice = parseFloat(product.price) || 0;
+    const gstRate = product.gst || 18;
+    const gstAmount = (basePrice * gstRate) / 100;
+    const totalPrice = basePrice + gstAmount;
+    
+    return {
+      basePrice,
+      gstRate,
+      gstAmount,
+      totalPrice
+    };
+  }, []);
+
   // Image handling functions
   const getProductImage = useCallback((imagePath) => {
     if (!imagePath) {
@@ -217,12 +243,12 @@ const ProductDetailPage = () => {
     
     // If it starts with /uploads, use it directly with your backend
     if (imagePath.startsWith('/uploads')) {
-      return `${import.meta.env.VITE_API_URL?.replace('/api', '') || 'https://bogat.onrender.com'}${imagePath}`;
+      return `${import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000'}${imagePath}`;
     }
     
     // If it's just a filename, put it in product folder
     const filename = imagePath.split('/').pop();
-    return `${import.meta.env.VITE_API_URL?.replace('/api', '') || 'https://bogat.onrender.com'}/uploads/product/${filename}`;
+    return `${import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000'}/uploads/product/${filename}`;
   }, []);
 
   // Enhanced getProductImages function
@@ -287,9 +313,19 @@ const ProductDetailPage = () => {
       setLoading(true);
       setError(null);
       
+      console.log('Fetching product with pricing data from database for ID:', id);
       const data = await productsApi.getProductById(id);
       
       if (data && (data._id || data.id)) {
+        console.log('Product loaded from database:', {
+          id: data._id || data.id,
+          name: data.name,
+          basePrice: data.price,
+          gstRate: data.gstRate,
+          gstAmount: data.gstAmount,
+          totalPrice: data.totalPrice,
+          stock: data.stock
+        });
         setProduct(data);
       } else {
         throw new Error('Product not found');
@@ -506,7 +542,7 @@ const ProductDetailPage = () => {
       return;
     }
 
-    if (product.stock === 0) {
+    if (product.stock < 1) {
       toast.error('Sorry, this product is out of stock!');
       return;
     }
@@ -518,28 +554,27 @@ const ProductDetailPage = () => {
       return;
     }
 
-    // Validate price before proceeding
-    if (product.price === undefined || product.price === null || product.price === '') {
-      console.error('❌ Product has no price!');
-      toast.error('Product price not available');
-      return;
-    }
-
-    const productPrice = Number(product.price);
-    if (isNaN(productPrice) || productPrice <= 0) {
-      console.error('❌ Invalid product price:', product.price, '→', productPrice);
-      toast.error('Invalid product price');
+    // Get price data from database (no calculation needed)
+    const priceData = getPriceData(product);
+    
+    // Validate pricing data
+    if (!priceData.totalPrice || priceData.totalPrice <= 0) {
+      console.error('❌ Invalid product pricing:', priceData);
+      toast.error('Product pricing not available');
       return;
     }
 
     try {
-      // Create complete product object ensuring ALL fields are preserved
+      // Create complete product object with database pricing
       const completeProduct = {
         ...product,
         id: product._id || product.id,
         _id: product._id || product.id,
         name: product.name || 'Unknown Product',
-        price: productPrice,
+        price: priceData.totalPrice, // Use total price from database
+        basePrice: priceData.basePrice, // Store base price for reference
+        gstAmount: priceData.gstAmount, // Store GST amount from database
+        gstRate: priceData.gstRate, // Store GST rate from database
         image: getProductImages()[0], // Use processed image
         stock: product.stock || 999,
         category: product.category,
@@ -550,6 +585,15 @@ const ProductDetailPage = () => {
         images: getProductImages(), // Use processed images
         status: product.status
       };
+
+      console.log('Adding product to cart with database pricing:', {
+        id: completeProduct.id,
+        name: completeProduct.name,
+        totalPrice: priceData.totalPrice,
+        basePrice: priceData.basePrice,
+        gstAmount: priceData.gstAmount,
+        gstRate: priceData.gstRate
+      });
 
       const success = addSingleItem(completeProduct);
       
@@ -596,7 +640,7 @@ const ProductDetailPage = () => {
 
   const handleQuantityChange = useCallback((change) => {
     const productId = product._id || product.id;
-    const maxStock = product?.stock || 10;
+    const maxStock = product?.stock || 0;
 
     if (cartQuantity > 0) {
       // Item is in cart
@@ -672,12 +716,15 @@ const ProductDetailPage = () => {
     ));
   };
 
-  const isOutOfStock = product?.stock === 0;
+  const isOutOfStock = (product?.stock || 0) < 1;
   const isUnavailable = product?.status === 'inactive';
   const canPurchase = !isOutOfStock && !isUnavailable;
 
   // Get the current quantity to display (from cart if in cart, otherwise display quantity)
   const currentQuantity = cartQuantity > 0 ? cartQuantity : displayQuantity;
+
+  // Get price data from database (no calculation)
+  const priceData = product ? getPriceData(product) : null;
 
   // ReviewsTabContent component with purchase verification
   const ReviewsTabContent = () => (
@@ -865,16 +912,6 @@ const ProductDetailPage = () => {
                       <p className="text-blue-700 text-sm">{review.reply.text}</p>
                     </div>
                   )}
-                  
-                  {/* Helpful Button */}
-                  <div className="flex items-center space-x-4 mt-3">
-                    <button className="flex items-center text-gray-500 hover:text-gray-700 transition-colors">
-                      <ThumbsUp className="w-4 h-4 mr-1" />
-                      <span className="text-sm">
-                        Helpful ({review.helpful || 0})
-                      </span>
-                    </button>
-                  </div>
                 </div>
               </div>
             </div>
@@ -926,6 +963,7 @@ const ProductDetailPage = () => {
               </div>
             </div>
           </div>
+          <p className="text-center text-amber-700 mt-4 font-medium">Loading product with pricing from database...</p>
         </div>
       </div>
     );
@@ -1106,16 +1144,28 @@ const ProductDetailPage = () => {
               </div>
             </div>
 
-            {/* Price */}
+            {/* Enhanced Price Section with Database GST Display */}
             <div className="bg-white rounded-xl p-6 shadow-lg">
               <div className="flex items-center justify-between mb-4">
                 <div>
+                  {/* Total Price from Database (Prominent Display) */}
                   <div className="text-3xl font-bold text-amber-700">
-                    ₹{product.price?.toLocaleString() || '0'}
+                    ₹{priceData ? priceData.totalPrice.toFixed(2) : '0.00'}
                     {product.unit && <span className="text-lg text-gray-600">/{product.unit}</span>}
                   </div>
+                  
+                  {/* Price Breakdown from Database (Smaller Text) */}
+                  {priceData && (priceData.gstAmount > 0 || priceData.gstRate > 0) && (
+                    <div className="text-sm text-gray-600 mt-2 space-y-1">
+                      <div className="border-t pt-1 font-medium">
+                        Total (incl. GST): ₹{priceData.totalPrice.toFixed(2)}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Original Price Discount */}
                   {product.originalPrice && product.originalPrice > product.price && (
-                    <div className="flex items-center space-x-2 mt-1">
+                    <div className="flex items-center space-x-2 mt-2">
                       <span className="text-gray-500 line-through">₹{product.originalPrice.toLocaleString()}</span>
                       <span className="text-green-600 font-medium">
                         {Math.round((1 - product.price / product.originalPrice) * 100)}% off
@@ -1131,7 +1181,7 @@ const ProductDetailPage = () => {
                 )}
               </div>
 
-              {/* Enhanced Quantity Selector with Real-time Cart Integration */}
+              {/* Enhanced Quantity Selector with Stock Control */}
               {canPurchase && (
                 <div className="flex items-center space-x-4 mb-6">
                   <span className="text-gray-700 font-medium">Quantity:</span>
@@ -1148,7 +1198,7 @@ const ProductDetailPage = () => {
                     </span>
                     <button
                       onClick={() => handleQuantityChange(1)}
-                      disabled={currentQuantity >= (product.stock || 0)}
+                      disabled={currentQuantity >= (product.stock || 0) || currentQuantity < 1}
                       className="p-2 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
                       <Plus className="w-4 h-4" />
@@ -1180,11 +1230,11 @@ const ProductDetailPage = () => {
                     <div className="flex space-x-3">
                       <button
                         onClick={handleAddSingleItem}
-                        disabled={addingToCart || cartQuantity >= (product.stock || 10)}
-                        className="flex-1 bg-gradient-to-r from-green-600 to-green-700 text-white py-3 px-6 rounded-xl hover:from-green-700 hover:to-green-800 transition-all duration-300 font-medium flex items-center justify-center space-x-2 disabled:opacity-50"
+                        disabled={addingToCart || cartQuantity >= (product.stock || 0) || (product.stock || 0) < 1}
+                        className="flex-1 bg-gradient-to-r from-green-600 to-green-700 text-white py-3 px-6 rounded-xl hover:from-green-700 hover:to-green-800 transition-all duration-300 font-medium flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         <Plus className="w-4 h-4" />
-                        <span>Add One</span>
+                        <span>{(product.stock || 0) < 1 ? 'Out of Stock' : 'Add One'}</span>
                       </button>
                     </div>
                     <Link to="/checkout" className="w-full block">
@@ -1214,11 +1264,7 @@ const ProductDetailPage = () => {
                 </div>
                 <div className="flex items-center space-x-3">
                   <CheckCircle className="w-5 h-5 text-blue-600" />
-                  <span className="text-sm">Delivery in 2-3 business days</span>
-                </div>
-                <div className="flex items-center space-x-3">
-                  <RotateCcw className="w-5 h-5 text-purple-600" />
-                  <span className="text-sm">7 days return policy</span>
+                  <span className="text-sm">Delivery in 7-8 business days</span>
                 </div>
               </div>
             </div>
@@ -1230,29 +1276,39 @@ const ProductDetailPage = () => {
           <div className="mb-16">
             <h2 className="text-2xl font-bold text-gray-900 mb-8">Related Products</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              {relatedProducts.map((relatedProduct) => (
-                <div
-                  key={relatedProduct._id || relatedProduct.id}
-                  onClick={() => navigate(`/products/${relatedProduct._id || relatedProduct.id}`)}
-                  className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-all duration-300 cursor-pointer group"
-                >
-                  <img
-                    src={getRelatedProductImage(relatedProduct)}
-                    alt={relatedProduct.name}
-                    className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
-                    onError={(e) => {
-                      console.error('❌ Related product image failed:', e.target.src);
-                      e.target.src = '/api/placeholder/300/200';
-                    }}
-                  />
-                  <div className="p-4">
-                    <h3 className="font-bold text-gray-900 mb-2 line-clamp-2">{relatedProduct.name}</h3>
-                    <div className="text-xl font-bold text-amber-700">
-                      ₹{relatedProduct.price?.toLocaleString() || '0'}
+              {relatedProducts.map((relatedProduct) => {
+                const relatedPriceData = getPriceData(relatedProduct);
+                return (
+                  <div
+                    key={relatedProduct._id || relatedProduct.id}
+                    onClick={() => navigate(`/products/${relatedProduct._id || relatedProduct.id}`)}
+                    className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-all duration-300 cursor-pointer group"
+                  >
+                    <img
+                      src={getRelatedProductImage(relatedProduct)}
+                      alt={relatedProduct.name}
+                      className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
+                      onError={(e) => {
+                        console.error('❌ Related product image failed:', e.target.src);
+                        e.target.src = '/api/placeholder/300/200';
+                      }}
+                    />
+                    <div className="p-4">
+                      <h3 className="font-bold text-gray-900 mb-2 line-clamp-2">{relatedProduct.name}</h3>
+                      <div className="text-xl font-bold text-amber-700">
+                        ₹{relatedPriceData.totalPrice.toFixed(2)}
+                      </div>
+                      {relatedProduct.description && (
+                        <div className="text-sm text-gray-500 mt-2 line-clamp-2">
+                          {relatedProduct.description.length > 80 
+                            ? `${relatedProduct.description.substring(0, 80)}...` 
+                            : relatedProduct.description}
+                        </div>
+                      )}
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}
@@ -1266,7 +1322,7 @@ const ProductDetailPage = () => {
                 onClick={() => setActiveTab('description')}
                 className={`py-4 px-2 border-b-2 font-medium text-sm transition-colors ${
                   activeTab === 'description'
-                    ? 'border-amber-500 text-amber-600'
+                    ? 'border-amber-500 text-amber-600'  
                     : 'border-transparent text-gray-500 hover:text-gray-700'
                 }`}
               >

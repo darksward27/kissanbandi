@@ -298,7 +298,7 @@ const processUploadedFiles = (files) => {
       };
     } else {
       // ✅ For local uploads
-      const baseUrl = process.env.BASE_URL || 'https://bogat.onrender.com';
+      const baseUrl = process.env.BASE_URL || 'http://localhost:5000';
       const folder = file.destination ? file.destination.split('/').pop() : 'product';
       
       console.log('🔄 Processing local file:', {

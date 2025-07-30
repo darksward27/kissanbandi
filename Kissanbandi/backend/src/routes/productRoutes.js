@@ -157,13 +157,15 @@ router.post('/create-with-images', [auth, admin], uploadProductImages, handleUpl
     console.log('📨 Received request body:', req.body);
     console.log('📁 Received files:', req.files?.length || 0);
     console.log('🏪 Storage type:', useCloudinary ? 'Cloudinary' : 'Local');
+    console.log('🏷️ HSN field received:', req.body.hsn); // ✅ Add HSN debug
 
     const {
       name, category, subcategory, price, originalPrice, unit, stock, 
-      description, gst, status, brand, tags, features
+      description, gst, hsn, status, brand, tags, features // ✅ Add hsn to destructuring
     } = req.body;
 
     console.log('📊 GST value received:', gst, typeof gst);
+    console.log('🏷️ HSN value received:', hsn, typeof hsn); // ✅ Add HSN debug
 
     if (!name || !category || !price || !unit || !stock || !description || gst === undefined || gst === '') {
       console.error('❌ Missing required fields');
@@ -211,6 +213,14 @@ router.post('/create-with-images', [auth, admin], uploadProductImages, handleUpl
       createdBy: req.user._id
     };
 
+    // ✅ CRITICAL FIX: Add HSN processing to the route handler
+    if (hsn && hsn.trim()) {
+      productData.hsn = hsn.trim().toUpperCase();
+      console.log('✅ HSN processed and added to productData:', productData.hsn);
+    } else {
+      console.log('⚠️ HSN is empty or undefined, not including in product');
+    }
+
     if (tags) {
       if (typeof tags === 'string') {
         productData.tags = tags.split(',').map(t => t.trim()).filter(t => t);
@@ -233,24 +243,42 @@ router.post('/create-with-images', [auth, admin], uploadProductImages, handleUpl
 
     console.log('💾 Creating product with data:', productData);
     console.log('📊 Final GST value being saved:', productData.gst, typeof productData.gst);
+    console.log('🏷️ Final HSN value being saved:', productData.hsn); // ✅ Add HSN debug
 
     const product = new Product(productData);
     await product.save();
 
     console.log('✅ Product created successfully:', product._id);
     console.log('📊 Saved product GST:', product.gst);
+    console.log('🏷️ Saved product HSN:', product.hsn); // ✅ Add HSN debug
     console.log('🏪 Images saved to:', useCloudinary ? 'Cloudinary' : 'Local storage');
+
+    // ✅ Verify what's actually in the database
+    const verifyProduct = await Product.findById(product._id);
+    console.log('🔍 DB Verification - HSN in database:', verifyProduct.hsn);
 
     res.status(201).json({
       success: true,
       message: 'Product created successfully with images',
-      product,
+      product: verifyProduct, // ✅ Return verified product from DB
       uploadedImages: imagePaths.length,
-      storageType: useCloudinary ? 'Cloudinary' : 'Local'
+      storageType: useCloudinary ? 'Cloudinary' : 'Local',
+      debug: { // ✅ Add debug info to response
+        hsnReceived: hsn,
+        hsnSaved: verifyProduct.hsn
+      }
     });
 
   } catch (error) {
     console.error('❌ Product creation error:', error);
+    
+    // ✅ Enhanced error logging for HSN validation
+    if (error.name === 'ValidationError') {
+      console.error('❌ Validation errors:', error.errors);
+      if (error.errors.hsn) {
+        console.error('❌ HSN validation failed:', error.errors.hsn.message);
+      }
+    }
     
     if (req.files && req.files.length > 0) {
       try {

@@ -22,6 +22,32 @@ const BogatProducts = () => {
   const navigate = useNavigate();
   const { dispatch } = useCart();
 
+  // Function to get price data from database (no calculation needed)
+  const getPriceData = (product) => {
+    // Check if the product has pre-calculated total price from database
+    if (product.totalPrice !== undefined && product.totalPrice !== null) {
+      return {
+        basePrice: product.price || 0,
+        gstRate: product.gst || 18,
+        gstAmount: product.gstAmount || 0,
+        totalPrice: product.totalPrice
+      };
+    }
+    
+    // Fallback: If database doesn't have totalPrice, calculate it
+    const basePrice = parseFloat(product.price) || 0;
+    const gstRate = product.gst || 18;
+    const gstAmount = (basePrice * gstRate) / 100;
+    const totalPrice = basePrice + gstAmount;
+    
+    return {
+      basePrice,
+      gstRate,
+      gstAmount,
+      totalPrice
+    };
+  };
+
   // Helper function to get the first image from the images array
   const getProductImage = (product) => {
     if (!product) {
@@ -46,10 +72,10 @@ const BogatProducts = () => {
 
     // Your backend serves from: app.use('/uploads', express.static(path.join(__dirname, 'src/uploads')));
     // Your database has: "/uploads/product/filename.jpg"
-    // So the URL should be: "https://bogat.onrender.com/uploads/product/filename.jpg"
+    // So the URL should be: "http://localhost:5000/uploads/product/filename.jpg"
     
     if (imageUrl.startsWith('/uploads')) {
-      return `https://bogat.onrender.com${imageUrl}`;
+      return `http://localhost:5000${imageUrl}`;
     }
 
     // If it's already a full URL, use as is
@@ -58,25 +84,28 @@ const BogatProducts = () => {
     }
 
     // Default fallback
-    return `https://bogat.onrender.com/uploads/product/${imageUrl}`;
+    return `http://localhost:5000/uploads/product/${imageUrl}`;
   };
 
   // Enhanced debugging with file system check
   const debugProducts = () => {
-    console.log('=== PRODUCTS & IMAGES DEBUG ===');
+    console.log('=== PRODUCTS & PRICING DEBUG ===');
     products.slice(0, 3).forEach((product, index) => {
       const processedUrl = getProductImage(product);
+      const priceData = getPriceData(product);
       console.log(`Product ${index + 1}:`, {
         name: product.name,
+        'database price': product.price,
+        'database gstRate': product.gstRate,
+        'database gstAmount': product.gstAmount,
+        'database totalPrice': product.totalPrice,
+        'processed price data': priceData,
         'images array': product.images,
         'images length': product.images?.length,
         'first image from array': product.images?.[0],
         'single image field': product.image,
         'final processed URL': processedUrl
       });
-      
-      // Test if the URL actually works
-      console.log(`Testing URL for ${product.name}:`, processedUrl);
     });
     console.log('=== END DEBUG ===');
   };
@@ -119,9 +148,9 @@ const BogatProducts = () => {
       setLoading(true);
       setError(null);
       
-      console.log('Fetching products from /api/products...');
+      console.log('Fetching products with pricing from /api/products...');
       
-      // Fetch products from database via API
+      // Fetch products from database via API (should include price, gstRate, gstAmount, totalPrice)
       const data = await productsApi.getAllProducts();
       console.log('Raw API response:', data);
       
@@ -151,7 +180,7 @@ const BogatProducts = () => {
       console.log('Extracted products array:', allProducts);
       console.log('Number of products found:', allProducts.length);
 
-      // Filter for active products only
+      // Filter for active products only and validate pricing data
       const activeProducts = allProducts.filter(product => {
         // Ensure product has required fields
         const hasRequiredFields = product && 
@@ -161,26 +190,43 @@ const BogatProducts = () => {
         // Check if product is active (default to active if no status field)
         const isActive = !product.status || product.status === 'active';
         
-        if (hasRequiredFields && isActive) {
+        // Validate pricing data
+        const hasValidPricing = product.price !== undefined && product.price !== null;
+        
+        if (hasRequiredFields && isActive && hasValidPricing) {
           console.log('Valid product found:', {
             id: product._id || product.id,
             name: product.name,
-            price: product.price,
+            basePrice: product.price,
+            gstRate: product.gstRate,
+            gstAmount: product.gstAmount,
+            totalPrice: product.totalPrice,
             status: product.status,
             stock: product.stock,
             images: product.images?.length || 0,
             image: product.image ? 'present' : 'missing'
           });
+        } else if (!hasValidPricing) {
+          console.warn('Product missing pricing data:', {
+            id: product._id || product.id,
+            name: product.name,
+            price: product.price
+          });
         }
         
-        return hasRequiredFields && isActive;
+        return hasRequiredFields && isActive && hasValidPricing;
       });
 
-      console.log('Filtered active products:', activeProducts.length);
+      console.log('Filtered active products with valid pricing:', activeProducts.length);
       setProducts(activeProducts);
       
       if (activeProducts.length === 0) {
-        console.warn('No active products found. Check your database and API endpoint.');
+        console.warn('No active products with valid pricing found. Check your database and API endpoint.');
+      }
+      
+      // Debug first few products
+      if (activeProducts.length > 0) {
+        debugProducts();
       }
       
     } catch (err) {
@@ -208,7 +254,7 @@ const BogatProducts = () => {
     if (product?.status === 'inactive') {
       return { type: 'unavailable', message: 'Product is unavailable' };
     }
-    if (product?.stock === 0) {
+    if ((product?.stock || 0) < 1) {
       return { type: 'out-of-stock', message: 'Out of stock' };
     }
     return { type: 'available', message: 'Available' };
@@ -311,7 +357,7 @@ const BogatProducts = () => {
               <Package className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-amber-700 w-6 h-6 animate-pulse" />
             </div>
           </div>
-          <p className="text-center text-amber-700 mt-4 font-medium">Loading products from database...</p>
+          <p className="text-center text-amber-700 mt-4 font-medium">Loading products with pricing from database...</p>
         </div>
       </div>
     );
@@ -395,6 +441,9 @@ const BogatProducts = () => {
           {products.map((product) => {
             const productStatus = getProductStatus(product);
             const isUnavailable = productStatus.type !== 'available';
+            
+            // Get price data from database (no calculation)
+            const priceData = getPriceData(product);
             
             return (
               <div 
@@ -491,13 +540,15 @@ const BogatProducts = () => {
 
                   <div className="flex justify-between items-end mt-auto">
                     <div className="flex flex-col">
+                      {/* Total Price from Database */}
                       <div className={`text-2xl font-bold bg-gradient-to-r from-amber-700 to-orange-700 bg-clip-text text-transparent ${
                         isUnavailable ? 'opacity-50' : ''
                       }`}>
-                        ₹{product.price || '0'}
+                        ₹{priceData.totalPrice.toFixed(2)}
                       </div>
+                      
                       {product.unit && (
-                        <span className="text-sm text-gray-600 font-normal">
+                        <span className="text-sm text-gray-600 font-normal mt-1">
                           /{product.unit}
                         </span>
                       )}
@@ -572,7 +623,7 @@ const BogatProducts = () => {
                 No Products Found
               </h3>
               <p className="text-gray-600 mb-4">
-                No products are available in the database at the moment.
+                No products with valid pricing are available in the database at the moment.
               </p>
               <button 
                 onClick={handleRetry}

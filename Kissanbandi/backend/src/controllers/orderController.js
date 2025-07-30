@@ -1,31 +1,89 @@
+
+// Fixed Order Controller - Proper GST Field Names for Database Storage
 const Order = require('../models/Order');
 const Product = require('../models/Product');
-  const Coupon = require('../models/Coupon');
+const Coupon = require('../models/Coupon');
 const razorpay = require('../config/razorpay');
 const crypto = require('crypto');
 const RazorpayTransaction = require('../models/RazorpayTransaction');
 require('dotenv').config();
 
-// GST configuration
-const GST_RATES = {
-  CGST: 2.5, // 2.5%
-  SGST: 2.5, // 2.5%
-  IGST: 5.0  // 5% (for inter-state transactions)
-};
+// ✅ FIXED: Proper GST calculation from database
+const getProductPricing = (product) => {
+  console.log('🔍 Analyzing product pricing:', {
+    productId: product._id,
+    name: product.name,
+    price: product.price,
+    gstRate: product.gstRate,
+    gst: product.gst,
+    totalPrice: product.totalPrice,
+    gstAmount: product.gstAmount
+  });
 
-// Helper function to calculate GST
-const calculateGST = (subtotal) => {
-  const cgst = (subtotal * GST_RATES.CGST) / 100;
-  const sgst = (subtotal * GST_RATES.SGST) / 100;
-  const totalGST = cgst + sgst;
+  // Method 1: If database has pre-calculated total price with GST
+  if (product.totalPrice !== undefined && product.totalPrice !== null && product.totalPrice > 0) {
+    const basePrice = parseFloat(product.price) || 0;
+    const totalPrice = parseFloat(product.totalPrice);
+    const gstRate = product.gstRate || product.gst || 18;
+    const calculatedGstAmount = totalPrice - basePrice;
+    
+    console.log('✅ Using database totalPrice method:', {
+      basePrice,
+      totalPrice,
+      gstRate,
+      calculatedGstAmount
+    });
+    
+    return {
+      basePrice,
+      gstRate,
+      gstAmount: calculatedGstAmount > 0 ? calculatedGstAmount : (basePrice * gstRate) / 100,
+      totalPrice,
+      hasGSTIncluded: true
+    };
+  }
+  
+  // Method 2: If database has separate GST amount stored
+  if (product.gstAmount !== undefined && product.gstAmount !== null && product.gstAmount > 0) {
+    const basePrice = parseFloat(product.price) || 0;
+    const gstAmount = parseFloat(product.gstAmount);
+    const gstRate = product.gstRate || product.gst || 18;
+    const totalPrice = basePrice + gstAmount;
+    
+    console.log('✅ Using database gstAmount method:', {
+      basePrice,
+      gstAmount,
+      gstRate,
+      totalPrice
+    });
+    
+    return {
+      basePrice,
+      gstRate,
+      gstAmount,
+      totalPrice,
+      hasGSTIncluded: true
+    };
+  }
+  
+  // Method 3: Calculate GST from base price and rate (fallback)
+  const basePrice = parseFloat(product.price) || 0;
+  const gstRate = product.gstRate || product.gst || 18;
+  const gstAmount = (basePrice * gstRate) / 100;
+  const totalPrice = basePrice + gstAmount;
+  
+  console.warn(`⚠️ Product ${product.name} missing pre-calculated GST data, calculating:`, {
+    basePrice, gstRate, gstAmount, totalPrice
+  });
   
   return {
-    cgst: Math.round(cgst * 100) / 100,
-    sgst: Math.round(sgst * 100) / 100,
-    totalGST: Math.round(totalGST * 100) / 100
+    basePrice,
+    gstRate,
+    gstAmount,
+    totalPrice,
+    hasGSTIncluded: false
   };
 };
-
 
 // Create new order
 exports.createOrder = async (req, res) => {
@@ -33,15 +91,11 @@ exports.createOrder = async (req, res) => {
     const { 
       items, 
       shippingAddress, 
-      paymentMethod, 
-      gst,
-      subtotal,
-      discountedSubtotal,
-      discount,
+      paymentMethod,
       couponCode,
       couponId,
-      shipping,
-      amount
+      discount: frontendDiscount,
+      amount: frontendAmount
     } = req.body;
 
     if (!items || !Array.isArray(items) || items.length === 0) {
@@ -49,8 +103,10 @@ exports.createOrder = async (req, res) => {
     }
 
     let calculatedSubtotal = 0;
+    let calculatedGST = 0;
     let processedItems = [];
 
+    // ✅ FIXED: Process items using proper database pricing with GST calculation
     for (const item of items) {
       const product = await Product.findById(item.product);
       if (!product) {
@@ -61,29 +117,75 @@ exports.createOrder = async (req, res) => {
         return res.status(400).json({ error: `Insufficient stock for ${product.name}` });
       }
 
-      const itemPrice = item.price || product.price;
-      calculatedSubtotal += itemPrice * item.quantity;
+      // ✅ Get proper pricing data from database
+      const pricingData = getProductPricing(product);
+      
+      const itemSubtotal = pricingData.totalPrice * item.quantity;
+      const itemGSTTotal = pricingData.gstAmount * item.quantity;
+      
+      calculatedSubtotal += itemSubtotal;
+      calculatedGST += itemGSTTotal;
 
+      // ✅ FIXED: Store GST information using correct field names for your database
       processedItems.push({
         product: item.product,
         quantity: item.quantity,
-        price: itemPrice,
+        price: pricingData.totalPrice, // Total price including GST
+        basePrice: pricingData.basePrice, // Base price without GST
+        gst: pricingData.gstAmount, // ✅ Use 'gst' field name (matches your current structure)
+        gstRate: pricingData.gstRate, // GST rate percentage
+        gstAmount: pricingData.gstAmount, // GST amount per unit (for backward compatibility)
+        totalGstAmount: itemGSTTotal, // Total GST for this item
         name: product.name
       });
 
+      console.log(`📦 Processed item ${product.name}:`, {
+        basePrice: pricingData.basePrice,
+        gstRate: pricingData.gstRate,
+        gstAmount: pricingData.gstAmount,
+        totalPrice: pricingData.totalPrice,
+        quantity: item.quantity,
+        itemSubtotal,
+        itemGSTTotal,
+        storedGstField: pricingData.gstAmount // This will be stored in 'gst' field
+      });
+
+      // Update stock
       await Product.findByIdAndUpdate(item.product, {
         $inc: { stock: -item.quantity }
       });
     }
 
-    const orderSubtotal = subtotal || calculatedSubtotal;
-    const orderDiscount = discount || 0;
-    const orderDiscountedSubtotal = discountedSubtotal || (orderSubtotal - orderDiscount);
-    const gstAmount = gst || calculateGST(orderDiscountedSubtotal).totalGST;
-    const shippingCharge = shipping !== undefined ? shipping : (orderDiscountedSubtotal >= 500 ? 0 : 50);
-    const totalAmount = amount || (orderDiscountedSubtotal + gstAmount + shippingCharge);
+    // ✅ Calculate totals using database pricing with GST
+    const orderSubtotal = Math.round(calculatedSubtotal * 100) / 100;
+    const orderGST = Math.round(calculatedGST * 100) / 100;
+    const orderDiscount = frontendDiscount || 0;
+    const orderDiscountedSubtotal = Math.max(0, orderSubtotal - orderDiscount);
+    
+    // Adjust GST proportionally if discount applied
+    let adjustedOrderGST = orderGST;
+    if (orderDiscount > 0 && orderSubtotal > 0) {
+      const discountRatio = orderDiscountedSubtotal / orderSubtotal;
+      adjustedOrderGST = orderGST * discountRatio;
+    }
+    adjustedOrderGST = Math.round(adjustedOrderGST * 100) / 100;
+    
+    const shippingCharge = orderDiscountedSubtotal >= 500 ? 0 : 50;
+    const totalAmount = orderDiscountedSubtotal + shippingCharge;
 
-    if (couponId && couponCode) {
+    console.log('💰 COD Order Calculation (Fixed GST Field Names):', {
+      originalSubtotal: orderSubtotal,
+      originalGST: orderGST,
+      discount: orderDiscount,
+      discountedSubtotal: orderDiscountedSubtotal,
+      adjustedGST: adjustedOrderGST,
+      shipping: shippingCharge,
+      total: totalAmount,
+      note: 'GST properly calculated and stored with correct field names'
+    });
+
+    // Validate coupon if provided
+    if (couponId && couponCode && orderDiscount > 0) {
       const coupon = await Coupon.findById(couponId);
       if (!coupon || !coupon.isActive || new Date() > coupon.endDate) {
         return res.status(400).json({ error: 'Invalid or expired coupon' });
@@ -92,14 +194,15 @@ exports.createOrder = async (req, res) => {
 
     const order = new Order({
       user: req.user.userId,
-      items: processedItems,
-      subtotal: orderSubtotal,
+      items: processedItems, // ✅ Contains GST breakdown with correct field names
+      subtotal: orderSubtotal, // ✅ Includes GST calculated from database
       discountedSubtotal: orderDiscountedSubtotal,
       discount: orderDiscount,
       couponCode: couponCode || null,
       couponId: couponId || null,
       totalAmount,
-      gstAmount,
+      gstAmount: adjustedOrderGST, // ✅ GST calculated from database
+      originalGstAmount: orderGST, // ✅ Original GST before discount adjustment
       shippingCharge,
       shippingAddress,
       paymentMethod,
@@ -109,10 +212,19 @@ exports.createOrder = async (req, res) => {
 
     const savedOrder = await order.save();
 
+    console.log('✅ Order created with proper GST breakdown using correct field names');
+    console.log('📋 Saved order items preview:', savedOrder.items.map(item => ({
+      name: item.name,
+      gst: item.gst, // ✅ This should now have the GST amount
+      gstRate: item.gstRate,
+      basePrice: item.basePrice,
+      price: item.price
+    })));
+
     res.status(201).json({
       success: true,
       order: savedOrder,
-      message: 'Order created successfully'
+      message: 'Order created successfully with proper GST breakdown'
     });
 
   } catch (error) {
@@ -121,6 +233,561 @@ exports.createOrder = async (req, res) => {
       success: false,
       error: 'Failed to create order', 
       details: error.message 
+    });
+  }
+};
+
+// ✅ FIXED: Enhanced Razorpay order creation with proper GST handling
+exports.createRazorpayOrder = async (req, res) => {
+  try {
+    console.log('=== RAZORPAY ORDER CREATE (FIXED GST FIELD NAMES) ===');
+    console.log('Request body:', req.body);
+    
+    const { 
+      amount, 
+      subtotal: frontendSubtotal, 
+      discountedSubtotal: frontendDiscountedSubtotal,
+      discount: frontendDiscount,
+      couponCode,
+      couponId,
+      shipping: frontendShipping,
+      cartItems,
+      calculationMethod = 'database_pricing_with_correct_gst_fields'
+    } = req.body;
+
+    // Validate coupon if provided
+    let validatedDiscount = 0;
+    let validatedCoupon = null;
+
+    if (couponCode && couponId) {
+      validatedCoupon = await Coupon.findById(couponId);
+      if (!validatedCoupon || validatedCoupon.code !== couponCode.toUpperCase()) {
+        return res.status(400).json({ success: false, error: 'Invalid coupon' });
+      }
+
+      // Check coupon validity
+      const now = new Date();
+      const isCurrentlyValid = (
+        validatedCoupon.isActive && 
+        now >= validatedCoupon.startDate && 
+        now <= validatedCoupon.endDate &&
+        (!validatedCoupon.maxUsageCount || validatedCoupon.currentUsage < validatedCoupon.maxUsageCount) &&
+        (!validatedCoupon.budget || validatedCoupon.budgetUtilized < validatedCoupon.budget)
+      );
+      
+      if (!isCurrentlyValid) {
+        return res.status(400).json({ success: false, error: 'Coupon is not currently valid' });
+      }
+    }
+
+    // ✅ FIXED: Process cart items and calculate GST properly for storage
+    let processedItems = [];
+    let calculatedSubtotal = 0;
+    let calculatedGST = 0;
+
+    if (cartItems && Array.isArray(cartItems) && cartItems.length > 0) {
+      console.log('🛒 Processing cart items with proper database pricing and GST calculation...');
+      
+      for (const item of cartItems) {
+        const product = await Product.findById(item.productId);
+        if (!product) {
+          return res.status(400).json({ 
+            success: false, 
+            error: `Product ${item.productId} not found` 
+          });
+        }
+        
+        if (product.stock < item.quantity) {
+          return res.status(400).json({ 
+            success: false, 
+            error: `Insufficient stock for ${product.name}` 
+          });
+        }
+
+        // ✅ Get proper pricing data from database
+        const pricingData = getProductPricing(product);
+        
+        console.log(`📦 Product ${product.name} pricing calculation:`, {
+          basePrice: pricingData.basePrice,
+          gstRate: pricingData.gstRate,
+          gstAmount: pricingData.gstAmount,
+          totalPrice: pricingData.totalPrice,
+          quantity: item.quantity,
+          itemSubtotal: pricingData.totalPrice * item.quantity,
+          itemGSTTotal: pricingData.gstAmount * item.quantity
+        });
+
+        // ✅ Calculate totals using proper database pricing
+        const itemSubtotal = pricingData.totalPrice * item.quantity;
+        const itemGSTTotal = pricingData.gstAmount * item.quantity;
+        
+        calculatedSubtotal += itemSubtotal;
+        calculatedGST += itemGSTTotal;
+
+        // ✅ FIXED: Store GST information using correct field names
+        processedItems.push({
+          product: item.productId,
+          quantity: item.quantity,
+          price: pricingData.totalPrice, // Total price including GST
+          basePrice: pricingData.basePrice, // Base price without GST
+          gst: pricingData.gstAmount, // ✅ Use 'gst' field name (matches your structure)
+          gstRate: pricingData.gstRate, // GST rate percentage
+          gstAmount: pricingData.gstAmount, // GST amount per unit (for backward compatibility)
+          totalGstAmount: itemGSTTotal, // Total GST for this item
+          name: product.name
+        });
+      }
+    } else {
+      return res.status(400).json({ success: false, error: 'Cart items are required' });
+    }
+
+    // Backend calculations
+    const finalSubtotal = Math.round(calculatedSubtotal * 100) / 100;
+    const finalGST = Math.round(calculatedGST * 100) / 100;
+    
+    console.log('💰 Backend Subtotal (calculated from database with correct GST fields):', {
+      calculatedSubtotal: finalSubtotal,
+      calculatedGST: finalGST,
+      frontendSubtotal,
+      note: 'GST properly calculated and will use correct field names'
+    });
+
+    // Validate subtotal match with frontend
+    if (Math.abs(frontendSubtotal - finalSubtotal) > 0.01) {
+      console.error('❌ Subtotal mismatch:', {
+        frontendSubtotal,
+        backendSubtotal: finalSubtotal,
+        backendGST: finalGST
+      });
+      return res.status(400).json({
+        success: false,
+        error: `Subtotal mismatch. Expected: ₹${finalSubtotal.toFixed(2)}, Received: ₹${frontendSubtotal.toFixed(2)}`,
+        debug: {
+          backendCalculated: {
+            subtotal: finalSubtotal,
+            gst: finalGST
+          },
+          frontend: {
+            subtotal: frontendSubtotal
+          }
+        }
+      });
+    }
+
+    // Calculate discount if coupon is applied
+    if (validatedCoupon) {
+      if (finalSubtotal < validatedCoupon.minOrderValue) {
+        return res.status(400).json({
+          success: false,
+          error: `Minimum order value of ₹${validatedCoupon.minOrderValue} required`
+        });
+      }
+
+      if (validatedCoupon.discountType === 'percentage') {
+        validatedDiscount = (finalSubtotal * validatedCoupon.discountValue) / 100;
+        if (validatedCoupon.maxDiscountAmount && validatedDiscount > validatedCoupon.maxDiscountAmount) {
+          validatedDiscount = validatedCoupon.maxDiscountAmount;
+        }
+      } else if (validatedCoupon.discountType === 'fixed') {
+        validatedDiscount = Math.min(validatedCoupon.discountValue, finalSubtotal);
+      }
+      
+      validatedDiscount = Math.round(validatedDiscount * 100) / 100;
+
+      if (Math.abs(frontendDiscount - validatedDiscount) > 0.01) {
+        return res.status(400).json({
+          success: false,
+          error: `Discount mismatch. Expected: ₹${validatedDiscount.toFixed(2)}, Received: ₹${frontendDiscount.toFixed(2)}`
+        });
+      }
+    }
+
+    const finalDiscount = Math.round(validatedDiscount * 100) / 100;
+    const finalDiscountedSubtotal = Math.max(0, finalSubtotal - finalDiscount);
+
+    // Adjust GST proportionally if discount is applied
+    let adjustedGST = finalGST;
+    if (finalDiscount > 0 && finalSubtotal > 0) {
+      const discountRatio = finalDiscountedSubtotal / finalSubtotal;
+      adjustedGST = finalGST * discountRatio;
+      console.log('🧮 GST adjusted for discount:', {
+        originalGST: finalGST,
+        discountRatio,
+        adjustedGST
+      });
+    }
+    adjustedGST = Math.round(adjustedGST * 100) / 100;
+
+    // Calculate shipping
+    const finalShipping = finalDiscountedSubtotal >= 500 ? 0 : 50;
+
+    // Final total = discounted subtotal + shipping (GST already included in subtotal)
+    const finalTotal = finalDiscountedSubtotal + finalShipping;
+    const roundedFinalTotal = Math.round(finalTotal * 100) / 100;
+
+    console.log('💰 Backend Final Calculations (Fixed GST Field Names):', {
+      originalSubtotal: finalSubtotal,
+      originalGST: finalGST,
+      discount: finalDiscount,
+      discountedSubtotal: finalDiscountedSubtotal,
+      adjustedGST: adjustedGST,
+      shipping: finalShipping,
+      total: roundedFinalTotal,
+      note: 'GST properly calculated and will be stored with correct field names'
+    });
+
+    // Validate total amount with frontend
+    if (Math.abs(amount - roundedFinalTotal) > 0.01) {
+      console.error('❌ Amount mismatch:', {
+        frontendAmount: amount,
+        backendAmount: roundedFinalTotal,
+        difference: Math.abs(amount - roundedFinalTotal)
+      });
+      
+      return res.status(400).json({
+        success: false,
+        error: `Amount mismatch. Expected: ₹${roundedFinalTotal.toFixed(2)}, Received: ₹${amount.toFixed(2)}`,
+        debug: {
+          backendCalculation: {
+            originalSubtotal: finalSubtotal,
+            discount: finalDiscount,
+            discountedSubtotal: finalDiscountedSubtotal,
+            gst: adjustedGST,
+            shipping: finalShipping,
+            total: roundedFinalTotal
+          }
+        }
+      });
+    }
+
+    console.log('✅ Amount validation passed - creating Razorpay order');
+    
+    // Create Razorpay order
+    const options = {
+      amount: Math.round(roundedFinalTotal * 100), // Convert to paisa
+      currency: "INR",
+      receipt: `order_${Date.now()}`,
+      payment_capture: 1
+    };
+
+    const razorpayOrder = await razorpay.orders.create(options);
+
+    // ✅ FIXED: Store transaction info with complete GST breakdown using correct field names
+    const transaction = new RazorpayTransaction({
+      userId: req.user.userId,
+      razorpayOrderId: razorpayOrder.id,
+      amount: roundedFinalTotal,
+      currency: "INR",
+      status: 'created',
+      paymentMethod: 'razorpay',
+      metadata: {
+        receipt: options.receipt,
+        created_at: new Date(),
+        originalSubtotal: finalSubtotal,
+        discount: finalDiscount,
+        discountedSubtotal: finalDiscountedSubtotal,
+        gstAmount: adjustedGST, // ✅ Store adjusted GST amount
+        originalGstAmount: finalGST, // ✅ Store original GST amount
+        shippingCharge: finalShipping,
+        totalAmount: roundedFinalTotal,
+        couponCode: couponCode || null,
+        couponId: couponId || null,
+        cartItems: cartItems || [],
+        processedItems: processedItems, // ✅ Includes GST breakdown with correct field names
+        calculationMethod: 'database_pricing_with_correct_gst_field_names',
+        backendValidated: true,
+        validatedAt: new Date(),
+        gstNote: 'GST properly calculated from database and stored with correct field names (gst field)'
+      }
+    });
+
+    await transaction.save();
+    console.log('✅ Transaction created successfully with proper GST breakdown using correct field names');
+
+    // Return backend validated totals to frontend
+    res.json({
+      success: true,
+      orderId: razorpayOrder.id,
+      amount: razorpayOrder.amount, // in paisa
+      currency: razorpayOrder.currency,
+      validatedTotals: {
+        subtotal: finalSubtotal, // ✅ Includes GST calculated from database
+        discount: finalDiscount,
+        discountedSubtotal: finalDiscountedSubtotal,
+        gst: adjustedGST, // ✅ GST amount (adjusted for discount)
+        originalGst: finalGST, // ✅ Original GST amount
+        shipping: finalShipping,
+        total: roundedFinalTotal
+      },
+      gstBreakdown: processedItems.map(item => ({
+        productId: item.product,
+        productName: item.name,
+        quantity: item.quantity,
+        basePrice: item.basePrice,
+        gstRate: item.gstRate,
+        gstAmountPerUnit: item.gst, // ✅ Using correct field name
+        totalGstAmount: item.totalGstAmount
+      })),
+      gstNote: 'GST properly calculated from database pricing data and stored with correct field names'
+    });
+
+  } catch (error) {
+    console.error('❌ Error creating Razorpay order:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to create order',
+      details: error.message
+    });
+  }
+};
+
+// ✅ FIXED: Updated verifyPayment function to handle proper GST storage
+exports.verifyPayment = async (req, res) => {
+  try {
+    console.log('🚀 === PAYMENT VERIFICATION (FIXED GST FIELD NAMES) ===');
+    console.log('📦 Request body:', JSON.stringify(req.body, null, 2));
+    
+    const {
+      razorpay_order_id,
+      razorpay_payment_id,
+      razorpay_signature,
+      order_details
+    } = req.body;
+
+    // Validate required fields
+    if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature || !order_details) {
+      return res.status(400).json({ 
+        success: false,
+        error: 'Missing required payment details' 
+      });
+    }
+
+    // Find the transaction record
+    const transaction = await RazorpayTransaction.findOne({
+      razorpayOrderId: razorpay_order_id
+    });
+
+    if (!transaction) {
+      return res.status(404).json({ 
+        success: false,
+        error: 'Transaction not found'
+      });
+    }
+
+    // Verify signature
+    const sign = razorpay_order_id + "|" + razorpay_payment_id;
+    const expectedSign = crypto
+      .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
+      .update(sign)
+      .digest("hex");
+
+    if (razorpay_signature !== expectedSign) {
+      console.error('❌ Signature verification failed');
+      transaction.status = 'failed';
+      transaction.errorDescription = 'Invalid payment signature';
+      await transaction.save();
+      
+      return res.status(400).json({ 
+        success: false,
+        error: "Invalid payment signature"
+      });
+    }
+
+    console.log('✅ Signature verification passed');
+
+    // ✅ Extract validated data from transaction metadata (BACKEND TRUTH)
+    const metadata = transaction.metadata || {};
+    const {
+      originalSubtotal,
+      discount,
+      discountedSubtotal,
+      gstAmount,
+      originalGstAmount,
+      shippingCharge,
+      totalAmount,
+      couponCode,
+      couponId,
+      processedItems // ✅ Contains GST breakdown with correct field names
+    } = metadata;
+
+    console.log('🎫 Using BACKEND validated data with proper GST breakdown (correct field names):', {
+      originalSubtotal,
+      discount,
+      discountedSubtotal,
+      gstAmount,
+      originalGstAmount,
+      shippingCharge,
+      totalAmount,
+      couponCode,
+      couponId,
+      processedItemsCount: processedItems?.length || 0
+    });
+
+    // Validate order details
+    const { items, shippingAddress } = order_details;
+    if (!items || !Array.isArray(items) || !shippingAddress) {
+      return res.status(400).json({ 
+        success: false,
+        error: 'Invalid order details provided' 
+      });
+    }
+
+    // Update stock for all items
+    console.log('💰 Updating stock for items...');
+    
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      const product = await Product.findById(item.product);
+      
+      if (!product) {
+        return res.status(404).json({ 
+          success: false,
+          error: `Product with ID ${item.product} does not exist`
+        });
+      }
+
+      if (product.stock < item.quantity) {
+        return res.status(400).json({ 
+          success: false,
+          error: `Only ${product.stock} units available for ${product.name}`
+        });
+      }
+
+      // Update product stock
+      await Product.findByIdAndUpdate(item.product, {
+        $inc: { stock: -item.quantity }
+      });
+      
+      console.log(`📦 Stock updated for ${product.name}`);
+    }
+
+    console.log('✅ All items processed and stock updated');
+
+    // ✅ FIXED: Create order using processed items with GST information using correct field names
+    let orderItems = [];
+    
+    if (processedItems && Array.isArray(processedItems)) {
+      // Use processed items from transaction (contains proper GST breakdown with correct field names)
+      orderItems = processedItems.map(processedItem => ({
+        product: processedItem.product,
+        quantity: processedItem.quantity,
+        price: processedItem.price, // Total price including GST
+        basePrice: processedItem.basePrice, // Base price without GST
+        gst: processedItem.gst, // ✅ Use 'gst' field name (matches your structure)
+        gstRate: processedItem.gstRate, // GST rate percentage
+        gstAmount: processedItem.gstAmount, // GST amount per unit (for backward compatibility)
+        totalGstAmount: processedItem.totalGstAmount, // Total GST for this item
+        name: processedItem.name
+      }));
+    } else {
+      // Fallback: use items from order_details but calculate proper GST with correct field names
+      for (const item of items) {
+        const product = await Product.findById(item.product);
+        if (product) {
+          const pricingData = getProductPricing(product);
+          
+          orderItems.push({
+            product: item.product,
+            quantity: item.quantity,
+            price: pricingData.totalPrice,
+            basePrice: pricingData.basePrice,
+            gst: pricingData.gstAmount, // ✅ Use 'gst' field name
+            gstRate: pricingData.gstRate,
+            gstAmount: pricingData.gstAmount, // For backward compatibility
+            totalGstAmount: pricingData.gstAmount * item.quantity,
+            name: product.name
+          });
+        }
+      }
+    }
+
+    console.log('📦 Order items with proper GST breakdown prepared (correct field names):', {
+      totalItems: orderItems.length,
+      sampleItem: orderItems[0] ? {
+        name: orderItems[0].name,
+        basePrice: orderItems[0].basePrice,
+        gst: orderItems[0].gst, // ✅ This should now have the GST amount
+        gstRate: orderItems[0].gstRate,
+        totalPrice: orderItems[0].price
+      } : 'No items'
+    });
+
+    // ✅ Create order using BACKEND validated data with GST information using correct field names
+    const order = new Order({
+      user: req.user.userId,
+      items: orderItems, // ✅ Use order items with GST breakdown using correct field names
+      // ✅ Use BACKEND validated data from transaction metadata
+      subtotal: originalSubtotal || 0, // Already includes GST
+      discountedSubtotal: discountedSubtotal || 0,
+      discount: discount || 0,
+      couponCode: couponCode || null,
+      couponId: couponId || null,
+      totalAmount: totalAmount, // Use backend calculated total
+      gstAmount: gstAmount || 0, // ✅ Store adjusted GST amount
+      originalGstAmount: originalGstAmount || 0, // ✅ Store original GST amount
+      shippingCharge: shippingCharge || 0,
+      shippingAddress,
+      paymentMethod: 'razorpay',
+      paymentStatus: 'completed',
+      razorpayDetails: {
+        orderId: razorpay_order_id,
+        paymentId: razorpay_payment_id,
+        signature: razorpay_signature
+      }
+    });
+
+    await order.save();
+    console.log('✅ Order created successfully with proper GST breakdown using correct field names:', order._id);
+    
+    // ✅ Log the saved items to verify GST field is populated
+    console.log('📋 Saved order items with GST verification:', order.items.map(item => ({
+      name: item.name,
+      gst: item.gst, // ✅ This should now show the actual GST amount instead of 0
+      gstRate: item.gstRate,
+      basePrice: item.basePrice,
+      price: item.price,
+      quantity: item.quantity
+    })));
+
+    // Apply coupon usage if coupon was used
+    if (couponId && discount > 0) {
+      try {
+        console.log('🎫 Applying coupon usage...');
+        await updateCouponAfterPayment(couponId, order._id, req.user.userId, discount, originalSubtotal);
+        console.log('✅ Coupon usage applied successfully');
+      } catch (couponError) {
+        console.error('❌ Error applying coupon usage:', couponError);
+        // Don't fail the order creation
+      }
+    }
+
+    // Update transaction record
+    transaction.orderId = order._id;
+    transaction.razorpayPaymentId = razorpay_payment_id;
+    transaction.razorpaySignature = razorpay_signature;
+    transaction.status = 'captured';
+    transaction.metadata = {
+      ...transaction.metadata,
+      finalOrderId: order._id,
+      captured_at: new Date()
+    };
+    
+    await transaction.save();
+
+    console.log('🎉 === PAYMENT VERIFICATION COMPLETED WITH CORRECT GST FIELD NAMES ===');
+
+    res.status(201).json({
+      success: true,
+      order,
+      message: 'Payment verified and order created successfully with proper GST breakdown using correct field names'
+    });
+  } catch (error) {
+    console.error('💥 Payment verification error:', error);
+    
+    res.status(500).json({ 
+      success: false,
+      error: error.message,
+      details: 'An error occurred during payment verification'
     });
   }
 };
@@ -177,199 +844,7 @@ const updateCouponAfterPayment = async (couponId, orderId, userId, discountAmoun
   }
 };
 
-// ✅ NEW: Enhanced Razorpay order creation (if you have a separate function)
-
-
-exports.createRazorpayOrder = async (req, res) => {
-  try {
-    const { 
-      amount, 
-      subtotal, 
-      discountedSubtotal,
-      discount,
-      couponCode,
-      couponId,
-      gst,
-      shipping,
-      cartItems,
-      calculationMethod = 'discount_then_gst'
-    } = req.body;
-
-    // Validate coupon and calculate discount
-    let validatedDiscount = 0;
-    let validatedCoupon = null;
-
-    if (couponCode && couponId) {
-      validatedCoupon = await Coupon.findById(couponId);
-      if (!validatedCoupon || validatedCoupon.code !== couponCode.toUpperCase()) {
-        return res.status(400).json({ success: false, error: 'Invalid coupon' });
-      }
-
-      // Check validity
-      const now = new Date();
-      const isCurrentlyValid = (
-        validatedCoupon.isActive && 
-        now >= validatedCoupon.startDate && 
-        now <= validatedCoupon.endDate &&
-        (!validatedCoupon.maxUsageCount || validatedCoupon.currentUsage < validatedCoupon.maxUsageCount) &&
-        (!validatedCoupon.budget || validatedCoupon.budgetUtilized < validatedCoupon.budget)
-      );
-      if (!isCurrentlyValid) {
-        return res.status(400).json({ success: false, error: 'Coupon is not currently valid' });
-      }
-
-      // Calculate discount
-      if (subtotal < validatedCoupon.minOrderValue) {
-        return res.status(400).json({ success: false, error: `Minimum order value of ₹${validatedCoupon.minOrderValue} required` });
-      }
-      if (validatedCoupon.discountType === 'percentage') {
-        validatedDiscount = (subtotal * validatedCoupon.discountValue) / 100;
-        if (validatedCoupon.maxDiscountAmount && validatedDiscount > validatedCoupon.maxDiscountAmount) {
-          validatedDiscount = validatedCoupon.maxDiscountAmount;
-        }
-      } else if (validatedCoupon.discountType === 'fixed') {
-        validatedDiscount = Math.min(validatedCoupon.discountValue, subtotal);
-      } else {
-        return res.status(400).json({ success: false, error: 'Invalid coupon discount type' });
-      }
-      validatedDiscount = Math.round(validatedDiscount * 100) / 100;
-
-      // Compare with frontend discount (allow 1 paisa difference)
-      if (Math.abs(discount - validatedDiscount) > 0.01) {
-        return res.status(400).json({
-          success: false,
-          error: `Discount mismatch. Expected: ₹${validatedDiscount.toFixed(2)}, Received: ₹${discount.toFixed(2)}`
-        });
-      }
-    }
-
-    // Validate cart items and calculate backend amounts
-    let processedItems = [];
-    let calculatedSubtotal = 0;
-    let calculatedGST = 0;
-
-    if (cartItems && Array.isArray(cartItems) && cartItems.length > 0) {
-      for (const item of cartItems) {
-        const product = await Product.findById(item.productId);
-        if (!product) {
-          return res.status(400).json({ success: false, error: `Product ${item.productId} not found` });
-        }
-        if (product.stock < item.quantity) {
-          return res.status(400).json({ success: false, error: `Insufficient stock for ${product.name}` });
-        }
-        const itemTotal = product.price * item.quantity;
-        calculatedSubtotal += itemTotal;
-        const gstRate = product.gst || 5;
-        const itemGST = (itemTotal * gstRate) / 100;
-        calculatedGST += itemGST;
-        processedItems.push({
-          product: item.productId,
-          quantity: item.quantity,
-          price: product.price,
-          name: product.name,
-          gst: gstRate
-        });
-      }
-    } else {
-      return res.status(400).json({ success: false, error: 'Cart items are required' });
-    }
-
-    // Backend calculations
-    const finalSubtotal = Math.round(calculatedSubtotal * 100) / 100;
-    const finalDiscount = Math.round(validatedDiscount * 100) / 100;
-    const finalDiscountedSubtotal = Math.max(0, finalSubtotal - finalDiscount);
-
-    // GST on discounted amount
-    let finalGST = calculatedGST;
-    if (finalDiscount > 0 && finalSubtotal > 0) {
-      const discountRatio = finalDiscountedSubtotal / finalSubtotal;
-      finalGST = calculatedGST * discountRatio;
-    }
-    finalGST = Math.round(finalGST * 100) / 100;
-
-    // Shipping
-    const finalShipping = finalDiscountedSubtotal >= 500 ? 0 : 50;
-
-    // Final total
-    const finalTotal = finalDiscountedSubtotal + finalGST + finalShipping;
-    const roundedFinalTotal = Math.round(finalTotal * 100) / 100;
-
-    // Validate total amount (allow 1 paisa difference)
-    if (Math.abs(amount - roundedFinalTotal) > 0.01) {
-      return res.status(400).json({
-        success: false,
-        error: `Amount mismatch. Expected: ₹${roundedFinalTotal.toFixed(2)}, Received: ₹${amount.toFixed(2)}`
-      });
-    }
-
-    // Create Razorpay order
-    const options = {
-      amount: Math.round(roundedFinalTotal * 100), // Convert to paisa
-      currency: "INR",
-      receipt: `order_${Date.now()}`,
-      payment_capture: 1
-    };
-
-    const razorpayOrder = await razorpay.orders.create(options);
-
-    // Store transaction info
-    const transaction = new RazorpayTransaction({
-      userId: req.user.userId,
-      razorpayOrderId: razorpayOrder.id,
-      amount: roundedFinalTotal,
-      currency: "INR",
-      status: 'created',
-      paymentMethod: 'razorpay',
-      metadata: {
-        receipt: options.receipt,
-        created_at: new Date(),
-        originalSubtotal: finalSubtotal,
-        discount: finalDiscount,
-        discountedSubtotal: finalDiscountedSubtotal,
-        gstAmount: finalGST,
-        shippingCharge: finalShipping,
-        totalAmount: roundedFinalTotal,
-        couponCode: couponCode || null,
-        couponId: couponId || null,
-        cartItems: cartItems || [],
-        processedItems: processedItems,
-        calculationMethod,
-        backendValidated: true,
-        validatedAt: new Date()
-      }
-    });
-
-    await transaction.save();
-
-    // Return backend validated totals to frontend
-    res.json({
-      success: true,
-      orderId: razorpayOrder.id,
-      amount: razorpayOrder.amount, // in paisa
-      currency: razorpayOrder.currency,
-      validatedTotals: {
-        originalSubtotal: finalSubtotal,
-        discount: finalDiscount,
-        discountedSubtotal: finalDiscountedSubtotal,
-        gst: finalGST,
-        shipping: finalShipping,
-        total: roundedFinalTotal
-      }
-    });
-
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      error: 'Failed to create order',
-      details: error.message
-    });
-  }
-};
-
-
-
 // Get all orders (admin)
-// Updated getAllOrders function to support all the frontend filters
 exports.getAllOrders = async (req, res) => {
   try {
     const { 
@@ -432,7 +907,6 @@ exports.getAllOrders = async (req, res) => {
   }
 };
 
-// Get user orders
 exports.getUserOrders = async (req, res) => {
   try {
     const { page = 1, limit = 10 } = req.query;
@@ -474,7 +948,7 @@ exports.getOrder = async (req, res) => {
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
-}
+};
 
 // Update order status (admin)
 exports.updateOrderStatus = async (req, res) => {
@@ -525,17 +999,14 @@ exports.cancelOrder = async (req, res) => {
       return res.status(404).json({ error: 'Order not found' });
     }
 
-    // Check if user is authorized to cancel this order
     if (req.user.role !== 'admin' && order.user.toString() !== req.user.userId) {
       return res.status(403).json({ error: 'Not authorized' });
     }
 
-    // Only allow cancellation of pending or processing orders
     if (!['pending', 'processing'].includes(order.status)) {
       return res.status(400).json({ error: 'Order cannot be cancelled' });
     }
 
-    // Restore product stock
     for (const item of order.items) {
       await Product.findByIdAndUpdate(item.product, {
         $inc: { stock: item.quantity }
@@ -610,7 +1081,7 @@ exports.exportOrders = async (req, res) => {
       return res.status(404).json({ error: 'No orders found for the specified criteria' });
     }
 
-    // Create CSV content with admin notes
+    // Create CSV content with GST breakdown
     const csvRows = [];
     const headers = [
       'Order ID',
@@ -627,17 +1098,12 @@ exports.exportOrders = async (req, res) => {
       'Payment Status',
       'Payment Method',
       'Shipping Address',
-      'Admin Note' // Added admin note column
+      'Admin Note'
     ];
 
     csvRows.push(headers.join(','));
 
     for (const order of orders) {
-      // Calculate subtotal from items
-      const subtotal = (order.items || []).reduce((sum, item) => 
-        sum + (item.price || 0) * (item.quantity || 0), 0
-      );
-
       const row = [
         `"${order._id || ''}"`,
         `"${order.createdAt ? new Date(order.createdAt).toLocaleString() : ''}"`,
@@ -647,7 +1113,7 @@ exports.exportOrders = async (req, res) => {
         `"${(order.items || []).map(item => 
           `${(item.product?.name || '').replace(/"/g, '""')} (${item.quantity || 0} × ₹${item.price || 0})`
         ).join('; ')}"`,
-        `"₹${subtotal.toLocaleString()}"`,
+        `"₹${(order.subtotal || 0).toLocaleString()}"`,
         `"₹${(order.gstAmount || 0).toLocaleString()}"`,
         `"₹${(order.shippingCharge || 0).toLocaleString()}"`,
         `"₹${(order.totalAmount || 0).toLocaleString()}"`,
@@ -663,7 +1129,7 @@ exports.exportOrders = async (req, res) => {
           ].filter(Boolean).join(', ').replace(/"/g, '""')
           : 'Address not available'
         }"`,
-        `"${(order.adminNote || '').replace(/"/g, '""')}"` // Added admin note to export
+        `"${(order.adminNote || '').replace(/"/g, '""')}"`
       ];
       
       csvRows.push(row.join(','));
@@ -672,14 +1138,12 @@ exports.exportOrders = async (req, res) => {
     const csvContent = csvRows.join('\n');
     const filename = `orders-${new Date().toISOString().split('T')[0]}.csv`;
 
-    // Set headers for file download
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
     res.setHeader('Content-Length', Buffer.byteLength(csvContent));
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Pragma', 'no-cache');
 
-    // Send the CSV content
     res.send(csvContent);
   } catch (error) {
     console.error('Error exporting orders:', error);
@@ -703,27 +1167,23 @@ exports.getOrderStats = async (req, res) => {
       };
     }
 
-    // Get orders with populated data
     const orders = await Order.find(query)
       .populate('user', 'name email')
       .populate('items.product', 'name price')
       .lean();
 
-    // Calculate basic stats
     const totalOrders = orders.length;
     const totalRevenue = orders.reduce((sum, order) => sum + (order.totalAmount || 0), 0);
     const totalGST = orders.reduce((sum, order) => sum + (order.gstAmount || 0), 0);
     const totalShipping = orders.reduce((sum, order) => sum + (order.shippingCharge || 0), 0);
     const averageOrderValue = totalOrders ? totalRevenue / totalOrders : 0;
 
-    // Calculate status breakdown
     const statusBreakdown = orders.reduce((acc, order) => {
       const status = order.status || 'pending';
       acc[status] = (acc[status] || 0) + 1;
       return acc;
     }, {});
 
-    // Calculate daily stats
     const dailyStats = await Order.aggregate([
       { $match: query },
       {
@@ -760,570 +1220,6 @@ exports.getOrderStats = async (req, res) => {
   }
 };
 
-// Create Razorpay order - Updated to handle GST
-// Updated createRazorpayOrder function with proper coupon handling
-exports.createRazorpayOrder = async (req, res) => {
-  try {
-    console.log('=== RAZORPAY ORDER CREATE DEBUG ===');
-    console.log('Request body:', req.body);
-    console.log('User from auth middleware:', req.user ? { id: req.user.userId, role: req.user.role } : 'No user');
-    
-    const { 
-      amount, 
-      subtotal: frontendSubtotal, 
-      discountedSubtotal: frontendDiscountedSubtotal,
-      discount: frontendDiscount,
-      couponCode,
-      couponId,
-      gst: frontendGST,
-      shipping: frontendShipping,
-      cartItems,
-      calculationMethod = 'discount_then_gst'
-    } = req.body;
-
-    // Import Coupon model at the top of the file if not already imported
-    const Coupon = require('../models/Coupon');
-
-    console.log('🎫 Coupon Info:', {
-      couponCode,
-      couponId,
-      frontendDiscount,
-      frontendDiscountedSubtotal
-    });
-
-    // Handle coupon validation if coupon is applied
-    let validatedDiscount = 0;
-    let validatedCoupon = null;
-    
-    if (couponCode && couponId) {
-      try {
-        console.log('🎫 Validating coupon on backend...');
-        
-        // Find and validate coupon
-        validatedCoupon = await Coupon.findById(couponId);
-        if (!validatedCoupon || validatedCoupon.code !== couponCode.toUpperCase()) {
-          return res.status(400).json({
-            success: false,
-            error: 'Invalid coupon'
-          });
-        }
-
-        console.log('✅ Coupon found:', validatedCoupon.code);
-
-        // Check if coupon is currently valid
-        const now = new Date();
-        const isCurrentlyValid = (
-          validatedCoupon.isActive && 
-          now >= validatedCoupon.startDate && 
-          now <= validatedCoupon.endDate &&
-          (!validatedCoupon.maxUsageCount || validatedCoupon.currentUsage < validatedCoupon.maxUsageCount) &&
-          (!validatedCoupon.budget || validatedCoupon.budgetUtilized < validatedCoupon.budget)
-        );
-
-        if (!isCurrentlyValid) {
-          return res.status(400).json({
-            success: false,
-            error: 'Coupon is not currently valid'
-          });
-        }
-
-        // Check user eligibility if method exists
-        if (typeof validatedCoupon.canUserUseCoupon === 'function') {
-          const canUse = validatedCoupon.canUserUseCoupon(req.user.userId);
-          if (!canUse) {
-            return res.status(400).json({
-              success: false,
-              error: 'You have already used this coupon'
-            });
-          }
-        }
-
-        // Calculate discount using coupon method if available
-        let discountResult;
-        if (typeof validatedCoupon.calculateDiscount === 'function') {
-          discountResult = validatedCoupon.calculateDiscount(frontendSubtotal, cartItems || []);
-        } else {
-          // Fallback calculation
-          if (frontendSubtotal < validatedCoupon.minOrderValue) {
-            return res.status(400).json({
-              success: false,
-              error: `Minimum order value of ₹${validatedCoupon.minOrderValue} required`
-            });
-          }
-
-          let discount = 0;
-          if (validatedCoupon.discountType === 'percentage') {
-            discount = (frontendSubtotal * validatedCoupon.discountValue) / 100;
-          } else {
-            discount = Math.min(validatedCoupon.discountValue, frontendSubtotal);
-          }
-          
-          discountResult = {
-            valid: true,
-            discount: Math.round(discount * 100) / 100
-          };
-        }
-
-        if (!discountResult.valid) {
-          return res.status(400).json({
-            success: false,
-            error: discountResult.reason || 'Coupon not valid for this order'
-          });
-        }
-
-        validatedDiscount = discountResult.discount;
-        console.log('🎫 Discount calculated:', validatedDiscount);
-
-        // Compare with frontend discount (allow 1 paisa difference)
-        if (Math.abs(frontendDiscount - validatedDiscount) > 0.01) {
-          console.error('❌ Discount mismatch:', {
-            frontendDiscount,
-            backendDiscount: validatedDiscount
-          });
-          return res.status(400).json({
-            success: false,
-            error: `Discount mismatch. Expected: ₹${validatedDiscount.toFixed(2)}, Received: ₹${frontendDiscount.toFixed(2)}`
-          });
-        }
-
-      } catch (couponError) {
-        console.error('❌ Coupon validation error:', couponError);
-        return res.status(400).json({
-          success: false,
-          error: 'Coupon validation failed: ' + couponError.message
-        });
-      }
-    }
-
-    console.log('✅ Coupon validation complete, validated discount:', validatedDiscount);
-
-    // Calculate subtotal from cart items if provided, otherwise use frontend subtotal
-    let calculatedSubtotal = frontendSubtotal || 0;
-    let calculatedGST = frontendGST || 0;
-
-    if (cartItems && Array.isArray(cartItems) && cartItems.length > 0) {
-      console.log('📦 Calculating from cart items...');
-      calculatedSubtotal = 0;
-      calculatedGST = 0;
-      
-      // Calculate subtotal and GST from cart items
-      for (const item of cartItems) {
-        const product = await Product.findById(item.productId);
-        if (!product) {
-          return res.status(400).json({
-            success: false,
-            error: `Product ${item.productId} not found`
-          });
-        }
-        
-        const itemTotal = product.price * item.quantity;
-        calculatedSubtotal += itemTotal;
-        
-        const gstRate = product.gst || 0;
-        calculatedGST += (itemTotal * gstRate) / 100;
-      }
-      
-      console.log('📦 Calculated from items:', {
-        calculatedSubtotal,
-        calculatedGST
-      });
-    } else {
-      // Use frontend calculations
-      console.log('📦 Using frontend calculations');
-    }
-
-    // Apply discount to get discounted subtotal
-    const discountedSubtotal = Math.max(0, calculatedSubtotal - validatedDiscount);
-    
-    // Adjust GST proportionally if discount is applied
-    let adjustedGST = calculatedGST;
-    if (validatedDiscount > 0 && calculatedSubtotal > 0) {
-      const discountRatio = discountedSubtotal / calculatedSubtotal;
-      adjustedGST = calculatedGST * discountRatio;
-      console.log('🧮 GST adjusted for discount:', {
-        originalGST: calculatedGST,
-        discountRatio,
-        adjustedGST
-      });
-    }
-
-    // Calculate shipping based on discounted subtotal
-    const shippingCharge = discountedSubtotal >= 500 ? 0 : 50;
-    
-    // Final total = discounted subtotal + adjusted GST + shipping
-    const totalAmount = discountedSubtotal + adjustedGST + shippingCharge;
-
-    console.log('🧮 Backend Final Calculations:', {
-      originalSubtotal: calculatedSubtotal,
-      validatedDiscount,
-      discountedSubtotal,
-      originalGST: calculatedGST,
-      adjustedGST,
-      shippingCharge,
-      totalAmount,
-      frontendAmount: amount
-    });
-
-    // Validate total amount (allow 1 paisa difference for rounding)
-    if (Math.abs(amount - totalAmount) > 0.01) {
-      console.error('❌ Amount mismatch:', {
-        frontendAmount: amount,
-        backendAmount: totalAmount,
-        difference: Math.abs(amount - totalAmount)
-      });
-      
-      return res.status(400).json({
-        success: false,
-        error: `Amount mismatch. Expected: ₹${totalAmount.toFixed(2)}, Received: ₹${amount.toFixed(2)}`,
-        debug: {
-          backendCalculation: {
-            originalSubtotal: calculatedSubtotal,
-            discount: validatedDiscount,
-            discountedSubtotal,
-            adjustedGST,
-            shipping: shippingCharge,
-            total: totalAmount
-          },
-          frontendData: {
-            subtotal: frontendSubtotal,
-            discount: frontendDiscount,
-            discountedSubtotal: frontendDiscountedSubtotal,
-            gst: frontendGST,
-            shipping: frontendShipping,
-            amount
-          }
-        }
-      });
-    }
-
-    console.log('✅ Amount validation passed');
-    
-    // Create Razorpay order
-    const options = {
-      amount: Math.round(totalAmount * 100), // Convert to paisa
-      currency: "INR",
-      receipt: `order_${Date.now()}`,
-      payment_capture: 1
-    };
-
-    const razorpayOrder = await razorpay.orders.create(options);
-    console.log('✅ Razorpay order created:', razorpayOrder.id);
-
-    // Store transaction info with coupon details
-    const transaction = new RazorpayTransaction({
-      userId: req.user.userId,
-      razorpayOrderId: razorpayOrder.id,
-      amount: totalAmount,
-      currency: "INR",
-      status: 'created',
-      paymentMethod: 'razorpay',
-      metadata: {
-        receipt: options.receipt,
-        created_at: new Date(),
-        originalSubtotal: calculatedSubtotal,
-        discount: validatedDiscount,
-        discountedSubtotal,
-        gstAmount: adjustedGST,
-        shippingCharge,
-        totalAmount,
-        couponCode: couponCode || null,
-        couponId: couponId || null,
-        cartItems: cartItems || []
-      }
-    });
-
-    await transaction.save();
-    console.log('✅ Transaction saved with coupon info');
-
-    res.json({
-      success: true,
-      orderId: razorpayOrder.id,
-      amount: razorpayOrder.amount,
-      currency: razorpayOrder.currency,
-      validatedTotals: {
-        originalSubtotal: calculatedSubtotal,
-        discount: validatedDiscount,
-        discountedSubtotal,
-        gst: adjustedGST,
-        shipping: shippingCharge,
-        total: totalAmount
-      }
-    });
-
-  } catch (error) {
-    console.error('❌ Error creating Razorpay order:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to create order',
-      details: error.message
-    });
-  }
-};
-
-// Updated verifyPayment function to handle coupon application
-exports.verifyPayment = async (req, res) => {
-  try {
-    console.log('🚀 === PAYMENT VERIFICATION STARTED ===');
-    console.log('📦 Request body received:', JSON.stringify(req.body, null, 2));
-    
-    const {
-      razorpay_order_id,
-      razorpay_payment_id,
-      razorpay_signature,
-      order_details
-    } = req.body;
-
-    // Validate required fields
-    if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature || !order_details) {
-      console.error('❌ Missing required fields');
-      return res.status(400).json({ 
-        success: false,
-        error: 'Missing required payment details' 
-      });
-    }
-
-    console.log('✅ All required fields present');
-
-    // Find the transaction record
-    const transaction = await RazorpayTransaction.findOne({
-      razorpayOrderId: razorpay_order_id
-    });
-
-    console.log('📋 Transaction found:', transaction ? {
-      id: transaction._id,
-      status: transaction.status,
-      amount: transaction.amount,
-      backendValidated: transaction.metadata?.backendValidated
-    } : 'Not found');
-
-    if (!transaction) {
-      return res.status(404).json({ 
-        success: false,
-        error: 'Transaction not found'
-      });
-    }
-
-    // Verify signature
-    const sign = razorpay_order_id + "|" + razorpay_payment_id;
-    const expectedSign = crypto
-      .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
-      .update(sign)
-      .digest("hex");
-
-    if (razorpay_signature !== expectedSign) {
-      console.error('❌ Signature verification failed');
-      transaction.status = 'failed';
-      transaction.errorDescription = 'Invalid payment signature';
-      await transaction.save();
-      
-      return res.status(400).json({ 
-        success: false,
-        error: "Invalid payment signature"
-      });
-    }
-
-    console.log('✅ Signature verification passed');
-
-    // ✅ Extract validated data from transaction metadata (BACKEND TRUTH)
-    const metadata = transaction.metadata || {};
-    const {
-      originalSubtotal,
-      discount,
-      discountedSubtotal,
-      gstAmount,
-      shippingCharge,
-      totalAmount,
-      couponCode,
-      couponId,
-      processedItems,
-      backendValidated
-    } = metadata;
-
-    console.log('🎫 Using BACKEND validated data from transaction:', {
-      originalSubtotal,
-      discount,
-      discountedSubtotal,
-      gstAmount,
-      shippingCharge,
-      totalAmount,
-      couponCode,
-      couponId,
-      backendValidated
-    });
-
-    // Validate order details items
-    const { items, shippingAddress } = order_details;
-    if (!items || !Array.isArray(items) || !shippingAddress) {
-      console.error('❌ Invalid order details');
-      return res.status(400).json({ 
-        success: false,
-        error: 'Invalid order details provided' 
-      });
-    }
-
-    console.log('✅ Order details validation passed');
-
-    // Update stock for all items
-    console.log('💰 Updating stock for items...');
-    
-    for (let i = 0; i < items.length; i++) {
-      const item = items[i];
-      console.log(`📦 Processing item ${i + 1}/${items.length}:`, {
-        productId: item.product,
-        quantity: item.quantity
-      });
-
-      const product = await Product.findById(item.product);
-      if (!product) {
-        console.error('❌ Product not found:', item.product);
-        return res.status(404).json({ 
-          success: false,
-          error: `Product with ID ${item.product} does not exist`
-        });
-      }
-
-      if (product.stock < item.quantity) {
-        console.error('❌ Insufficient stock:', {
-          productName: product.name,
-          requested: item.quantity,
-          available: product.stock
-        });
-        return res.status(400).json({ 
-          success: false,
-          error: `Only ${product.stock} units available for ${product.name}`
-        });
-      }
-
-      // Update product stock
-      await Product.findByIdAndUpdate(item.product, {
-        $inc: { stock: -item.quantity }
-      });
-      
-      console.log(`📦 Stock updated for ${product.name}: ${product.stock} -> ${product.stock - item.quantity}`);
-    }
-
-    console.log('✅ All items processed and stock updated');
-
-    // Create order in database using BACKEND validated transaction data
-    console.log('💾 Creating order in database using backend validated amounts...');
-
-    const order = new Order({
-      user: req.user.userId,
-      items: items,
-      // ✅ Use BACKEND validated data from transaction metadata
-      subtotal: originalSubtotal || 0,
-      discountedSubtotal: discountedSubtotal || 0,
-      discount: discount || 0,
-      couponCode: couponCode || null,
-      couponId: couponId || null,
-      totalAmount: totalAmount, // Use backend calculated total
-      gstAmount: gstAmount || 0,
-      shippingCharge: shippingCharge || 0,
-      shippingAddress,
-      paymentMethod: 'razorpay',
-      paymentStatus: 'completed',
-      razorpayDetails: {
-        orderId: razorpay_order_id,
-        paymentId: razorpay_payment_id,
-        signature: razorpay_signature
-      }
-    });
-
-    await order.save();
-    console.log('✅ Order created successfully in database:', order._id);
-
-    // Apply coupon usage if coupon was used
-    if (couponId && discount > 0) {
-      try {
-        console.log('🎫 Applying coupon usage...');
-        const coupon = await Coupon.findById(couponId);
-        
-        if (coupon) {
-          // Apply coupon usage using the model method if available
-          if (typeof coupon.applyCoupon === 'function') {
-            await coupon.applyCoupon(
-              req.user.userId,
-              order._id,
-              originalSubtotal,
-              discount
-            );
-          } else {
-            // Fallback manual update
-            coupon.usageHistory = coupon.usageHistory || [];
-            coupon.usageHistory.push({
-              user: req.user.userId,
-              orderId: order._id,
-              orderValue: originalSubtotal,
-              discountGiven: discount,
-              usedAt: new Date()
-            });
-            
-            coupon.currentUsage = (coupon.currentUsage || 0) + 1;
-            coupon.totalSales = (coupon.totalSales || 0) + originalSubtotal;
-            coupon.budgetUtilized = (coupon.budgetUtilized || 0) + discount;
-            
-            await coupon.save();
-          }
-          
-          console.log('✅ Coupon usage applied successfully');
-        }
-      } catch (couponError) {
-        console.error('❌ Error applying coupon usage:', couponError);
-        // Don't fail the order creation, just log the error
-      }
-    }
-
-    // Update transaction record
-    transaction.orderId = order._id;
-    transaction.razorpayPaymentId = razorpay_payment_id;
-    transaction.razorpaySignature = razorpay_signature;
-    transaction.status = 'captured';
-    transaction.metadata = {
-      ...transaction.metadata,
-      finalOrderId: order._id,
-      captured_at: new Date()
-    };
-    
-    await transaction.save();
-    console.log('✅ Transaction updated successfully');
-
-    console.log('🎉 === PAYMENT VERIFICATION COMPLETED SUCCESSFULLY ===');
-
-    res.status(201).json({
-      success: true,
-      order,
-      message: 'Payment verified and order created successfully'
-    });
-  } catch (error) {
-    console.error('💥 === PAYMENT VERIFICATION ERROR ===');
-    console.error('Error message:', error.message);
-    console.error('Error stack:', error.stack);
-    
-    // Update transaction status if it exists
-    if (req.body?.razorpay_order_id) {
-      try {
-        await RazorpayTransaction.findOneAndUpdate(
-          { razorpayOrderId: req.body.razorpay_order_id },
-          {
-            status: 'failed',
-            errorCode: error.code,
-            errorDescription: error.message
-          }
-        );
-        console.log('📝 Transaction status updated to failed');
-      } catch (updateError) {
-        console.error('❌ Error updating transaction status:', updateError);
-      }
-    }
-    
-    res.status(500).json({ 
-      success: false,
-      error: error.message,
-      details: 'An error occurred during payment verification'
-    });
-  }
-};
-
 // Process refund
 exports.processRefund = async (req, res) => {
   try {
@@ -1344,13 +1240,11 @@ exports.processRefund = async (req, res) => {
       return res.status(400).json({ error: 'Payment not captured or already refunded' });
     }
 
-    // Create refund in Razorpay
     const refund = await razorpay.payments.refund(transaction.razorpayPaymentId, {
-      amount: amount * 100, // Convert to paise
+      amount: amount * 100,
       notes
     });
 
-    // Update transaction record
     await RazorpayTransaction.findByIdAndUpdate(transaction._id, {
       status: 'refunded',
       refundId: refund.id,
@@ -1365,7 +1259,6 @@ exports.processRefund = async (req, res) => {
       }
     });
 
-    // Update order status
     order.status = 'cancelled';
     order.paymentStatus = 'refunded';
     await order.save();
@@ -1480,35 +1373,29 @@ exports.getTransactionStats = async (req, res) => {
   }
 }; 
 
-//edit shipping address
 // Edit order shipping address
 exports.editOrderAddress = async (req, res) => {
   try {
     const { shippingAddress } = req.body;
     const orderId = req.params.id;
 
-    // Validate shipping address
     if (!shippingAddress || typeof shippingAddress !== 'object') {
       return res.status(400).json({ error: 'Valid shipping address is required' });
     }
 
-    // Find the order
     const order = await Order.findById(orderId);
     if (!order) {
       return res.status(404).json({ error: 'Order not found' });
     }
 
-    // Check if user is authorized to edit this order
     if (req.user.role !== 'admin' && order.user.toString() !== req.user.userId) {
       return res.status(403).json({ error: 'Not authorized to edit this order' });
     }
 
-    // Only allow address editing for pending or processing orders
     if (!['pending', 'processing'].includes(order.status)) {
       return res.status(400).json({ error: 'Address cannot be edited for this order status' });
     }
 
-    // Update the shipping address
     const updatedOrder = await Order.findByIdAndUpdate(
       orderId,
       { shippingAddress },
@@ -1527,7 +1414,6 @@ exports.editOrderAddress = async (req, res) => {
   }
 };
 
-//get orders by id 
 // Get order by ID - Updated with proper authorization
 exports.getOrderById = async (req, res) => {
   try {
@@ -1541,11 +1427,9 @@ exports.getOrderById = async (req, res) => {
       return res.status(404).json({ error: 'Order not found' });
     }
 
-    // Proper ObjectId comparison
     const orderUserId = order.user._id.toString();
     const requestUserId = req.user.userId.toString();
     
-    // Check authorization - users can only see their own orders, admins can see all
     if (req.user.role !== 'admin' && orderUserId !== requestUserId) {
       return res.status(403).json({ error: 'Not authorized to view this order' });
     }
@@ -1560,33 +1444,60 @@ exports.getOrderById = async (req, res) => {
   }
 };
 
-// Download invoice as PDF - Updated to include GST
+// Download invoice as PDF - Updated to include proper GST
 exports.downloadInvoice = async (req, res) => {
   try {
     const { orderId } = req.params;
 
-    // Fetch order with populated data
     const order = await Order.findById(orderId)
       .populate('user', 'name email phone address')
-      .populate('items.product', 'name price image category description');
+      .populate('items.product', 'name price image category description gstPercent');
 
     if (!order) {
       return res.status(404).json({ error: 'Order not found' });
     }
 
-    // Check authorization
     if (req.user.role !== 'admin' && order.user._id.toString() !== req.user.userId) {
       return res.status(403).json({ error: 'Not authorized to download this invoice' });
     }
 
-    // Calculate subtotal from items
-    const subtotal = order.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-    
-    // GST breakdown
-    const gstCalculation = calculateGST(subtotal);
-    const gstAmount = order.gstAmount || gstCalculation.totalGST;
+    let subtotal = 0;
+    let totalCGST = 0;
+    let totalSGST = 0;
 
-    // Create invoice data with GST details
+    const items = order.items.map(item => {
+      const product = item.product;
+      const gstPercent = item.gstRate || product?.gstPercent || 18; // ✅ Use item's GST rate
+      const quantity = item.quantity || 0;
+      const basePrice = item.basePrice || 0; // ✅ Use stored base price
+      const gstAmount = item.gstAmount || 0; // ✅ Use stored GST amount
+      const totalAmount = item.price * quantity;
+
+      const totalBase = basePrice * quantity;
+      const totalGst = gstAmount * quantity;
+
+      const cgst = totalGst / 2;
+      const sgst = totalGst / 2;
+
+      subtotal += totalBase;
+      totalCGST += cgst;
+      totalSGST += sgst;
+
+      return {
+        name: product.name,
+        description: product.description,
+        quantity,
+        unitPrice: basePrice.toFixed(2),
+        gstPercent,
+        cgst: cgst.toFixed(2),
+        sgst: sgst.toFixed(2),
+        total: totalAmount.toFixed(2)
+      };
+    });
+
+    const shipping = order.shippingCharge || 0;
+    const grandTotal = (subtotal + totalCGST + totalSGST + shipping).toFixed(2);
+
     const invoiceData = {
       invoice: {
         number: `INV-${order._id.slice(-8).toUpperCase()}`,
@@ -1601,7 +1512,7 @@ exports.downloadInvoice = async (req, res) => {
         tagline: 'Premium Quality Products',
         email: 'support@bogat.com',
         website: 'www.bogat.com',
-        gstNumber: 'YOUR_GST_NUMBER' // Add your actual GST number
+        gstNumber: 'YOUR_GST_NUMBER'
       },
       customer: {
         name: order.user?.name || 'Customer',
@@ -1615,32 +1526,25 @@ exports.downloadInvoice = async (req, res) => {
         pincode: order.shippingAddress?.pincode || 'N/A',
         phone: order.shippingAddress?.phone || 'N/A'
       },
-      items: order.items.map(item => ({
-        name: item.product?.name || 'Product',
-        description: item.product?.description || '',
-        quantity: item.quantity || 0,
-        unitPrice: item.price || 0,
-        total: (item.price || 0) * (item.quantity || 0)
-      })),
+      items,
       totals: {
-        subtotal: subtotal,
-        cgst: gstCalculation.cgst,
-        sgst: gstCalculation.sgst,
-        totalGST: gstAmount,
-        shipping: order.shippingCharge || 0,
-        grandTotal: order.totalAmount || 0
+        subtotal: subtotal.toFixed(2),
+        cgst: totalCGST.toFixed(2),
+        sgst: totalSGST.toFixed(2),
+        totalGST: (totalCGST + totalSGST).toFixed(2),
+        shipping: shipping.toFixed(2),
+        grandTotal
       },
       gstBreakdown: {
-        cgstRate: GST_RATES.CGST,
-        sgstRate: GST_RATES.SGST,
-        cgstAmount: gstCalculation.cgst,
-        sgstAmount: gstCalculation.sgst,
-        totalGST: gstAmount
+        cgstRate: '50% of item GST',
+        sgstRate: '50% of item GST',
+        cgstAmount: totalCGST.toFixed(2),
+        sgstAmount: totalSGST.toFixed(2),
+        totalGST: (totalCGST + totalSGST).toFixed(2)
       },
       razorpayDetails: order.razorpayDetails || null
     };
 
-    // Send invoice data for PDF generation
     res.json({
       success: true,
       invoiceData,
@@ -1656,8 +1560,7 @@ exports.downloadInvoice = async (req, res) => {
   }
 };
 
-
-//order cancellation
+// Update admin note
 exports.updateAdminNote = async (req, res) => {
   try {
     const { adminNote } = req.body;
@@ -1667,7 +1570,6 @@ exports.updateAdminNote = async (req, res) => {
     console.log('Admin note:', adminNote);
     console.log('User role:', req.user.role);
 
-    // Validate input
     if (!orderId) {
       return res.status(400).json({ 
         success: false,
@@ -1675,7 +1577,6 @@ exports.updateAdminNote = async (req, res) => {
       });
     }
 
-    // Check if user is admin
     if (req.user.role !== 'admin') {
       return res.status(403).json({ 
         success: false,
@@ -1683,7 +1584,6 @@ exports.updateAdminNote = async (req, res) => {
       });
     }
 
-    // Validate admin note (optional - can be empty to clear note)
     if (adminNote && typeof adminNote !== 'string') {
       return res.status(400).json({ 
         success: false,
@@ -1691,7 +1591,6 @@ exports.updateAdminNote = async (req, res) => {
       });
     }
 
-    // Limit note length (optional)
     if (adminNote && adminNote.length > 1000) {
       return res.status(400).json({ 
         success: false,
@@ -1699,7 +1598,6 @@ exports.updateAdminNote = async (req, res) => {
       });
     }
 
-    // Find the order first to check if it exists
     const existingOrder = await Order.findById(orderId);
     
     if (!existingOrder) {
@@ -1709,10 +1607,8 @@ exports.updateAdminNote = async (req, res) => {
       });
     }
 
-    // Allow notes on ALL orders (removed the cancelled-only restriction)
     console.log(`Adding admin note to ${existingOrder.status} order`);
 
-    // Update the order with admin note
     const updatedOrder = await Order.findByIdAndUpdate(
       orderId,
       { 
@@ -1746,12 +1642,10 @@ exports.updateAdminNote = async (req, res) => {
   } catch (error) {
     console.error('Error updating admin note:', error);
     
-    // Handle different types of errors
     if (error.name === 'ValidationError') {
       return res.status(400).json({ 
         success: false,
         error: 'Validation error',
-        details: error.message 
       });
     }
     
@@ -1775,7 +1669,6 @@ exports.getAdminNoteHistory = async (req, res) => {
   try {
     const { orderId } = req.params;
 
-    // Check if user is admin
     if (req.user.role !== 'admin') {
       return res.status(403).json({ 
         success: false,

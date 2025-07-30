@@ -1,4 +1,4 @@
-// Fixed CheckoutPage.js - Using Backend Validated Amounts
+// Fixed CheckoutPage.js - Proper GST Calculation from Database
 import React, { useState, useEffect } from 'react';
 import { useCart } from '../checkout/CartContext';
 import { useAuth } from '../checkout/AuthProvider';
@@ -38,16 +38,11 @@ const CheckoutPage = () => {
   const [couponSuggestions, setCouponSuggestions] = useState([]);
   const [couponDiscount, setCouponDiscount] = useState(0);
   
-  // Product details with GST
+  // Product details with database pricing
   const [productDetails, setProductDetails] = useState(new Map());
-  const [gstLoading, setGstLoading] = useState(true);
-  const [gstCalculations, setGstCalculations] = useState({
-    itemwise: [],
-    totalGST: 0,
-    gstBreakdown: {}
-  });
+  const [pricingLoading, setPricingLoading] = useState(true);
 
-  // ✅ NEW: Backend validated totals state
+  // Backend validated totals state
   const [backendValidatedTotals, setBackendValidatedTotals] = useState(null);
 
   const [customAddress, setCustomAddress] = useState({
@@ -58,24 +53,116 @@ const CheckoutPage = () => {
     phone: ''
   });
 
-  // Fetch product details including GST for all cart items
+  // ✅ FIXED: Function to get price data from database with proper GST calculation
+  const getPriceData = (product) => {
+    console.log('🔍 Analyzing product pricing:', {
+      productId: product._id || product.id,
+      name: product.name,
+      price: product.price,
+      gstRate: product.gstRate,
+      gst: product.gst,
+      totalPrice: product.totalPrice,
+      gstAmount: product.gstAmount
+    });
+
+    // Method 1: If database has pre-calculated total price with GST
+    if (product.totalPrice !== undefined && product.totalPrice !== null && product.totalPrice > 0) {
+      const basePrice = parseFloat(product.price) || 0;
+      const totalPrice = parseFloat(product.totalPrice);
+      const gstRate = product.gstRate || product.gst || 18;
+      const calculatedGstAmount = totalPrice - basePrice;
+      
+      console.log('✅ Using database totalPrice method:', {
+        basePrice,
+        totalPrice,
+        gstRate,
+        calculatedGstAmount
+      });
+      
+      return {
+        basePrice,
+        gstRate,
+        gstAmount: calculatedGstAmount > 0 ? calculatedGstAmount : (basePrice * gstRate) / 100,
+        totalPrice
+      };
+    }
+    
+    // Method 2: If database has separate GST amount stored
+    if (product.gstAmount !== undefined && product.gstAmount !== null && product.gstAmount > 0) {
+      const basePrice = parseFloat(product.price) || 0;
+      const gstAmount = parseFloat(product.gstAmount);
+      const gstRate = product.gstRate || product.gst || 18;
+      const totalPrice = basePrice + gstAmount;
+      
+      console.log('✅ Using database gstAmount method:', {
+        basePrice,
+        gstAmount,
+        gstRate,
+        totalPrice
+      });
+      
+      return {
+        basePrice,
+        gstRate,
+        gstAmount,
+        totalPrice
+      };
+    }
+    
+    // Method 3: Calculate GST from base price and rate
+    const basePrice = parseFloat(product.price) || 0;
+    const gstRate = product.gstRate || product.gst || 18; // ✅ FIXED: Removed JSX syntax
+    const gstAmount = (basePrice * gstRate) / 100;
+    const totalPrice = basePrice + gstAmount;
+    
+    console.log('⚠️ Calculating GST (database should have this pre-calculated):', {
+      basePrice,
+      gstRate,
+      gstAmount,
+      totalPrice
+    });
+    
+    return {
+      basePrice,
+      gstRate,
+      gstAmount,
+      totalPrice
+    };
+  };
+
+  // ✅ Fetch product details including database pricing for all cart items
   const fetchProductDetails = async () => {
     try {
-      setGstLoading(true);
+      setPricingLoading(true);
+      console.log('🛒 Fetching product details with database pricing for cart items...');
+      
       const productPromises = cartState.items.map(async (item) => {
         try {
           const productId = item._id || item.id;
           const productData = await productsApi.getProductById(productId);
+          
+          console.log(`📦 Product ${productId} raw data from database:`, {
+            name: productData.name,
+            price: productData.price,
+            gstRate: productData.gstRate,
+            gst: productData.gst,
+            gstAmount: productData.gstAmount,
+            totalPrice: productData.totalPrice
+          });
+          
           return {
             id: productId,
             ...productData
           };
         } catch (error) {
-          console.error(`Error fetching product ${item._id || item.id}:`, error);
+          console.error(`❌ Error fetching product ${item._id || item.id}:`, error);
           return {
             id: item._id || item.id,
             ...item,
-            gst: 5
+            price: item.price || 0,
+            gstRate: 18,
+            gstAmount: 0,
+            totalPrice: item.price || 0
           };
         }
       });
@@ -87,79 +174,21 @@ const CheckoutPage = () => {
         productMap.set(product.id, product);
       });
       
+      console.log('✅ Product details loaded:', productMap.size, 'products');
       setProductDetails(productMap);
-      calculateItemwiseGST(productMap);
       
     } catch (error) {
-      console.error('Error fetching product details:', error);
+      console.error('❌ Error fetching product details:', error);
       toast.error('Failed to load product details');
     } finally {
-      setGstLoading(false);
+      setPricingLoading(false);
     }
-  };
-
-  // Calculate GST for each item
-  const calculateItemwiseGST = (productMap) => {
-    const itemwiseCalculations = [];
-    let totalGST = 0;
-    const gstBreakdown = {};
-
-    cartState.items.forEach(item => {
-      const productId = item._id || item.id;
-      const product = productMap.get(productId);
-      
-      if (!product) return;
-
-      const itemSubtotal = item.price * item.quantity;
-      const gstRate = product.gst || 0;
-      const itemGST = (itemSubtotal * gstRate) / 100;
-      
-      const cgst = itemGST / 2;
-      const sgst = itemGST / 2;
-
-      const itemCalculation = {
-        productId,
-        productName: product.name,
-        quantity: item.quantity,
-        unitPrice: item.price,
-        subtotal: itemSubtotal,
-        gstRate,
-        gstAmount: itemGST,
-        cgst,
-        sgst,
-        totalWithGST: itemSubtotal + itemGST
-      };
-
-      itemwiseCalculations.push(itemCalculation);
-      totalGST += itemGST;
-
-      if (!gstBreakdown[gstRate]) {
-        gstBreakdown[gstRate] = {
-          rate: gstRate,
-          subtotal: 0,
-          gstAmount: 0,
-          cgst: 0,
-          sgst: 0
-        };
-      }
-      
-      gstBreakdown[gstRate].subtotal += itemSubtotal;
-      gstBreakdown[gstRate].gstAmount += itemGST;
-      gstBreakdown[gstRate].cgst += cgst;
-      gstBreakdown[gstRate].sgst += sgst;
-    });
-
-    setGstCalculations({
-      itemwise: itemwiseCalculations,
-      totalGST: Math.round(totalGST * 100) / 100,
-      gstBreakdown: Object.values(gstBreakdown)
-    });
   };
 
   // Fetch available coupons with better error handling
   const fetchAvailableCoupons = async () => {
     try {
-      const subtotal = getCartTotal();
+      const subtotal = calculateCartSubtotal();
       
       if (!user || subtotal === 0) {
         setAvailableCoupons([]);
@@ -185,18 +214,24 @@ const CheckoutPage = () => {
   // Get coupon suggestions with better error handling
   const fetchCouponSuggestions = async () => {
     try {
-      const subtotal = getCartTotal();
+      const subtotal = calculateCartSubtotal();
       
       if (!user || subtotal === 0) {
         setCouponSuggestions([]);
         return;
       }
 
-      const cartItems = cartState.items.map(item => ({
-        productId: item._id || item.id,
-        price: item.price,
-        quantity: item.quantity
-      }));
+      const cartItems = cartState.items.map(item => {
+        const productId = item._id || item.id;
+        const product = productDetails.get(productId);
+        const priceData = product ? getPriceData(product) : { totalPrice: item.price || 0 };
+        
+        return {
+          productId,
+          price: priceData.totalPrice,
+          quantity: item.quantity
+        };
+      });
       
       console.log('🎫 Fetching coupon suggestions...');
       const response = await couponApi.getSuggestions(subtotal, cartItems);
@@ -213,6 +248,35 @@ const CheckoutPage = () => {
     }
   };
 
+  // ✅ Calculate cart subtotal using database pricing (already includes GST)
+  const calculateCartSubtotal = () => {
+    let subtotal = 0;
+    
+    cartState.items.forEach(item => {
+      const productId = item._id || item.id;
+      const product = productDetails.get(productId);
+      
+      if (product) {
+        const priceData = getPriceData(product);
+        subtotal += priceData.totalPrice * item.quantity;
+        
+        console.log(`💰 Item calculation for ${product.name}:`, {
+          basePrice: priceData.basePrice,
+          gstAmount: priceData.gstAmount,
+          totalPrice: priceData.totalPrice,
+          quantity: item.quantity,
+          itemTotal: priceData.totalPrice * item.quantity
+        });
+      } else {
+        // Fallback to cart item price
+        subtotal += (item.price || 0) * item.quantity;
+      }
+    });
+    
+    console.log('📊 Cart subtotal calculated:', subtotal);
+    return Math.round(subtotal * 100) / 100;
+  };
+
   // Apply coupon
   const applyCouponCode = async (code = null) => {
     const codeToApply = code || couponCode.trim().toUpperCase();
@@ -226,12 +290,18 @@ const CheckoutPage = () => {
     console.log('🎫 Applying coupon:', codeToApply);
     
     try {
-      const subtotal = getCartTotal();
-      const cartItems = cartState.items.map(item => ({
-        productId: item._id || item.id,
-        price: item.price,
-        quantity: item.quantity
-      }));
+      const subtotal = calculateCartSubtotal();
+      const cartItems = cartState.items.map(item => {
+        const productId = item._id || item.id;
+        const product = productDetails.get(productId);
+        const priceData = product ? getPriceData(product) : { totalPrice: item.price || 0 };
+        
+        return {
+          productId,
+          price: priceData.totalPrice,
+          quantity: item.quantity
+        };
+      });
       
       const response = await couponApi.validateCoupon(codeToApply, subtotal, cartItems);
       
@@ -239,7 +309,6 @@ const CheckoutPage = () => {
         setAppliedCoupon(response.data.coupon);
         setCouponDiscount(response.data.discount);
         setCouponCode('');
-        // ✅ Clear backend validated totals when coupon changes
         setBackendValidatedTotals(null);
         
         console.log('✅ Coupon applied successfully:', {
@@ -266,74 +335,57 @@ const CheckoutPage = () => {
     console.log('🎫 Removing coupon:', appliedCoupon?.code);
     setAppliedCoupon(null);
     setCouponDiscount(0);
-    // ✅ Clear backend validated totals when coupon is removed
     setBackendValidatedTotals(null);
     toast.success('Coupon removed');
   };
 
-  // ✅ FIXED: Calculate Totals Function - Uses backend validated totals if available
+  // ✅ Calculate Totals Function - Uses database pricing with GST included
   const calculateTotals = () => {
-    // ✅ If we have backend validated totals, use those instead
     if (backendValidatedTotals) {
       console.log('🔄 Using backend validated totals:', backendValidatedTotals);
       return {
-        subtotal: backendValidatedTotals.originalSubtotal,
+        subtotal: backendValidatedTotals.subtotal,
         discount: backendValidatedTotals.discount,
         discountedSubtotal: backendValidatedTotals.discountedSubtotal,
-        gst: backendValidatedTotals.gst,
         shipping: backendValidatedTotals.shipping,
         total: backendValidatedTotals.total
       };
     }
 
-    // ✅ Fallback to frontend calculations for display purposes
-    const subtotal = getCartTotal();
+    const subtotal = calculateCartSubtotal();
     const discountAmount = appliedCoupon ? couponDiscount : 0;
     
-    console.log('🧮 Frontend Calculation Debug:', {
+    console.log('💰 Frontend Calculation Debug:', {
       subtotal,
       discountAmount,
       appliedCoupon: appliedCoupon?.code,
-      couponDiscount
+      couponDiscount,
+      note: 'Subtotal already includes GST from database'
     });
     
     const discountedSubtotal = Math.max(0, subtotal - discountAmount);
-    
-    let adjustedGST = gstCalculations.totalGST;
-    
-    if (discountAmount > 0 && subtotal > 0) {
-      const discountRatio = discountedSubtotal / subtotal;
-      adjustedGST = gstCalculations.totalGST * discountRatio;
-      console.log('🧮 GST Adjustment:', {
-        originalGST: gstCalculations.totalGST,
-        discountRatio,
-        adjustedGST
-      });
-    }
-    
     const shipping = discountedSubtotal >= 500 ? 0 : 50;
-    const total = discountedSubtotal + adjustedGST + shipping;
+    const total = discountedSubtotal + shipping;
 
-    console.log('🧮 Frontend Calculated Totals:', {
+    console.log('💰 Frontend Calculated Totals:', {
       subtotal,
       discount: discountAmount,
       discountedSubtotal,
-      adjustedGST,
       shipping,
-      total
+      total,
+      note: 'No GST added - already included in database pricing'
     });
 
     return {
       subtotal: Math.round(subtotal * 100) / 100,
       discount: Math.round(discountAmount * 100) / 100,
       discountedSubtotal: Math.round(discountedSubtotal * 100) / 100,
-      gst: Math.round(adjustedGST * 100) / 100,
       shipping,
       total: Math.round(total * 100) / 100
     };
   };
 
-  // ✅ FIXED: Payment Processing Function - Uses backend validated amounts
+  // ✅ Payment Processing Function - Includes proper GST data for backend
   const handleProceedToPayment = async () => {
     try {
       if (!user) {
@@ -342,8 +394,8 @@ const CheckoutPage = () => {
         return;
       }
 
-      if (gstLoading) {
-        toast.error('Please wait while we calculate GST...');
+      if (pricingLoading) {
+        toast.error('Please wait while we load pricing...');
         return;
       }
 
@@ -369,7 +421,7 @@ const CheckoutPage = () => {
         }
 
         try {
-          // ✅ Send frontend calculated data to backend for validation
+          // ✅ FIXED: Send complete GST information to backend
           const orderPayload = {
             amount: frontendTotals.total,
             subtotal: frontendTotals.subtotal,
@@ -377,19 +429,39 @@ const CheckoutPage = () => {
             discount: frontendTotals.discount,
             couponCode: appliedCoupon?.code || null,
             couponId: appliedCoupon?._id || null,
-            gst: frontendTotals.gst,
             shipping: frontendTotals.shipping,
-            gstBreakdown: gstCalculations.gstBreakdown,
-            itemwiseGST: gstCalculations.itemwise,
-            calculationMethod: 'discount_then_gst',
-            cartItems: cartState.items.map(item => ({
-              productId: item._id || item.id,
-              quantity: item.quantity,
-              price: item.price
-            }))
+            calculationMethod: 'database_pricing_with_gst_breakdown',
+            cartItems: cartState.items.map(item => {
+              const productId = item._id || item.id;
+              const product = productDetails.get(productId);
+              const priceData = product ? getPriceData(product) : { 
+                basePrice: item.price || 0,
+                gstRate: 18,
+                gstAmount: 0,
+                totalPrice: item.price || 0
+              };
+              
+              console.log(`🛒 Sending item ${product?.name || 'Unknown'} to backend:`, {
+                productId,
+                quantity: item.quantity,
+                basePrice: priceData.basePrice,
+                gstRate: priceData.gstRate,
+                gstAmount: priceData.gstAmount,
+                totalPrice: priceData.totalPrice
+              });
+              
+              return {
+                productId,
+                quantity: item.quantity,
+                basePrice: priceData.basePrice,
+                gstRate: priceData.gstRate,
+                gstAmount: priceData.gstAmount,
+                price: priceData.totalPrice // Total price including GST
+              };
+            })
           };
 
-          console.log('💳 Creating order with frontend payload:', orderPayload);
+          console.log('💳 Creating order with frontend payload (complete GST data):', orderPayload);
           
           const orderResponse = await ordersApi.createRazorpayOrder(orderPayload);
 
@@ -399,59 +471,66 @@ const CheckoutPage = () => {
 
           console.log('✅ Razorpay order created:', orderResponse.orderId);
           
-          // ✅ IMPORTANT: Store backend validated totals for future use
           if (orderResponse.validatedTotals) {
             setBackendValidatedTotals(orderResponse.validatedTotals);
             console.log('✅ Backend validated totals received:', orderResponse.validatedTotals);
           }
 
-          // ✅ Use backend validated totals for Razorpay options
           const finalTotals = orderResponse.validatedTotals || frontendTotals;
 
           const options = {
             key: razorpayKey,
-            amount: orderResponse.amount, // ✅ Use backend amount (in paisa)
+            amount: orderResponse.amount,
             currency: "INR",
             name: "Bogat",
             description: "Purchase of premium products",
             order_id: orderResponse.orderId,
             handler: async function(response) {
               try {
-                // ✅ Use backend validated totals in verification payload
+                // ✅ FIXED: Send complete GST breakdown in verification payload
                 const verificationPayload = {
                   razorpay_order_id: response.razorpay_order_id,
                   razorpay_payment_id: response.razorpay_payment_id,
                   razorpay_signature: response.razorpay_signature,
                   order_details: {
-                    items: cartState.items.map(item => ({
-                      product: item._id || item.id,
-                      quantity: item.quantity,
-                      price: item.price,
-                      gst: productDetails.get(item._id || item.id)?.gst || 0
-                    })),
+                    items: cartState.items.map(item => {
+                      const productId = item._id || item.id;
+                      const product = productDetails.get(productId);
+                      const priceData = product ? getPriceData(product) : { 
+                        basePrice: item.price || 0,
+                        gstRate: 18,
+                        gstAmount: 0,
+                        totalPrice: item.price || 0
+                      };
+                      
+                      return {
+                        product: productId,
+                        quantity: item.quantity,
+                        price: priceData.totalPrice, // Total price including GST
+                        basePrice: priceData.basePrice, // ✅ Base price without GST
+                        gstRate: priceData.gstRate, // ✅ GST rate
+                        gstAmount: priceData.gstAmount, // ✅ GST amount per unit
+                        totalGstAmount: priceData.gstAmount * item.quantity // ✅ Total GST for this item
+                      };
+                    }),
                     shippingAddress: shippingAddress,
-                    // ✅ Send backend validated totals
-                    subtotal: finalTotals.originalSubtotal || finalTotals.subtotal,
+                    subtotal: finalTotals.subtotal,
                     discountedSubtotal: finalTotals.discountedSubtotal,
                     discount: finalTotals.discount,
                     shipping: finalTotals.shipping,
-                    gst: finalTotals.gst,
                     total: finalTotals.total,
                     couponCode: appliedCoupon?.code || null,
-                    couponId: appliedCoupon?._id || null,
-                    gstBreakdown: gstCalculations.gstBreakdown,
-                    itemwiseGST: gstCalculations.itemwise
+                    couponId: appliedCoupon?._id || null
                   }
                 };
 
-                console.log('🔐 Verifying payment with backend validated payload:', verificationPayload);
+                console.log('🔐 Verifying payment with complete GST breakdown:', verificationPayload);
 
                 const verificationResponse = await ordersApi.verifyPayment(verificationPayload);
 
                 if (verificationResponse.success) {
                   console.log('✅ Payment verification successful');
 
-                  // ✅ Update coupon usage after successful payment
                   if (appliedCoupon && finalTotals.discount > 0) {
                     try {
                       console.log('🎫 About to update coupon usage:', {
@@ -472,15 +551,8 @@ const CheckoutPage = () => {
 
                       const couponUpdateResult = await couponApi.updateCouponUsage(appliedCoupon._id, couponUsageData);
                       
-                      console.log('✅ Coupon usage updated successfully:', {
-                        couponCode: appliedCoupon.code,
-                        discountAmount: finalTotals.discount,
-                        orderTotal: finalTotals.total,
-                        userId: user._id || user.id,
-                        result: couponUpdateResult
-                      });
+                      console.log('✅ Coupon usage updated successfully:', couponUpdateResult);
 
-                      // Show success message with savings
                       toast.success(
                         `Payment successful! You saved ₹${finalTotals.discount.toFixed(2)} with coupon ${appliedCoupon.code}`,
                         { duration: 5000 }
@@ -493,13 +565,13 @@ const CheckoutPage = () => {
                     toast.success('Payment successful!');
                   }
 
-                  // Clear cart and coupon data
                   const success = clearCart();
                   if (success) {
                     setAppliedCoupon(null);
                     setCouponDiscount(0);
-                    setBackendValidatedTotals(null); // ✅ Clear backend validated totals
-                    navigate('/orders');
+                    setBackendValidatedTotals(null);
+                    
+                    navigate('/checkout');
                   }
                 } else {
                   throw new Error(verificationResponse.message || 'Payment verification failed');
@@ -543,32 +615,6 @@ const CheckoutPage = () => {
     }
   };
 
-  // Load data when cart changes
-  useEffect(() => {
-    if (cartState.items.length > 0) {
-      fetchProductDetails();
-      fetchAvailableCoupons();
-      fetchCouponSuggestions();
-    } else {
-      setProductDetails(new Map());
-      setGstCalculations({
-        itemwise: [],
-        totalGST: 0,
-        gstBreakdown: {}
-      });
-      setAvailableCoupons([]);
-      setCouponSuggestions([]);
-      setAppliedCoupon(null);
-      setCouponDiscount(0);
-      setBackendValidatedTotals(null); // ✅ Clear backend validated totals
-    }
-  }, [cartState.items, user]);
-
-  // ✅ Clear backend validated totals when coupon changes
-  useEffect(() => {
-    setBackendValidatedTotals(null);
-  }, [appliedCoupon, couponDiscount]);
-
   const handleUpdateQuantity = (item, quantity) => {
     if (quantity < 1) {
       handleRemoveItem(item);
@@ -584,7 +630,6 @@ const CheckoutPage = () => {
     const success = updateQuantity(item.id || item._id, quantity, item.size, item.color);
     if (success) {
       toast.success('Quantity updated', { duration: 1000 });
-      // ✅ Clear backend validated totals when cart changes
       setBackendValidatedTotals(null);
     }
   };
@@ -593,10 +638,36 @@ const CheckoutPage = () => {
     const success = removeItem(item.id || item._id, item.size, item.color);
     if (success) {
       toast.success('Item removed from cart', { id: 'cart-empty' });
-      // ✅ Clear backend validated totals when cart changes
       setBackendValidatedTotals(null);
     }
   };
+
+  // Load data when cart changes
+  useEffect(() => {
+    if (cartState.items.length > 0) {
+      fetchProductDetails();
+    } else {
+      setProductDetails(new Map());
+      setAvailableCoupons([]);
+      setCouponSuggestions([]);
+      setAppliedCoupon(null);
+      setCouponDiscount(0);
+      setBackendValidatedTotals(null);
+    }
+  }, [cartState.items]);
+
+  // Load coupons after product details are loaded
+  useEffect(() => {
+    if (productDetails.size > 0 && user) {
+      fetchAvailableCoupons();
+      fetchCouponSuggestions();
+    }
+  }, [productDetails, user]);
+
+  // Clear backend validated totals when coupon changes
+  useEffect(() => {
+    setBackendValidatedTotals(null);
+  }, [appliedCoupon, couponDiscount]);
 
   useEffect(() => {
     const script = document.createElement('script');
@@ -703,14 +774,13 @@ const CheckoutPage = () => {
           </h1>
           <div className="w-16 sm:w-24 h-1 bg-gradient-to-r from-amber-600 to-orange-700 mx-auto rounded-full"></div>
           
-          {gstLoading && (
+          {pricingLoading && (
             <div className="mt-4 text-amber-600 text-sm flex items-center justify-center">
               <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-amber-600 mr-2"></div>
-              Calculating GST...
+              Loading pricing from database...
             </div>
           )}
 
-          {/* ✅ Show backend validation status */}
           {backendValidatedTotals && (
             <div className="mt-2 text-green-600 text-xs flex items-center justify-center">
               <CheckCircle className="w-3 h-3 mr-1" />
@@ -737,9 +807,14 @@ const CheckoutPage = () => {
                 {cartState.items.map((item, index) => {
                   const productId = item._id || item.id;
                   const product = productDetails.get(productId);
-                  const gstRate = product?.gst || 0;
-                  const itemSubtotal = item.price * item.quantity;
-                  const itemGST = (itemSubtotal * gstRate) / 100;
+                  const priceData = product ? getPriceData(product) : { 
+                    basePrice: item.price || 0,
+                    gstRate: 18,
+                    gstAmount: 0,
+                    totalPrice: item.price || 0
+                  };
+                  
+                  const itemSubtotal = priceData.totalPrice * item.quantity;
                   
                   return (
                     <div 
@@ -761,14 +836,21 @@ const CheckoutPage = () => {
                             {item.name}
                           </h3>
                           <div className="bg-gradient-to-r from-amber-700 to-orange-700 bg-clip-text text-transparent font-bold text-base sm:text-lg">
-                            ₹{item.price}/{item.unit || 'unit'}
+                            ₹{priceData.totalPrice.toFixed(2)}/{item.unit || 'unit'}
                           </div>
                           
-                          {!gstLoading && (
+                          {!pricingLoading && priceData.gstAmount > 0 && (
                             <div className="text-xs text-gray-600 mt-1 space-y-1">
-                              <div>GST: {gstRate}% • ₹{itemGST.toFixed(2)} tax</div>
+                              <div className="flex items-center justify-between bg-gray-50 px-2 py-1 rounded">
+                                <span>Base Price:</span>
+                                <span>₹{priceData.basePrice.toFixed(2)}</span>
+                              </div>
+                              <div className="flex items-center justify-between bg-green-50 px-2 py-1 rounded">
+                                <span>GST ({priceData.gstRate}%):</span>
+                                <span>₹{priceData.gstAmount.toFixed(2)}</span>
+                              </div>
                               <div className="font-medium text-green-600">
-                                Total: ₹{(itemSubtotal + itemGST).toFixed(2)}
+                                Total: ₹{itemSubtotal.toFixed(2)} (incl. all taxes)
                               </div>
                             </div>
                           )}
@@ -921,7 +1003,7 @@ const CheckoutPage = () => {
                 </div>
               )}
 
-              {/* Available Coupons List - Simplified for space */}
+              {/* Available Coupons List */}
               {showCoupons && availableCoupons.length > 0 && (
                 <div className="space-y-3 max-h-60 overflow-y-auto">
                   {availableCoupons.map((coupon) => (
@@ -961,7 +1043,6 @@ const CheckoutPage = () => {
               <h2 className="text-xl sm:text-2xl font-bold text-gray-800 mb-4 sm:mb-6 flex items-center">
                 <CheckCircle className="w-5 h-5 sm:w-6 sm:h-6 text-amber-600 mr-2" />
                 Order Summary
-                {/* ✅ Show validation status */}
                 {backendValidatedTotals && (
                   <div className="ml-2 text-xs text-green-600 bg-green-50 px-2 py-1 rounded-full">
                     Backend Validated
@@ -969,10 +1050,10 @@ const CheckoutPage = () => {
                 )}
               </h2>
               
-              {gstLoading ? (
+              {pricingLoading ? (
                 <div className="text-center py-8">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-600 mx-auto mb-4"></div>
-                  <p className="text-gray-600">Calculating GST...</p>
+                  <p className="text-gray-600">Loading pricing from database...</p>
                 </div>
               ) : (
                 <>
@@ -982,7 +1063,6 @@ const CheckoutPage = () => {
                       <span className="font-semibold">₹{totals.subtotal.toFixed(2)}</span>
                     </div>
                     
-                    {/* Coupon Discount */}
                     {appliedCoupon && totals.discount > 0 && (
                       <div className="flex justify-between text-green-600 text-base sm:text-lg">
                         <span className="flex items-center">
@@ -992,11 +1072,6 @@ const CheckoutPage = () => {
                         <span className="font-semibold">-₹{totals.discount.toFixed(2)}</span>
                       </div>
                     )}
-                    
-                    <div className="flex justify-between text-gray-600 text-base sm:text-lg">
-                      <span>GST</span>
-                      <span className="font-semibold">₹{totals.gst.toFixed(2)}</span>
-                    </div>
                     
                     <div className="flex justify-between text-gray-600 text-base sm:text-lg items-center">
                       <span className="flex items-center">
@@ -1015,7 +1090,6 @@ const CheckoutPage = () => {
                       </span>
                     </div>
                     
-                    {/* Total Savings Display */}
                     {appliedCoupon && totals.discount > 0 && (
                       <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-3 rounded-lg border border-green-200">
                         <div className="flex items-center justify-center text-green-700">
@@ -1030,7 +1104,7 @@ const CheckoutPage = () => {
                 </>
               )}
 
-              {/* Shipping Address Section - Simplified */}
+              {/* Shipping Address Section */}
               <div className="mb-6 sm:mb-8">
                 <h3 className="font-bold text-gray-800 mb-3 sm:mb-4 flex items-center text-base sm:text-lg">
                   <MapPin className="w-4 h-4 sm:w-5 sm:h-5 text-amber-600 mr-2" />
@@ -1189,7 +1263,7 @@ const CheckoutPage = () => {
 
               <button 
                 onClick={handleProceedToPayment}
-                disabled={isProcessing || cartStats?.isEmpty || gstLoading}
+                disabled={isProcessing || cartStats?.isEmpty || pricingLoading}
                 className="group w-full bg-gradient-to-r from-amber-600 to-orange-700 text-white py-3 sm:py-4 rounded-xl sm:rounded-2xl font-bold hover:from-amber-700 hover:to-orange-800 transition-all duration-300 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed transform hover:scale-105 hover:shadow-xl flex items-center justify-center text-base sm:text-lg"
               >
                 {isProcessing ? (
@@ -1197,10 +1271,10 @@ const CheckoutPage = () => {
                     <div className="animate-spin rounded-full h-4 w-4 sm:h-5 sm:w-5 border-b-2 border-white mr-2"></div>
                     Processing...
                   </>
-                ) : gstLoading ? (
+                ) : pricingLoading ? (
                   <>
                     <div className="animate-spin rounded-full h-4 w-4 sm:h-5 sm:w-5 border-b-2 border-white mr-2"></div>
-                    Calculating GST...
+                    Loading pricing...
                   </>
                 ) : (
                   <>
@@ -1233,4 +1307,5 @@ const CheckoutPage = () => {
     </div>
   );
 };
+
 export default CheckoutPage;
