@@ -1,5 +1,4 @@
-
-// Fixed Order Controller - Proper GST Field Names for Database Storage
+// Fixed Order Controller - Proper GST Field Names for Database Storage + HSN Support
 const Order = require('../models/Order');
 const Product = require('../models/Product');
 const Coupon = require('../models/Coupon');
@@ -17,7 +16,8 @@ const getProductPricing = (product) => {
     gstRate: product.gstRate,
     gst: product.gst,
     totalPrice: product.totalPrice,
-    gstAmount: product.gstAmount
+    gstAmount: product.gstAmount,
+    hsn: product.hsn || product.hsnCode // ✅ Added HSN support
   });
 
   // Method 1: If database has pre-calculated total price with GST
@@ -39,7 +39,8 @@ const getProductPricing = (product) => {
       gstRate,
       gstAmount: calculatedGstAmount > 0 ? calculatedGstAmount : (basePrice * gstRate) / 100,
       totalPrice,
-      hasGSTIncluded: true
+      hasGSTIncluded: true,
+      hsn: product.hsn || product.hsnCode || '1234' // ✅ Default HSN if not available
     };
   }
   
@@ -62,7 +63,8 @@ const getProductPricing = (product) => {
       gstRate,
       gstAmount,
       totalPrice,
-      hasGSTIncluded: true
+      hasGSTIncluded: true,
+      hsn: product.hsn || product.hsnCode || '1234' // ✅ Default HSN if not available
     };
   }
   
@@ -81,7 +83,8 @@ const getProductPricing = (product) => {
     gstRate,
     gstAmount,
     totalPrice,
-    hasGSTIncluded: false
+    hasGSTIncluded: false,
+    hsn: product.hsn || product.hsnCode || '1234' // ✅ Default HSN if not available
   };
 };
 
@@ -106,7 +109,7 @@ exports.createOrder = async (req, res) => {
     let calculatedGST = 0;
     let processedItems = [];
 
-    // ✅ FIXED: Process items using proper database pricing with GST calculation
+    // ✅ FIXED: Process items using proper database pricing with GST calculation + HSN
     for (const item of items) {
       const product = await Product.findById(item.product);
       if (!product) {
@@ -126,7 +129,7 @@ exports.createOrder = async (req, res) => {
       calculatedSubtotal += itemSubtotal;
       calculatedGST += itemGSTTotal;
 
-      // ✅ FIXED: Store GST information using correct field names for your database
+      // ✅ FIXED: Store GST information using correct field names + HSN
       processedItems.push({
         product: item.product,
         quantity: item.quantity,
@@ -136,6 +139,7 @@ exports.createOrder = async (req, res) => {
         gstRate: pricingData.gstRate, // GST rate percentage
         gstAmount: pricingData.gstAmount, // GST amount per unit (for backward compatibility)
         totalGstAmount: itemGSTTotal, // Total GST for this item
+        hsn: pricingData.hsn, // ✅ HSN code for tax compliance
         name: product.name
       });
 
@@ -144,6 +148,7 @@ exports.createOrder = async (req, res) => {
         gstRate: pricingData.gstRate,
         gstAmount: pricingData.gstAmount,
         totalPrice: pricingData.totalPrice,
+        hsn: pricingData.hsn, // ✅ Log HSN code
         quantity: item.quantity,
         itemSubtotal,
         itemGSTTotal,
@@ -173,7 +178,7 @@ exports.createOrder = async (req, res) => {
     const shippingCharge = orderDiscountedSubtotal >= 500 ? 0 : 50;
     const totalAmount = orderDiscountedSubtotal + shippingCharge;
 
-    console.log('💰 COD Order Calculation (Fixed GST Field Names):', {
+    console.log('💰 COD Order Calculation (Fixed GST Field Names + HSN):', {
       originalSubtotal: orderSubtotal,
       originalGST: orderGST,
       discount: orderDiscount,
@@ -181,7 +186,8 @@ exports.createOrder = async (req, res) => {
       adjustedGST: adjustedOrderGST,
       shipping: shippingCharge,
       total: totalAmount,
-      note: 'GST properly calculated and stored with correct field names'
+      itemsWithHSN: processedItems.map(item => ({ name: item.name, hsn: item.hsn })),
+      note: 'GST properly calculated and stored with correct field names + HSN codes'
     });
 
     // Validate coupon if provided
@@ -194,7 +200,7 @@ exports.createOrder = async (req, res) => {
 
     const order = new Order({
       user: req.user.userId,
-      items: processedItems, // ✅ Contains GST breakdown with correct field names
+      items: processedItems, // ✅ Contains GST breakdown with correct field names + HSN
       subtotal: orderSubtotal, // ✅ Includes GST calculated from database
       discountedSubtotal: orderDiscountedSubtotal,
       discount: orderDiscount,
@@ -212,19 +218,20 @@ exports.createOrder = async (req, res) => {
 
     const savedOrder = await order.save();
 
-    console.log('✅ Order created with proper GST breakdown using correct field names');
+    console.log('✅ Order created with proper GST breakdown using correct field names + HSN codes');
     console.log('📋 Saved order items preview:', savedOrder.items.map(item => ({
       name: item.name,
       gst: item.gst, // ✅ This should now have the GST amount
       gstRate: item.gstRate,
       basePrice: item.basePrice,
-      price: item.price
+      price: item.price,
+      hsn: item.hsn // ✅ HSN code
     })));
 
     res.status(201).json({
       success: true,
       order: savedOrder,
-      message: 'Order created successfully with proper GST breakdown'
+      message: 'Order created successfully with proper GST breakdown and HSN codes'
     });
 
   } catch (error) {
@@ -237,10 +244,10 @@ exports.createOrder = async (req, res) => {
   }
 };
 
-// ✅ FIXED: Enhanced Razorpay order creation with proper GST handling
+// ✅ FIXED: Enhanced Razorpay order creation with proper GST handling + HSN
 exports.createRazorpayOrder = async (req, res) => {
   try {
-    console.log('=== RAZORPAY ORDER CREATE (FIXED GST FIELD NAMES) ===');
+    console.log('=== RAZORPAY ORDER CREATE (FIXED GST FIELD NAMES + HSN) ===');
     console.log('Request body:', req.body);
     
     const { 
@@ -252,7 +259,7 @@ exports.createRazorpayOrder = async (req, res) => {
       couponId,
       shipping: frontendShipping,
       cartItems,
-      calculationMethod = 'database_pricing_with_correct_gst_fields'
+      calculationMethod = 'database_pricing_with_correct_gst_fields_and_hsn'
     } = req.body;
 
     // Validate coupon if provided
@@ -280,13 +287,13 @@ exports.createRazorpayOrder = async (req, res) => {
       }
     }
 
-    // ✅ FIXED: Process cart items and calculate GST properly for storage
+    // ✅ FIXED: Process cart items and calculate GST properly for storage + HSN
     let processedItems = [];
     let calculatedSubtotal = 0;
     let calculatedGST = 0;
 
     if (cartItems && Array.isArray(cartItems) && cartItems.length > 0) {
-      console.log('🛒 Processing cart items with proper database pricing and GST calculation...');
+      console.log('🛒 Processing cart items with proper database pricing, GST calculation + HSN...');
       
       for (const item of cartItems) {
         const product = await Product.findById(item.productId);
@@ -312,6 +319,7 @@ exports.createRazorpayOrder = async (req, res) => {
           gstRate: pricingData.gstRate,
           gstAmount: pricingData.gstAmount,
           totalPrice: pricingData.totalPrice,
+          hsn: pricingData.hsn, // ✅ Log HSN
           quantity: item.quantity,
           itemSubtotal: pricingData.totalPrice * item.quantity,
           itemGSTTotal: pricingData.gstAmount * item.quantity
@@ -324,7 +332,7 @@ exports.createRazorpayOrder = async (req, res) => {
         calculatedSubtotal += itemSubtotal;
         calculatedGST += itemGSTTotal;
 
-        // ✅ FIXED: Store GST information using correct field names
+        // ✅ FIXED: Store GST information using correct field names + HSN
         processedItems.push({
           product: item.productId,
           quantity: item.quantity,
@@ -334,6 +342,7 @@ exports.createRazorpayOrder = async (req, res) => {
           gstRate: pricingData.gstRate, // GST rate percentage
           gstAmount: pricingData.gstAmount, // GST amount per unit (for backward compatibility)
           totalGstAmount: itemGSTTotal, // Total GST for this item
+          hsn: pricingData.hsn, // ✅ HSN code for tax compliance
           name: product.name
         });
       }
@@ -345,11 +354,12 @@ exports.createRazorpayOrder = async (req, res) => {
     const finalSubtotal = Math.round(calculatedSubtotal * 100) / 100;
     const finalGST = Math.round(calculatedGST * 100) / 100;
     
-    console.log('💰 Backend Subtotal (calculated from database with correct GST fields):', {
+    console.log('💰 Backend Subtotal (calculated from database with correct GST fields + HSN):', {
       calculatedSubtotal: finalSubtotal,
       calculatedGST: finalGST,
       frontendSubtotal,
-      note: 'GST properly calculated and will use correct field names'
+      hsnCodes: processedItems.map(item => ({ name: item.name, hsn: item.hsn })),
+      note: 'GST properly calculated and will use correct field names + HSN codes'
     });
 
     // Validate subtotal match with frontend
@@ -425,7 +435,7 @@ exports.createRazorpayOrder = async (req, res) => {
     const finalTotal = finalDiscountedSubtotal + finalShipping;
     const roundedFinalTotal = Math.round(finalTotal * 100) / 100;
 
-    console.log('💰 Backend Final Calculations (Fixed GST Field Names):', {
+    console.log('💰 Backend Final Calculations (Fixed GST Field Names + HSN):', {
       originalSubtotal: finalSubtotal,
       originalGST: finalGST,
       discount: finalDiscount,
@@ -433,7 +443,7 @@ exports.createRazorpayOrder = async (req, res) => {
       adjustedGST: adjustedGST,
       shipping: finalShipping,
       total: roundedFinalTotal,
-      note: 'GST properly calculated and will be stored with correct field names'
+      note: 'GST properly calculated and will be stored with correct field names + HSN codes'
     });
 
     // Validate total amount with frontend
@@ -472,7 +482,7 @@ exports.createRazorpayOrder = async (req, res) => {
 
     const razorpayOrder = await razorpay.orders.create(options);
 
-    // ✅ FIXED: Store transaction info with complete GST breakdown using correct field names
+    // ✅ FIXED: Store transaction info with complete GST breakdown using correct field names + HSN
     const transaction = new RazorpayTransaction({
       userId: req.user.userId,
       razorpayOrderId: razorpayOrder.id,
@@ -493,16 +503,16 @@ exports.createRazorpayOrder = async (req, res) => {
         couponCode: couponCode || null,
         couponId: couponId || null,
         cartItems: cartItems || [],
-        processedItems: processedItems, // ✅ Includes GST breakdown with correct field names
-        calculationMethod: 'database_pricing_with_correct_gst_field_names',
+        processedItems: processedItems, // ✅ Includes GST breakdown with correct field names + HSN
+        calculationMethod: 'database_pricing_with_correct_gst_field_names_and_hsn',
         backendValidated: true,
         validatedAt: new Date(),
-        gstNote: 'GST properly calculated from database and stored with correct field names (gst field)'
+        gstNote: 'GST properly calculated from database and stored with correct field names (gst field) + HSN codes'
       }
     });
 
     await transaction.save();
-    console.log('✅ Transaction created successfully with proper GST breakdown using correct field names');
+    console.log('✅ Transaction created successfully with proper GST breakdown using correct field names + HSN codes');
 
     // Return backend validated totals to frontend
     res.json({
@@ -526,9 +536,10 @@ exports.createRazorpayOrder = async (req, res) => {
         basePrice: item.basePrice,
         gstRate: item.gstRate,
         gstAmountPerUnit: item.gst, // ✅ Using correct field name
-        totalGstAmount: item.totalGstAmount
+        totalGstAmount: item.totalGstAmount,
+        hsn: item.hsn // ✅ HSN code for invoice
       })),
-      gstNote: 'GST properly calculated from database pricing data and stored with correct field names'
+      gstNote: 'GST properly calculated from database pricing data and stored with correct field names + HSN codes'
     });
 
   } catch (error) {
@@ -541,10 +552,10 @@ exports.createRazorpayOrder = async (req, res) => {
   }
 };
 
-// ✅ FIXED: Updated verifyPayment function to handle proper GST storage
+// ✅ FIXED: Updated verifyPayment function to handle proper GST storage + HSN
 exports.verifyPayment = async (req, res) => {
   try {
-    console.log('🚀 === PAYMENT VERIFICATION (FIXED GST FIELD NAMES) ===');
+    console.log('🚀 === PAYMENT VERIFICATION (FIXED GST FIELD NAMES + HSN) ===');
     console.log('📦 Request body:', JSON.stringify(req.body, null, 2));
     
     const {
@@ -607,10 +618,10 @@ exports.verifyPayment = async (req, res) => {
       totalAmount,
       couponCode,
       couponId,
-      processedItems // ✅ Contains GST breakdown with correct field names
+      processedItems // ✅ Contains GST breakdown with correct field names + HSN
     } = metadata;
 
-    console.log('🎫 Using BACKEND validated data with proper GST breakdown (correct field names):', {
+    console.log('🎫 Using BACKEND validated data with proper GST breakdown (correct field names + HSN):', {
       originalSubtotal,
       discount,
       discountedSubtotal,
@@ -620,7 +631,8 @@ exports.verifyPayment = async (req, res) => {
       totalAmount,
       couponCode,
       couponId,
-      processedItemsCount: processedItems?.length || 0
+      processedItemsCount: processedItems?.length || 0,
+      hsnCodes: processedItems?.map(item => ({ name: item.name, hsn: item.hsn })) || []
     });
 
     // Validate order details
@@ -663,11 +675,11 @@ exports.verifyPayment = async (req, res) => {
 
     console.log('✅ All items processed and stock updated');
 
-    // ✅ FIXED: Create order using processed items with GST information using correct field names
+    // ✅ FIXED: Create order using processed items with GST information using correct field names + HSN
     let orderItems = [];
     
     if (processedItems && Array.isArray(processedItems)) {
-      // Use processed items from transaction (contains proper GST breakdown with correct field names)
+      // Use processed items from transaction (contains proper GST breakdown with correct field names + HSN)
       orderItems = processedItems.map(processedItem => ({
         product: processedItem.product,
         quantity: processedItem.quantity,
@@ -677,10 +689,11 @@ exports.verifyPayment = async (req, res) => {
         gstRate: processedItem.gstRate, // GST rate percentage
         gstAmount: processedItem.gstAmount, // GST amount per unit (for backward compatibility)
         totalGstAmount: processedItem.totalGstAmount, // Total GST for this item
+        hsn: processedItem.hsn, // ✅ HSN code for tax compliance
         name: processedItem.name
       }));
     } else {
-      // Fallback: use items from order_details but calculate proper GST with correct field names
+      // Fallback: use items from order_details but calculate proper GST with correct field names + HSN
       for (const item of items) {
         const product = await Product.findById(item.product);
         if (product) {
@@ -695,27 +708,29 @@ exports.verifyPayment = async (req, res) => {
             gstRate: pricingData.gstRate,
             gstAmount: pricingData.gstAmount, // For backward compatibility
             totalGstAmount: pricingData.gstAmount * item.quantity,
+            hsn: pricingData.hsn, // ✅ HSN code
             name: product.name
           });
         }
       }
     }
 
-    console.log('📦 Order items with proper GST breakdown prepared (correct field names):', {
+    console.log('📦 Order items with proper GST breakdown prepared (correct field names + HSN):', {
       totalItems: orderItems.length,
       sampleItem: orderItems[0] ? {
         name: orderItems[0].name,
         basePrice: orderItems[0].basePrice,
         gst: orderItems[0].gst, // ✅ This should now have the GST amount
         gstRate: orderItems[0].gstRate,
-        totalPrice: orderItems[0].price
+        totalPrice: orderItems[0].price,
+        hsn: orderItems[0].hsn // ✅ HSN code
       } : 'No items'
     });
 
-    // ✅ Create order using BACKEND validated data with GST information using correct field names
+    // ✅ Create order using BACKEND validated data with GST information using correct field names + HSN
     const order = new Order({
       user: req.user.userId,
-      items: orderItems, // ✅ Use order items with GST breakdown using correct field names
+      items: orderItems, // ✅ Use order items with GST breakdown using correct field names + HSN
       // ✅ Use BACKEND validated data from transaction metadata
       subtotal: originalSubtotal || 0, // Already includes GST
       discountedSubtotal: discountedSubtotal || 0,
@@ -737,16 +752,17 @@ exports.verifyPayment = async (req, res) => {
     });
 
     await order.save();
-    console.log('✅ Order created successfully with proper GST breakdown using correct field names:', order._id);
+    console.log('✅ Order created successfully with proper GST breakdown using correct field names + HSN codes:', order._id);
     
-    // ✅ Log the saved items to verify GST field is populated
-    console.log('📋 Saved order items with GST verification:', order.items.map(item => ({
+    // ✅ Log the saved items to verify GST field and HSN are populated
+    console.log('📋 Saved order items with GST and HSN verification:', order.items.map(item => ({
       name: item.name,
       gst: item.gst, // ✅ This should now show the actual GST amount instead of 0
       gstRate: item.gstRate,
       basePrice: item.basePrice,
       price: item.price,
-      quantity: item.quantity
+      quantity: item.quantity,
+      hsn: item.hsn // ✅ HSN code for tax compliance
     })));
 
     // Apply coupon usage if coupon was used
@@ -774,12 +790,12 @@ exports.verifyPayment = async (req, res) => {
     
     await transaction.save();
 
-    console.log('🎉 === PAYMENT VERIFICATION COMPLETED WITH CORRECT GST FIELD NAMES ===');
+    console.log('🎉 === PAYMENT VERIFICATION COMPLETED WITH CORRECT GST FIELD NAMES + HSN CODES ===');
 
     res.status(201).json({
       success: true,
       order,
-      message: 'Payment verified and order created successfully with proper GST breakdown using correct field names'
+      message: 'Payment verified and order created successfully with proper GST breakdown using correct field names + HSN codes'
     });
   } catch (error) {
     console.error('💥 Payment verification error:', error);
@@ -888,7 +904,7 @@ exports.getAllOrders = async (req, res) => {
 
     const orders = await Order.find(query)
       .populate('user', 'name email phone')
-      .populate('items.product', 'name price image')
+      .populate('items.product', 'name price image hsn hsnCode') // ✅ Include HSN fields
       .sort(sortObj)
       .skip((page - 1) * limit)
       .limit(parseInt(limit));
@@ -911,7 +927,7 @@ exports.getUserOrders = async (req, res) => {
   try {
     const { page = 1, limit = 10 } = req.query;
     const orders = await Order.find({ user: req.user.userId })
-      .populate('items.product', 'name price image')
+      .populate('items.product', 'name price image hsn hsnCode') // ✅ Include HSN fields
       .sort({ createdAt: -1 })
       .skip((page - 1) * limit)
       .limit(limit);
@@ -934,7 +950,7 @@ exports.getOrder = async (req, res) => {
   try {
     const order = await Order.findById(req.params.id)
       .populate('user', 'name email')
-      .populate('items.product', 'name price image');
+      .populate('items.product', 'name price image hsn hsnCode'); // ✅ Include HSN fields
 
     if (!order) {
       return res.status(404).json({ error: 'Order not found' });
@@ -959,7 +975,7 @@ exports.updateOrderStatus = async (req, res) => {
       { status },
       { new: true, runValidators: true }
     ).populate('user', 'name email')
-      .populate('items.product', 'name price image');
+      .populate('items.product', 'name price image hsn hsnCode'); // ✅ Include HSN fields
 
     if (!order) {
       return res.status(404).json({ error: 'Order not found' });
@@ -1033,7 +1049,7 @@ exports.getOrdersByDateRange = async (req, res) => {
       }
     })
       .populate('user', 'name email phone')
-      .populate('items.product', 'name price image')
+      .populate('items.product', 'name price image hsn hsnCode') // ✅ Include HSN fields
       .sort({ createdAt: -1 });
 
     res.json(orders);
@@ -1073,7 +1089,7 @@ exports.exportOrders = async (req, res) => {
 
     const orders = await Order.find(query)
       .populate('user', 'name email phone')
-      .populate('items.product', 'name price')
+      .populate('items.product', 'name price hsn hsnCode') // ✅ Include HSN fields
       .sort({ createdAt: -1 })
       .lean();
 
@@ -1081,7 +1097,7 @@ exports.exportOrders = async (req, res) => {
       return res.status(404).json({ error: 'No orders found for the specified criteria' });
     }
 
-    // Create CSV content with GST breakdown
+    // Create CSV content with GST breakdown + HSN
     const csvRows = [];
     const headers = [
       'Order ID',
@@ -1090,6 +1106,7 @@ exports.exportOrders = async (req, res) => {
       'Customer Email',
       'Customer Phone',
       'Items',
+      'HSN Codes', // ✅ Added HSN column
       'Subtotal',
       'GST Amount',
       'Shipping Charge',
@@ -1104,6 +1121,10 @@ exports.exportOrders = async (req, res) => {
     csvRows.push(headers.join(','));
 
     for (const order of orders) {
+      const hsnCodes = (order.items || []).map(item => 
+        item.hsn || item.product?.hsn || item.product?.hsnCode || '1234'
+      ).join('; '); // ✅ Collect HSN codes
+
       const row = [
         `"${order._id || ''}"`,
         `"${order.createdAt ? new Date(order.createdAt).toLocaleString() : ''}"`,
@@ -1113,6 +1134,7 @@ exports.exportOrders = async (req, res) => {
         `"${(order.items || []).map(item => 
           `${(item.product?.name || '').replace(/"/g, '""')} (${item.quantity || 0} × ₹${item.price || 0})`
         ).join('; ')}"`,
+        `"${hsnCodes}"`, // ✅ HSN codes column
         `"₹${(order.subtotal || 0).toLocaleString()}"`,
         `"₹${(order.gstAmount || 0).toLocaleString()}"`,
         `"₹${(order.shippingCharge || 0).toLocaleString()}"`,
@@ -1169,7 +1191,7 @@ exports.getOrderStats = async (req, res) => {
 
     const orders = await Order.find(query)
       .populate('user', 'name email')
-      .populate('items.product', 'name price')
+      .populate('items.product', 'name price hsn hsnCode') // ✅ Include HSN fields
       .lean();
 
     const totalOrders = orders.length;
@@ -1402,7 +1424,7 @@ exports.editOrderAddress = async (req, res) => {
       { new: true, runValidators: true }
     )
       .populate('user', 'name email')
-      .populate('items.product', 'name price image');
+      .populate('items.product', 'name price image hsn hsnCode'); // ✅ Include HSN fields
 
     res.json({
       success: true,
@@ -1421,7 +1443,7 @@ exports.getOrderById = async (req, res) => {
 
     const order = await Order.findById(orderId)
       .populate('user', 'name email phone address')
-      .populate('items.product', 'name price image category description');
+      .populate('items.product', 'name price image category description hsn hsnCode gstPercent'); // ✅ Include HSN and GST fields
 
     if (!order) {
       return res.status(404).json({ error: 'Order not found' });
@@ -1444,14 +1466,14 @@ exports.getOrderById = async (req, res) => {
   }
 };
 
-// Download invoice as PDF - Updated to include proper GST
+// Download invoice as PDF - Updated to include proper GST + HSN
 exports.downloadInvoice = async (req, res) => {
   try {
     const { orderId } = req.params;
 
     const order = await Order.findById(orderId)
       .populate('user', 'name email phone address')
-      .populate('items.product', 'name price image category description gstPercent');
+      .populate('items.product', 'name price image category description gstPercent hsn hsnCode'); // ✅ Include HSN fields
 
     if (!order) {
       return res.status(404).json({ error: 'Order not found' });
@@ -1472,6 +1494,7 @@ exports.downloadInvoice = async (req, res) => {
       const basePrice = item.basePrice || 0; // ✅ Use stored base price
       const gstAmount = item.gstAmount || 0; // ✅ Use stored GST amount
       const totalAmount = item.price * quantity;
+      const hsn = item.hsn || product?.hsn || product?.hsnCode || '1234'; // ✅ Get HSN from item or product
 
       const totalBase = basePrice * quantity;
       const totalGst = gstAmount * quantity;
@@ -1491,7 +1514,8 @@ exports.downloadInvoice = async (req, res) => {
         gstPercent,
         cgst: cgst.toFixed(2),
         sgst: sgst.toFixed(2),
-        total: totalAmount.toFixed(2)
+        total: totalAmount.toFixed(2),
+        hsn: hsn // ✅ Include HSN in invoice data
       };
     });
 
@@ -1548,7 +1572,7 @@ exports.downloadInvoice = async (req, res) => {
     res.json({
       success: true,
       invoiceData,
-      message: 'Invoice data generated successfully'
+      message: 'Invoice data generated successfully with HSN codes'
     });
 
   } catch (error) {
@@ -1622,7 +1646,7 @@ exports.updateAdminNote = async (req, res) => {
       }
     )
     .populate('user', 'name email phone')
-    .populate('items.product', 'name price image');
+    .populate('items.product', 'name price image hsn hsnCode'); // ✅ Include HSN fields
 
     if (!updatedOrder) {
       return res.status(404).json({ 
