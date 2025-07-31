@@ -51,7 +51,7 @@ const AdminReviewManagement = () => {
   const [user, setUser] = useState(null);
 
   // API Base URL
-  const API_BASE = 'http://localhost:5000/api';
+  const API_BASE = 'https://bogat.onrender.com/api';
 
   // Check authentication status
   const checkAuth = async () => {
@@ -587,7 +587,7 @@ const AdminReviewManagement = () => {
     // Handle full URLs
     if (imagePath.startsWith('http')) return imagePath;
     // Handle relative paths from uploads folder
-    return `http://localhost:5000${imagePath}`;
+    return `https://bogat.onrender.com${imagePath}`;
   };
 
   // Load data on component mount and filter changes
