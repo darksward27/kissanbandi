@@ -30,10 +30,10 @@ const VerifiedReviewsSection = ({ productId = null, showProductInfo = false }) =
     });
     
     if (nodeEnv === 'production') {
-      return 'https://bogat.onrender.com/api';
+      return 'http://localhost:5000/api';
     }
     
-    return apiUrl || 'https://bogat.onrender.com/api';
+    return apiUrl || 'http://localhost:5000/api';
   };
 
   // ✅ FIXED: Updated image URL handling for Cloudinary
