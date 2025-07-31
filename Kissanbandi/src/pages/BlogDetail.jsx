@@ -293,11 +293,11 @@ const BlogDetail = () => {
         </div>
 
         {/* Hero Image */}
-        <div className="relative h-64 md:h-96 rounded-2xl overflow-hidden mb-8 shadow-2xl">
+<div className="relative w-full max-w-md aspect-square rounded-2xl overflow-hidden mb-8 shadow-2xl mx-auto">
           <img
             src={getImageUrl(blog.image)}
             alt={blog.title}
-            className="w-full h-full object-cover"
+              className="w-full h-full object-cover"
             onError={(e) => {
               e.target.src = 'https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?w=800&h=400&fit=crop';
             }}
