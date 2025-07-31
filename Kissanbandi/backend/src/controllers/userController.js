@@ -17,7 +17,12 @@ exports.register = async (req, res) => {
       return res.status(400).json({ error: 'Email already registered' });
     }
 
-    const user = new User(req.body);
+    // Clean up the request body - remove frontend verification object if it exists
+    const userData = { ...req.body };
+    delete userData.verification; // Remove frontend verification object
+    delete userData.confirmPassword; // Remove confirm password if it exists
+
+    const user = new User(userData);
     
     // Generate verification token
     const verificationToken = user.generateVerificationToken();
@@ -25,6 +30,7 @@ exports.register = async (req, res) => {
     try {
       await user.save();
     } catch (saveError) {
+      console.error('User save error:', saveError);
       return res.status(400).json({ error: saveError.message });
     }
 
@@ -38,7 +44,9 @@ exports.register = async (req, res) => {
         subject: emailTemplate.subject,
         html: emailTemplate.html
       });
+      console.log('Verification email sent successfully');
     } catch (emailError) {
+      console.error('Email sending error:', emailError);
       // Don't return error here, still send back success response
     }
 
@@ -55,12 +63,10 @@ exports.register = async (req, res) => {
       message: 'Please check your email to verify your account'
     });
   } catch (error) {
+    console.error('Registration error:', error);
     res.status(400).json({ error: error.message });
   }
 };
-
-
-
 
 // Login user
 exports.login = async (req, res) => {

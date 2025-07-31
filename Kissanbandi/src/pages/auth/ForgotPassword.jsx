@@ -12,7 +12,6 @@ const ForgotPassword = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
     // Prevent duplicate submissions
     if (isSubmittingRef.current || loading) {
       return;

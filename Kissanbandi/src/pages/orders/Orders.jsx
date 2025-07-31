@@ -16,13 +16,116 @@ const STATUS_COLORS = {
 
 const FALLBACK_IMAGE = '/images/product-placeholder.jpg';
 
-//helper function to check the image path
+// Helper function to check the image path
 const getProductImage = (imagePath) => {
     if (!imagePath) return FALLBACK_IMAGE;
     if (imagePath.startsWith('http')) return imagePath;
     if (imagePath.startsWith('/uploads')) return `https://bogat.onrender.com${imagePath}`;
     const filename = imagePath.split('/').pop();
     return `https://bogat.onrender.com/uploads/product/${filename}`;
+};
+
+// ✅ FIXED: Function to get individual product GST breakdown with correct field names + HSN
+const getIndividualProductGST = (item, orderData) => {
+    console.log('🧮 Calculating individual product GST for:', {
+        productName: item.product?.name,
+        quantity: item.quantity,
+        price: item.price,
+        basePrice: item.basePrice,
+        gstRate: item.gstRate,
+        gst: item.gst, // ✅ Primary field name used in database
+        gstAmount: item.gstAmount, // ✅ Fallback field name
+        totalGstAmount: item.totalGstAmount,
+        hsn: item.hsn || item.product?.hsn || item.product?.hsnCode // ✅ HSN code support
+    });
+
+    // Method 1: Use stored GST information from order item with correct field names + HSN
+    if ((item.basePrice !== undefined || item.gst !== undefined) && (item.gst !== undefined || item.gstAmount !== undefined)) {
+        
+        // ✅ Get GST amount from either 'gst' field (primary) or 'gstAmount' (fallback)
+        const gstAmountPerUnit = parseFloat(item.gst || item.gstAmount) || 0;
+        
+        // Calculate base price if not stored directly
+        let basePrice = parseFloat(item.basePrice) || 0;
+        if (basePrice === 0 && item.price && gstAmountPerUnit > 0) {
+            // Reverse calculate base price from total price and GST amount
+            basePrice = item.price - gstAmountPerUnit;
+        }
+        
+        // Get GST rate
+        const gstRate = parseFloat(item.gstRate) || 0;
+        
+        // ✅ Get HSN code
+        const hsn = item.hsn || item.product?.hsn || item.product?.hsnCode || '1234';
+        
+        // Calculate totals
+        const totalGstAmount = gstAmountPerUnit * item.quantity;
+        const cgstAmount = totalGstAmount / 2;
+        const sgstAmount = totalGstAmount / 2;
+        
+        console.log('✅ Using stored GST data with correct field names + HSN:', {
+            basePrice,
+            gstAmountPerUnit,
+            gstRate,
+            totalGstAmount,
+            cgstAmount,
+            sgstAmount,
+            hsn,
+            fieldUsed: item.gst !== undefined ? 'gst' : 'gstAmount',
+            rawValues: {
+                itemGst: item.gst,
+                itemGstAmount: item.gstAmount,
+                itemPrice: item.price,
+                itemBasePrice: item.basePrice,
+                itemHsn: item.hsn
+            }
+        });
+        
+        return {
+            basePrice: basePrice.toFixed(2),
+            gstRate: gstRate > 0 ? gstRate.toFixed(1) : '18.0', // Default to 18% if not available
+            gstAmountPerUnit: gstAmountPerUnit.toFixed(2),
+            totalGstAmount: totalGstAmount.toFixed(2),
+            cgstAmount: cgstAmount.toFixed(2),
+            sgstAmount: sgstAmount.toFixed(2),
+            totalAmount: (item.price * item.quantity).toFixed(2),
+            hsn: hsn // ✅ Include HSN code
+        };
+    }
+
+    // Method 2: Calculate from price (assuming price includes GST) - Fallback
+    const totalItemAmount = (item.price || 0) * (item.quantity || 0);
+    const productGstRate = item.gstRate || item.product?.gstRate || item.product?.gst || 18;
+    const hsn = item.hsn || item.product?.hsn || item.product?.hsnCode || '1234';
+    
+    // Calculate base price and GST from total amount (reverse calculation)
+    const basePrice = totalItemAmount / (1 + productGstRate / 100);
+    const totalGstAmount = totalItemAmount - basePrice;
+    const gstAmountPerUnit = totalGstAmount / (item.quantity || 1);
+    const cgstAmount = totalGstAmount / 2;
+    const sgstAmount = totalGstAmount / 2;
+    
+    console.log('⚠️ Calculated GST from price (fallback method) + HSN:', {
+        totalItemAmount,
+        productGstRate,
+        basePrice,
+        gstAmountPerUnit,
+        totalGstAmount,
+        cgstAmount,
+        sgstAmount,
+        hsn
+    });
+    
+    return {
+        basePrice: basePrice.toFixed(2),
+        gstRate: productGstRate.toFixed(1),
+        gstAmountPerUnit: gstAmountPerUnit.toFixed(2),
+        totalGstAmount: totalGstAmount.toFixed(2),
+        cgstAmount: cgstAmount.toFixed(2),
+        sgstAmount: sgstAmount.toFixed(2),
+        totalAmount: totalItemAmount.toFixed(2),
+        hsn: hsn // ✅ Include HSN code
+    };
 };
 
 // Helper function to get actual GST breakdown from order data
@@ -37,77 +140,55 @@ const calculateGSTBreakdown = (orderData, subtotalAfterDiscount) => {
         subtotalAfterDiscount 
     });
     
-    // First, try to get GST breakdown from order data
-    if (orderData?.gstBreakdown && Array.isArray(orderData.gstBreakdown)) {
+    // First, try to calculate from individual items using the fixed function
+    if (orderData?.items && Array.isArray(orderData.items)) {
         let totalCGST = 0;
         let totalSGST = 0;
         let totalGST = 0;
-        let effectiveRate = 0;
+        let commonGSTRate = null;
         
-        orderData.gstBreakdown.forEach(gst => {
-            totalCGST += gst.cgst || 0;
-            totalSGST += gst.sgst || 0;
-            totalGST += gst.gstAmount || 0;
+        orderData.items.forEach(item => {
+            const itemGstData = getIndividualProductGST(item, orderData);
+            const itemCGST = parseFloat(itemGstData.cgstAmount) || 0;
+            const itemSGST = parseFloat(itemGstData.sgstAmount) || 0;
+            const itemGST = parseFloat(itemGstData.totalGstAmount) || 0;
+            const gstRate = parseFloat(itemGstData.gstRate) || 0;
             
-            // Calculate effective rate from the first GST entry
-            if (effectiveRate === 0 && gst.rate) {
-                effectiveRate = gst.rate;
+            if (commonGSTRate === null) {
+                commonGSTRate = gstRate;
             }
+            
+            totalCGST += itemCGST;
+            totalSGST += itemSGST;
+            totalGST += itemGST;
         });
         
-        console.log('✅ Using order GST breakdown:', { totalCGST, totalSGST, totalGST, effectiveRate });
+        console.log('✅ Calculated from individual items with correct field names + HSN:', { 
+            totalCGST, 
+            totalSGST, 
+            totalGST, 
+            commonGSTRate 
+        });
         
         return {
             cgst: Math.round(totalCGST * 100) / 100,
             sgst: Math.round(totalSGST * 100) / 100,
             totalGST: Math.round(totalGST * 100) / 100,
-            cgstRate: effectiveRate / 2,
-            sgstRate: effectiveRate / 2,
-            totalRate: effectiveRate
+            cgstRate: (commonGSTRate || 0) / 2,
+            sgstRate: (commonGSTRate || 0) / 2,
+            totalRate: commonGSTRate || 0
         };
     }
     
-    // Second, try to get from itemwise GST data
-    if (orderData?.itemwiseGST && Array.isArray(orderData.itemwiseGST)) {
-        let totalCGST = 0;
-        let totalSGST = 0;
-        let totalGST = 0;
-        let effectiveRate = 0;
-        
-        orderData.itemwiseGST.forEach(item => {
-            totalCGST += item.cgst || 0;
-            totalSGST += item.sgst || 0;
-            totalGST += item.gstAmount || 0;
-            
-            // Get GST rate from first item
-            if (effectiveRate === 0 && item.gstRate) {
-                effectiveRate = item.gstRate;
-            }
-        });
-        
-        console.log('✅ Using itemwise GST data:', { totalCGST, totalSGST, totalGST, effectiveRate });
-        
-        return {
-            cgst: Math.round(totalCGST * 100) / 100,
-            sgst: Math.round(totalSGST * 100) / 100,
-            totalGST: Math.round(totalGST * 100) / 100,
-            cgstRate: effectiveRate / 2,
-            sgstRate: effectiveRate / 2,
-            totalRate: effectiveRate
-        };
-    }
-    
-    // Third, calculate from total GST amount and discounted subtotal (MAIN CASE)
+    // Second, try to get from order's total GST amount
     if (orderData?.gstAmount && orderData.gstAmount > 0) {
         const totalGST = orderData.gstAmount;
         const cgst = totalGST / 2;
         const sgst = totalGST / 2;
         
-        // Use discountedSubtotal if available, otherwise calculate it
         const taxableAmount = orderData?.discountedSubtotal || subtotalAfterDiscount;
         console.log('🧮 GST Calculation Base:', { taxableAmount, totalGST });
         
-        // Calculate effective rate from taxable amount
         const effectiveRate = taxableAmount > 0 ? (totalGST / taxableAmount) * 100 : 0;
         
         console.log('✅ Using total GST amount:', { 
@@ -122,45 +203,9 @@ const calculateGSTBreakdown = (orderData, subtotalAfterDiscount) => {
             cgst: Math.round(cgst * 100) / 100,
             sgst: Math.round(sgst * 100) / 100,
             totalGST: Math.round(totalGST * 100) / 100,
-            cgstRate: Math.round((effectiveRate / 2) * 10) / 10, // Round to 1 decimal
-            sgstRate: Math.round((effectiveRate / 2) * 10) / 10, // Round to 1 decimal
+            cgstRate: Math.round((effectiveRate / 2) * 10) / 10,
+            sgstRate: Math.round((effectiveRate / 2) * 10) / 10,
             totalRate: Math.round(effectiveRate * 10) / 10
-        };
-    }
-    
-    // Fourth, try to get GST rate from items
-    if (orderData?.items && Array.isArray(orderData.items)) {
-        let totalCGST = 0;
-        let totalSGST = 0;
-        let totalGST = 0;
-        let commonGSTRate = null;
-        
-        orderData.items.forEach(item => {
-            const itemTotal = (item.price || 0) * (item.quantity || 0);
-            const gstRate = item.product?.gst || item.gst || 0;
-            
-            if (commonGSTRate === null) {
-                commonGSTRate = gstRate;
-            }
-            
-            const itemGST = (itemTotal * gstRate) / 100;
-            const itemCGST = itemGST / 2;
-            const itemSGST = itemGST / 2;
-            
-            totalCGST += itemCGST;
-            totalSGST += itemSGST;
-            totalGST += itemGST;
-        });
-        
-        console.log('✅ Calculated from items GST rates:', { totalCGST, totalSGST, totalGST, commonGSTRate });
-        
-        return {
-            cgst: Math.round(totalCGST * 100) / 100,
-            sgst: Math.round(totalSGST * 100) / 100,
-            totalGST: Math.round(totalGST * 100) / 100,
-            cgstRate: (commonGSTRate || 0) / 2,
-            sgstRate: (commonGSTRate || 0) / 2,
-            totalRate: commonGSTRate || 0
         };
     }
     
@@ -204,7 +249,6 @@ const Orders = () => {
             
             console.log('Orders response:', response.data);
             
-            // Handle different response formats
             const ordersData = Array.isArray(response.data) ? response.data :
                              Array.isArray(response.data?.orders) ? response.data.orders :
                              response.data?.data?.orders || [];
@@ -273,39 +317,36 @@ const Orders = () => {
             setDownloadingInvoice(orderId);
             toast.loading('Generating invoice...', { id: 'pdf-loading' });
             
-            // Fetch complete order details
             const response = await api.get(`/orders/${orderId}`);
-            const orderData = response.data.order;
             
+            const orderData = response.data.order;
+            console.log('Order Data for Invoice with GST breakdown + HSN:', orderData);
             if (!orderData) {
                 throw new Error('Order data not found');
             }
 
-            // Calculate subtotal from items
             const itemsSubtotal = (orderData.items || []).reduce((sum, item) => sum + (item.price * item.quantity), 0);
-            
-            // Get discount and coupon details
             const couponDiscount = orderData.discount || 0;
             const couponCode = orderData.couponCode || null;
             const couponDetails = orderData.couponDetails || null;
-            
-            // Calculate subtotal after discount
             const subtotalAfterDiscount = itemsSubtotal - couponDiscount;
-            
-            // Get GST amount from order or calculate it
             const gstAmount = orderData.gstAmount || 0;
             const gstBreakdown = calculateGSTBreakdown(orderData, subtotalAfterDiscount);
+            const shipping = orderData.shippingCharge || (subtotalAfterDiscount >= 500 ? 0 : 50);
             
-            console.log('🧾 Invoice GST Details:', {
+            console.log('🧾 Invoice GST Details with individual product GST + HSN:', {
                 originalGSTAmount: gstAmount,
                 calculatedBreakdown: gstBreakdown,
-                subtotalAfterDiscount
+                subtotalAfterDiscount,
+                individualItemsGST: orderData.items?.map(item => ({
+                    name: item.product?.name,
+                    gst: item.gst,
+                    hsn: item.hsn || item.product?.hsn || item.product?.hsnCode,
+                    gstData: getIndividualProductGST(item, orderData)
+                }))
             });
-            
-            // Calculate shipping
-            const shipping = orderData.shippingCharge || (subtotalAfterDiscount >= 500 ? 0 : 50);
 
-            // ✅ Enhanced single-page invoice with company logo and coupon details
+            // ✅ Enhanced invoice with individual product GST from database + HSN codes
             const invoiceContent = `
                 <html>
                 <head>
@@ -371,6 +412,13 @@ const Orders = () => {
                             line-height: 1;
                         }
                         
+                       .company-logo-img {
+                          width: 60px;
+                          height: 60px;
+                          object-fit: cover;
+                          border-radius: 8px;
+                        }
+
                         .company-info h1 {
                             color: #f59e0b;
                             font-size: 24px;
@@ -458,7 +506,6 @@ const Orders = () => {
                         .status-delivered { background: #d1fae5; color: #10b981; }
                         .status-cancelled { background: #fee2e2; color: #ef4444; }
                         
-                        /* ✅ Coupon Section Styles */
                         .coupon-section {
                             background: linear-gradient(135deg, #ecfdf5, #d1fae5);
                             border: 2px dashed #10b981;
@@ -502,31 +549,84 @@ const Orders = () => {
                             color: #047857;
                         }
                         
+                        /* ✅ Enhanced Items Table with proper individual GST display + HSN */
                         .items-table {
                             width: 100%;
                             border-collapse: collapse;
                             margin-bottom: 15px;
-                            font-size: 11px;
+                            font-size: 10px;
+                            table-layout: fixed;
                         }
                         
                         .items-table th {
                             background: #f59e0b;
                             color: white;
-                            padding: 8px 6px;
-                            text-align: left;
+                            padding: 10px 8px;
+                            text-align: center;
                             font-weight: bold;
-                            font-size: 10px;
+                            font-size: 9px;
                             text-transform: uppercase;
+                            border: 1px solid #f59e0b;
+                            white-space: nowrap;
                         }
+                        
+                        .items-table th:nth-child(1) { width: 25%; } /* Item */
+                        .items-table th:nth-child(2) { width: 10%; } /* HSN */
+                        .items-table th:nth-child(3) { width: 8%; }  /* Qty */
+                        .items-table th:nth-child(4) { width: 12%; } /* Base Rate */
+                        .items-table th:nth-child(5) { width: 8%; }  /* GST% */
+                        .items-table th:nth-child(6) { width: 12%; } /* GST Amt */
+                        .items-table th:nth-child(7) { width: 12%; } /* CGST */
+                        .items-table th:nth-child(8) { width: 12%; } /* SGST */
+                        .items-table th:nth-child(9) { width: 12%; } /* Total */
                         
                         .items-table td {
                             padding: 8px 6px;
-                            border-bottom: 1px solid #e5e7eb;
-                            font-size: 10px;
+                            border: 1px solid #e5e7eb;
+                            font-size: 9px;
+                            text-align: center;
+                            vertical-align: middle;
+                        }
+                        
+                        .items-table td:first-child {
+                            text-align: left;
+                            padding-left: 8px;
+                        }
+                        
+                        .items-table td.amount {
+                            text-align: right;
+                            font-weight: bold;
+                            color: #f59e0b;
                         }
                         
                         .items-table tbody tr:nth-child(even) {
                             background: #fef3c7;
+                        }
+                        
+                        .items-table tbody tr:hover {
+                            background: #fde68a;
+                        }
+                        
+                        .product-name {
+                            font-weight: bold;
+                            color: #333;
+                            line-height: 1.2;
+                        }
+                        
+                        .product-desc {
+                            font-size: 8px;
+                            color: #666;
+                            margin-top: 2px;
+                            line-height: 1.1;
+                        }
+                        
+                        .hsn-code {
+                            font-weight: bold;
+                            color: #f59e0b;
+                            background: #fef3c7;
+                            padding: 2px 4px;
+                            border-radius: 4px;
+                            font-size: 8px;
                         }
                         
                         .totals-section {
@@ -632,17 +732,6 @@ const Orders = () => {
                             font-size: 9px;
                         }
                         
-                        .gst-declaration {
-                            background: #fef3c7;
-                            padding: 8px;
-                            border-radius: 6px;
-                            margin: 10px 0;
-                            border: 1px solid #f59e0b;
-                            font-size: 9px;
-                            color: #92400e;
-                            text-align: center;
-                        }
-                        
                         .thank-you {
                             background: linear-gradient(135deg, #f59e0b, #f97316);
                             color: white;
@@ -682,7 +771,7 @@ const Orders = () => {
                         <div class="invoice-header">
                             <div class="company-section">
                                 <div class="company-logo">
-                                    <div class="company-logo-text">SB</div>
+                                    <img src="/favicon.png" alt="Logo" class="company-logo-img" />
                                 </div>
                                 <div class="company-info">
                                     <h1>SRI BOGAT</h1>
@@ -729,7 +818,7 @@ const Orders = () => {
                         </div>
 
                         ${couponCode ? `
-                        <!-- ✅ Coupon Section -->
+                        <!-- Coupon Section -->
                         <div class="coupon-section">
                             <div class="coupon-header">
                                 <div class="coupon-icon">🎁</div>
@@ -756,30 +845,40 @@ const Orders = () => {
                         </div>
                         ` : ''}
 
-                        <!-- Items Table -->
+                        <!-- ✅ FIXED: Items Table with Individual GST Display + HSN Codes -->
                         <table class="items-table">
                             <thead>
                                 <tr>
-                                    <th>Item</th>
-                                    <th>HSN</th>
+                                    <th>Item Description</th>
+                                    <th>HSN Code</th>
                                     <th>Qty</th>
-                                    <th>Rate</th>
-                                    <th>Amount</th>
+                                    <th>Base Rate</th>
+                                    
+                                    <th>GST Amt</th>
+                                    <th>CGST</th>
+                                    <th>SGST</th>
+                                    <th>Total Amount</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                ${orderData.items?.map(item => `
+                                ${orderData.items?.map(item => {
+                                    const gstData = getIndividualProductGST(item, orderData);
+                                    return `
                                     <tr>
                                         <td>
-                                            <strong>${item.product?.name || 'Product Name'}</strong>
-                                            ${item.product?.description ? `<br><small style="color: #666;">${item.product.description}</small>` : ''}
+                                            <div class="product-name">${item.product?.name || 'Product Name'}</div>
+                                            ${item.product?.description ? `<div class="product-desc">${item.product.description.substring(0, 60)}${item.product.description.length > 60 ? '...' : ''}</div>` : ''}
                                         </td>
-                                        <td>1234</td>
-                                        <td style="text-align: center;">${item.quantity || 0}</td>
-                                        <td style="text-align: right;">₹${(item.price || 0).toFixed(2)}</td>
-                                        <td style="text-align: right;">₹${((item.price || 0) * (item.quantity || 0)).toFixed(2)}</td>
+                                        <td><span class="hsn-code">${gstData.hsn}</span></td>
+                                        <td><strong>${item.quantity || 0}</strong></td>
+                                        <td class="amount">₹${gstData.basePrice}</td>
+                                       
+                                        <td class="amount">₹${gstData.totalGstAmount}</td>
+                                        <td class="amount">₹${gstData.cgstAmount}</td>
+                                        <td class="amount">₹${gstData.sgstAmount}</td>
+                                        <td class="amount"><strong>₹${gstData.totalAmount}</strong></td>
                                     </tr>
-                                `).join('') || '<tr><td colspan="5">No items found</td></tr>'}
+                                `;}).join('') || '<tr><td colspan="9" style="text-align: center; color: #666;">No items found</td></tr>'}
                             </tbody>
                         </table>
 
@@ -788,7 +887,7 @@ const Orders = () => {
                             <div class="totals-grid">
                                 <!-- GST Breakdown -->
                                 <div class="gst-breakdown">
-                                    <div class="gst-title">GST Breakdown</div>
+                                    <div class="gst-title">GST Summary</div>
                                     <div class="gst-row">
                                         <span>Taxable Amount:</span>
                                         <span>₹${subtotalAfterDiscount.toFixed(2)}</span>
@@ -810,7 +909,7 @@ const Orders = () => {
                                 <!-- Total Calculation -->
                                 <div class="total-calculation">
                                     <div class="total-row">
-                                        <span>Subtotal:</span>
+                                        <span>Subtotal (Including GST):</span>
                                         <span>₹${itemsSubtotal.toFixed(2)}</span>
                                     </div>
                                     ${couponDiscount > 0 ? `
@@ -819,10 +918,7 @@ const Orders = () => {
                                         <span>-₹${couponDiscount.toFixed(2)}</span>
                                     </div>
                                     ` : ''}
-                                    <div class="total-row">
-                                        <span>GST:</span>
-                                        <span>₹${gstBreakdown.totalGST.toFixed(2)}</span>
-                                    </div>
+                                    
                                     <div class="total-row">
                                         <span>Shipping:</span>
                                         <span>${shipping === 0 ? 'Free' : `₹${shipping.toFixed(2)}`}</span>
@@ -847,6 +943,7 @@ const Orders = () => {
                             <p><strong>Payment Status:</strong> ${orderData.paymentStatus || 'Completed'}</p>
                             ${orderData.razorpayDetails?.paymentId ? `<p><strong>Transaction ID:</strong> ${orderData.razorpayDetails.paymentId}</p>` : ''}
                         </div>
+                        
                         <!-- Thank You -->
                         <div class="thank-you">
                             <h3>Thank You for Your Order!</h3>
@@ -857,6 +954,7 @@ const Orders = () => {
                         <div class="footer">
                             <p>This is a computer-generated invoice. No signature required.</p>
                             <p>For any queries, please contact us at support@bogat.com</p>
+                            <p><strong>HSN Codes:</strong> As per Central Board of Indirect Taxes and Customs (CBIC)</p>
                         </div>
                     </div>
                 </body>
@@ -869,7 +967,6 @@ const Orders = () => {
                 printWindow.document.write(invoiceContent);
                 printWindow.document.close();
                 
-                // Wait for content to load then print
                 printWindow.onload = () => {
                     setTimeout(() => {
                         printWindow.print();
@@ -880,7 +977,7 @@ const Orders = () => {
                 throw new Error('Unable to open print window. Please allow popups.');
             }
             
-            toast.success('Invoice generated successfully!', { id: 'pdf-loading' });
+            toast.success('Invoice generated successfully with HSN codes!', { id: 'pdf-loading' });
             
         } catch (error) {
             console.error('Error generating invoice:', error);
@@ -994,7 +1091,7 @@ const Orders = () => {
                                 <h1 className="text-4xl font-bold bg-gradient-to-r from-amber-700 to-orange-700 bg-clip-text text-transparent mb-2">
                                     My Orders
                                 </h1>
-                                <p className="text-gray-600 text-lg">View and track your orders</p>
+                                <p className="text-gray-600 text-lg">View and track your orders with HSN details</p>
                                 <div className="w-24 h-1 bg-gradient-to-r from-amber-600 to-orange-700 rounded-full mt-2 mx-auto lg:mx-0"></div>
                             </div>
                             
@@ -1081,19 +1178,16 @@ const Orders = () => {
                                                         <CheckCircle className="w-4 h-4 inline mr-2" />
                                                         {order.status || 'Processing'}
                                                     </span>
-                                                    {/* GST Badge */}
-                                                    {order.gstAmount > 0 && (
-                                                        <div className="bg-gradient-to-r from-green-100 to-emerald-100 text-green-700 px-3 py-2 rounded-lg border border-green-200">
-                                                            <span className="text-xs font-medium">GST ₹{order.gstAmount.toFixed(2)}</span>
-                                                        </div>
-                                                    )}
-                                                    {/* ✅ Coupon Badge */}
+                                                   
+                                                    {/* Coupon Badge */}
                                                     {order.couponCode && (
                                                         <div className="bg-gradient-to-r from-green-100 to-emerald-100 text-green-700 px-3 py-2 rounded-lg border border-green-200 flex items-center">
                                                             <Gift className="w-4 h-4 mr-1" />
                                                             <span className="text-xs font-medium">{order.couponCode} (-₹{order.discount?.toFixed(2) || '0.00'})</span>
                                                         </div>
                                                     )}
+                                                   
+                                                    
                                                 </div>
                                             </div>
                                             
@@ -1132,28 +1226,41 @@ const Orders = () => {
                                                         Order Items
                                                     </h4>
                                                     <div className="space-y-4">
-                                                        {(order.items || []).map((item, itemIndex) => (
-                                                            <div key={`${order._id}-item-${itemIndex}`} className="group flex items-center space-x-4 bg-white/60 p-4 rounded-xl hover:bg-white transition-all duration-300 hover:shadow-md">
-                                                                <div className="relative w-16 h-16 bg-gradient-to-br from-amber-100 to-orange-100 rounded-xl overflow-hidden">
-                                                                   <img
-    src={getProductImage(item?.product?.image)}
-    alt={item?.product?.name || 'Product'}
-    className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
-    onError={handleImageError}
-/>
-                                                                </div>
-                                                                <div className="flex-1">
-                                                                    <div className="font-bold text-gray-800 group-hover:text-amber-700 transition-colors">
-                                                                        {item?.product?.name || 'Product Name Not Available'}
+                                                        {(order.items || []).map((item, itemIndex) => {
+                                                            const gstData = getIndividualProductGST(item, order);
+                                                            const hsn = item.hsn || item.product?.hsn || item.product?.hsnCode || '1234';
+                                                            return (
+                                                                <div key={`${order._id}-item-${itemIndex}`} className="group flex items-center space-x-4 bg-white/60 p-4 rounded-xl hover:bg-white transition-all duration-300 hover:shadow-md">
+                                                                    <div className="relative w-16 h-16 bg-gradient-to-br from-amber-100 to-orange-100 rounded-xl overflow-hidden">
+                                                                        <img
+                                                                            src={getProductImage(item?.product?.image)}
+                                                                            alt={item?.product?.name || 'Product'}
+                                                                            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
+                                                                            onError={handleImageError}
+                                                                        />
                                                                     </div>
-                                                                    <div className="text-sm text-gray-600 mt-1">
-                                                                        <span className="bg-amber-100 text-amber-700 px-2 py-1 rounded-full text-xs font-medium">
-                                                                            {item?.quantity || 0} × ₹{item?.price?.toFixed(2) || '0.00'}
-                                                                        </span>
+                                                                    <div className="flex-1">
+                                                                        <div className="font-bold text-gray-800 group-hover:text-amber-700 transition-colors">
+                                                                            {item?.product?.name || 'Product Name Not Available'}
+                                                                        </div>
+                                                                        <div className="text-sm text-gray-600 mt-1 space-y-1">
+                                                                            <div className="flex items-center justify-between">
+                                                                                <span className="bg-amber-100 text-amber-700 px-2 py-1 rounded-full text-xs font-medium">
+                                                                                    {item?.quantity || 0} × ₹{gstData.basePrice} (Base)
+                                                                                </span>
+                                                                                <span className="bg-green-100 text-green-700 px-2 py-1 rounded-full text-xs font-medium">
+                                                                                    GST: ₹{gstData.totalGstAmount}
+                                                                                </span>
+                                                                            </div>
+                                                                            <div className="flex items-center justify-between text-xs text-gray-500">
+                                                                                <span>GST Rate: {gstData.gstRate}% | CGST: ₹{gstData.cgstAmount} | SGST: ₹{gstData.sgstAmount}</span>
+                                                                                
+                                                                            </div>
+                                                                        </div>
                                                                     </div>
                                                                 </div>
-                                                            </div>
-                                                        ))}
+                                                            );
+                                                        })}
                                                     </div>
                                                 </div>
 
@@ -1174,7 +1281,7 @@ const Orders = () => {
                                                         </div>
                                                     </div>
 
-                                                    {/* ✅ Coupon Details Section */}
+                                                    {/* Coupon Details Section */}
                                                     {order.couponCode && (
                                                         <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-4 rounded-xl border border-green-200">
                                                             <h5 className="font-bold text-green-800 mb-3 flex items-center">
@@ -1201,6 +1308,8 @@ const Orders = () => {
                                                             </div>
                                                         </div>
                                                     )}
+
+                                                   
 
                                                     {/* Price Breakdown */}
                                                     <div className="bg-gradient-to-r from-amber-50 to-orange-50 p-4 rounded-xl border border-amber-200">
@@ -1230,16 +1339,16 @@ const Orders = () => {
                                                                             </div>
                                                                         )}
                                                                         <div className="flex justify-between text-gray-600">
-                                                                            <span>CGST @ {gstBreakdown.cgstRate.toFixed(1)}%:</span>
+                                                                            <span>GST ({gstBreakdown.totalRate.toFixed(1)}%):</span>
+                                                                            <span>₹{gstBreakdown.totalGST.toFixed(2)}</span>
+                                                                        </div>
+                                                                        <div className="flex justify-between text-blue-600 text-xs">
+                                                                            <span>• CGST ({gstBreakdown.cgstRate.toFixed(1)}%):</span>
                                                                             <span>₹{gstBreakdown.cgst.toFixed(2)}</span>
                                                                         </div>
-                                                                        <div className="flex justify-between text-gray-600">
-                                                                            <span>SGST @ {gstBreakdown.sgstRate.toFixed(1)}%:</span>
+                                                                        <div className="flex justify-between text-blue-600 text-xs">
+                                                                            <span>• SGST ({gstBreakdown.sgstRate.toFixed(1)}%):</span>
                                                                             <span>₹{gstBreakdown.sgst.toFixed(2)}</span>
-                                                                        </div>
-                                                                        <div className="flex justify-between font-semibold text-amber-700 border-t border-amber-200 pt-2">
-                                                                            <span>Total GST:</span>
-                                                                            <span>₹{gstBreakdown.totalGST.toFixed(2)}</span>
                                                                         </div>
                                                                         <div className="flex justify-between text-gray-600">
                                                                             <span>Shipping:</span>

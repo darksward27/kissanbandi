@@ -1,6 +1,7 @@
 const Review = require('../models/Review');
 const Product = require('../models/Product');
 const User = require('../models/User');
+const { useCloudinary, processUploadedFiles } = require('../middleware/upload');
 
 // Create a new review with optional image support
 exports.createReview = async (req, res) => {
@@ -18,6 +19,7 @@ exports.createReview = async (req, res) => {
     console.log('Rating:', rating);
     console.log('Comment:', comment);
     console.log('Uploaded files:', uploadedFiles.length);
+    console.log('Using Cloudinary:', useCloudinary);
 
     // Validate required fields
     if (!productId || !rating || !comment) {
@@ -52,6 +54,23 @@ exports.createReview = async (req, res) => {
       });
     }
 
+    // Verify user has purchased this product
+    const Order = require('../models/Order');
+    const hasPurchased = await Order.findOne({
+      user: userId,
+      'items.product': productId,
+      status: { $in: ['delivered', 'completed'] }
+    });
+
+    console.log('Purchase verification:', !!hasPurchased);
+
+    if (!hasPurchased) {
+      return res.status(403).json({
+        success: false,
+        error: 'You must purchase and receive this product before reviewing it'
+      });
+    }
+
     // Check if user already reviewed this product
     const existingReview = await Review.findOne({
       user: userId,
@@ -65,28 +84,40 @@ exports.createReview = async (req, res) => {
       });
     }
 
-    // Process uploaded images (if any)
+    // ✅ FIXED: Process uploaded images properly for both Cloudinary and local storage
     let imageUrls = [];
     if (uploadedFiles && uploadedFiles.length > 0) {
-      imageUrls = uploadedFiles.map(file => {
-        // Return relative path from uploads directory
-        return `/uploads/reviews/${file.filename}`;
+      const processedFiles = processUploadedFiles(uploadedFiles);
+      
+      imageUrls = processedFiles.map(file => {
+        if (useCloudinary) {
+          // ✅ For Cloudinary: use the secure_url
+          console.log('📸 Cloudinary image URL:', file.secure_url);
+          return file.secure_url;
+        } else {
+          // ✅ For local storage: use relative path
+          console.log('📁 Local image path:', file.url);
+          return `/uploads/reviews/${file.filename}`;
+        }
       });
-      console.log('Image URLs:', imageUrls);
+      
+      console.log('✅ Final image URLs:', imageUrls);
     }
 
-    // Create review
+    // Create review with verified purchase flag
     const review = new Review({
       user: userId,
       product: productId,
       rating: parseInt(rating),
       title: title ? title.trim() : '',
       comment: comment.trim(),
-      images: imageUrls,
+      images: imageUrls, // ✅ Now contains proper URLs (Cloudinary or local)
+      verified: true,
       status: 'pending'
     });
 
     await review.save();
+    console.log('✅ Review saved with images:', review.images);
 
     // Populate user and product details for response
     await review.populate([
@@ -97,7 +128,12 @@ exports.createReview = async (req, res) => {
     res.status(201).json({
       success: true,
       message: 'Review submitted successfully and is pending approval',
-      review
+      review,
+      debug: {
+        usingCloudinary: useCloudinary,
+        imageCount: imageUrls.length,
+        imageUrls: imageUrls
+      }
     });
 
   } catch (error) {
@@ -121,11 +157,15 @@ exports.createReview = async (req, res) => {
   }
 };
 
-// Check if user can review a product
+//can review function
 exports.canReviewProduct = async (req, res) => {
   try {
     const { productId } = req.params;
     const userId = req.user.userId || req.user._id;
+
+    console.log('=== DEBUG: canReviewProduct ===');
+    console.log('User ID:', userId);
+    console.log('Product ID:', productId);
 
     if (!productId) {
       return res.status(400).json({
@@ -139,7 +179,26 @@ exports.canReviewProduct = async (req, res) => {
     if (!product) {
       return res.status(404).json({
         success: false,
-        error: 'Product not found'
+        canReview: false,
+        reason: 'Product not found'
+      });
+    }
+
+    // Check if user has purchased this product
+    const Order = require('../models/Order');
+    const hasPurchased = await Order.findOne({
+      user: userId,
+      'items.product': productId,
+      status: { $in: ['delivered', 'completed'] }
+    });
+
+    console.log('Has purchased product:', !!hasPurchased);
+
+    if (!hasPurchased) {
+      return res.json({
+        success: true,
+        canReview: false,
+        reason: 'You must purchase and receive this product before reviewing it'
       });
     }
 
@@ -149,6 +208,8 @@ exports.canReviewProduct = async (req, res) => {
       product: productId
     });
 
+    console.log('Existing review:', !!existingReview);
+
     if (existingReview) {
       return res.json({
         success: true,
@@ -157,10 +218,11 @@ exports.canReviewProduct = async (req, res) => {
       });
     }
 
+    // User can review - they have purchased and haven't reviewed yet
     return res.json({
       success: true,
       canReview: true,
-      reason: ''
+      reason: 'You can review this product'
     });
 
   } catch (error) {
@@ -694,6 +756,7 @@ exports.getVerifiedProductReviews = async (req, res) => {
 
     console.log('=== getVerifiedProductReviews Debug ===');
     console.log('Product ID:', productId);
+    console.log('Using Cloudinary:', useCloudinary);
 
     if (!productId) {
       return res.status(400).json({
@@ -701,7 +764,6 @@ exports.getVerifiedProductReviews = async (req, res) => {
         error: 'Product ID is required'
       });
     }
-
 
     const filter = {
       product: productId,
@@ -750,6 +812,41 @@ exports.getVerifiedProductReviews = async (req, res) => {
       .skip(skip)
       .limit(limitNum);
 
+    // ✅ ENHANCED: Process review images for proper URLs
+    const processedReviews = reviews.map(review => {
+      const reviewObj = review.toObject();
+      
+      // Ensure images are properly formatted
+      if (reviewObj.images && reviewObj.images.length > 0) {
+        console.log(`📸 Processing ${reviewObj.images.length} images for review ${reviewObj._id}`);
+        
+        reviewObj.images = reviewObj.images.map((imageUrl, index) => {
+          if (useCloudinary) {
+            // For Cloudinary, URLs should already be complete
+            if (imageUrl.startsWith('https://res.cloudinary.com')) {
+              console.log(`✅ Cloudinary URL ${index + 1}:`, imageUrl);
+              return imageUrl;
+            } else {
+              console.warn(`⚠️ Invalid Cloudinary URL ${index + 1}:`, imageUrl);
+              return imageUrl; // Return as-is, frontend will handle fallback
+            }
+          } else {
+            // For local storage, ensure proper path
+            if (imageUrl.startsWith('/uploads')) {
+              const localUrl = `${process.env.BASE_URL || 'https://bogat.onrender.com'}${imageUrl}`;
+              console.log(`📁 Local URL ${index + 1}:`, localUrl);
+              return localUrl;
+            } else {
+              console.warn(`⚠️ Invalid local path ${index + 1}:`, imageUrl);
+              return imageUrl;
+            }
+          }
+        });
+      }
+      
+      return reviewObj;
+    });
+
     const totalReviews = await Review.countDocuments(filter);
     const pagination = {
       currentPage: parseInt(page),
@@ -797,14 +894,19 @@ exports.getVerifiedProductReviews = async (req, res) => {
       }
     }
 
-    console.log('Found verified product reviews:', reviews.length);
+    console.log('✅ Found verified product reviews:', processedReviews.length);
 
     res.json({
       success: true,
-      reviews: reviews || [],
+      reviews: processedReviews,
       pagination,
       ratingStats,
-      message: `Found ${reviews.length} verified reviews for this product`
+      debug: {
+        usingCloudinary: useCloudinary,
+        originalReviewCount: reviews.length,
+        processedReviewCount: processedReviews.length
+      },
+      message: `Found ${processedReviews.length} verified reviews for this product`
     });
 
   } catch (error) {

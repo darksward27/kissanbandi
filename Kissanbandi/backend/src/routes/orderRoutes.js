@@ -9,7 +9,7 @@ const { auth, admin } = require('../middleware/auth');
 
 // User routes (no params)
 router.post('/', auth, orderController.createOrder);
-router.get('/my-orders', auth, orderController.getUserOrders);
+router.get('/a', auth, orderController.getUserOrders);
 
 // Admin routes (no params)
 router.get('/admin/all', [auth, admin], orderController.getAllOrders);

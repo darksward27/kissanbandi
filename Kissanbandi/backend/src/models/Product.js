@@ -38,6 +38,19 @@ originalPrice: {
   max: 100,
   default: 0
 },
+  hsn: {
+    type: String,
+    trim: true,
+    uppercase: true,
+    validate: {
+      validator: function(value) {
+        // HSN is optional, but if provided should be valid
+        if (!value) return true;
+        return /^[0-9A-Z]{4,8}$/.test(value);
+      },
+      message: 'HSN code should be 4-8 characters containing only numbers and letters'
+    }
+  },
   unit: {
     type: String,
     required: true,
@@ -163,6 +176,19 @@ productSchema.virtual('stockStatus').get(function() {
   return 'in_stock';
 });
 
+// ✅ Virtual for GST amount calculation
+productSchema.virtual('gstAmount').get(function() {
+  if (this.gst && this.price) {
+    return Math.round((this.price * this.gst / 100) * 100) / 100;
+  }
+  return 0;
+});
+
+// ✅ Virtual for total price including GST
+productSchema.virtual('priceWithGST').get(function() {
+  return this.price + this.gstAmount;
+});
+
 // ✅ Add indexes for better query performance
 productSchema.index({ name: 'text', category: 'text', subcategory: 'text', brand: 'text' });
 productSchema.index({ category: 1, subcategory: 1 });
@@ -172,6 +198,7 @@ productSchema.index({ status: 1 });
 productSchema.index({ featured: 1 });
 productSchema.index({ createdAt: -1 });
 productSchema.index({ 'tags': 1 });
+productSchema.index({ 'hsn': 1 }); // ✅ Add HSN index for tax reporting queries
 
 // ✅ Ensure virtuals are included when converting to JSON
 productSchema.set('toJSON', { virtuals: true });

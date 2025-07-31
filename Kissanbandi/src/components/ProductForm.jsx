@@ -13,7 +13,8 @@ const ProductForm = ({ initialData, onSubmit, categories = [], categoriesLoading
     unit: 'piece',
     stock: '',
     description: '',
-    gst: '', 
+    gst: '',
+    hsn: '',
     images: [],
     status: 'active',
     brand: '',
@@ -59,6 +60,7 @@ const ProductForm = ({ initialData, onSubmit, categories = [], categoriesLoading
         stock: initialData.stock || '',
         description: initialData.description || '',
         gst: initialData.gst !== undefined ? initialData.gst.toString() : '',
+        hsn: initialData.hsn || '',
         images: initialData.images || [initialData.image].filter(Boolean) || [],
         status: initialData.status || 'active',
         brand: initialData.brand || '',
@@ -114,6 +116,14 @@ const ProductForm = ({ initialData, onSubmit, categories = [], categoriesLoading
         setFormData(prev => ({
           ...prev,
           [name]: value
+        }));
+      }
+    } else if (name === 'hsn') {
+      // HSN can contain both numbers and letters, limit to 8 characters
+      if (value === '' || /^[0-9A-Za-z]{0,8}$/.test(value)) {
+        setFormData(prev => ({
+          ...prev,
+          [name]: value.toUpperCase()
         }));
       }
     } else {
@@ -272,6 +282,14 @@ const ProductForm = ({ initialData, onSubmit, categories = [], categoriesLoading
       newErrors.originalPrice = 'Original price should be greater than or equal to current price';
     }
 
+    // HSN validation - optional but if provided should be valid format
+    if (formData.hsn && formData.hsn.trim()) {
+      const hsnValue = formData.hsn.trim();
+      if (!/^[0-9A-Z]{4,8}$/.test(hsnValue)) {
+        newErrors.hsn = 'HSN should be 4-8 characters (numbers/letters only)';
+      }
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -294,6 +312,7 @@ const ProductForm = ({ initialData, onSubmit, categories = [], categoriesLoading
       stock: '',
       description: '',
       gst: '',
+      hsn: '',
       images: [],
       status: 'active',
       brand: '',
@@ -305,115 +324,166 @@ const ProductForm = ({ initialData, onSubmit, categories = [], categoriesLoading
     setErrors({});
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  
+  if (!validateForm()) {
+    toast.error('Please fix the errors below');
+    return;
+  }
+
+  setIsSubmitting(true);
+
+  try {
+    // ✅ Log form state before processing
+    console.log('🔍 FRONTEND DEBUG: formData before processing:', formData);
+    console.log('🔍 FRONTEND DEBUG: HSN field value:', formData.hsn);
+    console.log('🔍 FRONTEND DEBUG: HSN field type:', typeof formData.hsn);
+
+    const submitData = {
+      name: formData.name.trim(),
+      category: formData.category.trim(),
+      subcategory: formData.subcategory.trim(),
+      price: Number(formData.price),
+      originalPrice: formData.originalPrice ? Number(formData.originalPrice) : undefined,
+      unit: formData.unit,
+      stock: Number(formData.stock),
+      description: formData.description.trim(),
+      gst: Number(formData.gst),
+      status: formData.status,
+      brand: formData.brand.trim(),
+      tags: formData.tags ? formData.tags.split(',').map(t => t.trim()).filter(t => t) : [],
+      features: formData.features ? formData.features.split(',').map(f => f.trim()).filter(f => f) : []
+    };
+
+    // ✅ FIXED: Handle HSN field correctly - don't send undefined
+    console.log('🔍 HSN Processing:');
+    console.log('- Original HSN:', formData.hsn);
+    console.log('- HSN type:', typeof formData.hsn);
+    console.log('- HSN after trim:', formData.hsn?.trim?.());
+    console.log('- HSN is empty?', !formData.hsn || !formData.hsn.trim());
+
+    if (formData.hsn && formData.hsn.trim()) {
+      submitData.hsn = formData.hsn.trim().toUpperCase();
+      console.log('✅ HSN will be sent:', submitData.hsn);
+    } else {
+      console.log('⚠️ HSN is empty, not including in request');
+      // ✅ CRITICAL: Don't include hsn field at all if empty
+      // Don't set submitData.hsn to anything
+    }
+
+    // Remove undefined values
+    Object.keys(submitData).forEach(key => {
+      if (submitData[key] === undefined) {
+        console.log(`🧹 Removing undefined field: ${key}`);
+        delete submitData[key];
+      }
+    });
+
+    console.log('🔍 FRONTEND DEBUG: Final submitData:', submitData);
+    console.log('🔍 FRONTEND DEBUG: Keys being sent:', Object.keys(submitData));
+    console.log('🔍 FRONTEND DEBUG: HSN in final data?', submitData.hasOwnProperty('hsn'));
+    console.log('🔍 FRONTEND DEBUG: HSN value in final data:', submitData.hsn);
+
+    if (initialData && initialData._id) {
+      // Update existing product
+      console.log('✏️ UPDATING existing product...');
+      
+      const existingImageUrls = previewImages
+        .filter(img => img.isExisting && !img.file)
+        .map(img => img.url);
+
+      const newImageFiles = previewImages
+        .filter(img => !img.isExisting && img.file)
+        .map(img => img.file);
+
+      console.log('🖼️ Existing images:', existingImageUrls.length);
+      console.log('🆕 New images:', newImageFiles.length);
+
+      const result = await productsApi.updateProduct(
+        initialData._id,
+        {
+          ...submitData,
+          images: existingImageUrls
+        },
+        newImageFiles,
+        false
+      );
+
+      console.log('✅ Product updated successfully:', result);
+      toast.success('Product updated successfully!');
+
+      if (onSubmit) {
+        await onSubmit(result.product || result);
+      }
+
+    } else {
+      // Create new product
+      console.log('🆕 CREATING new product...');
+      console.log('🔍 FRONTEND DEBUG: About to call createProductWithImages with:', {
+        submitData,
+        imageFilesCount: imageFiles.length,
+        hsnValue: submitData.hsn,
+        hsnExists: submitData.hasOwnProperty('hsn')
+      });
+      
+      const result = await productsApi.createProductWithImages(submitData, imageFiles);
+
+      console.log('✅ Product created successfully:', result);
+      toast.success(`Product created successfully with ${result.uploadedImages || imageFiles.length} images!`);
+
+      // Clean up blob URLs
+      previewImages.forEach(img => {
+        if (img.url && img.url.startsWith('blob:')) {
+          URL.revokeObjectURL(img.url);
+        }
+      });
+
+      resetForm();
+
+      if (onSubmit) {
+        await onSubmit(result.product || result);
+      }
+    }
+
+  } catch (error) {
+    console.error('❌ Form submission error:', error);
+    console.error('❌ Error response:', error.response?.data);
     
-    if (!validateForm()) {
-      toast.error('Please fix the errors below');
-      return;
+    let errorMessage = 'Failed to save product';
+    if (error.response?.data?.error) {
+      errorMessage = error.response.data.error;
+    } else if (error.message) {
+      errorMessage = error.message;
     }
+    
+    toast.error(errorMessage);
+  } finally {
+    setIsSubmitting(false);
+  }
+};
 
-    setIsSubmitting(true);
-
-    try {
-      // ✅ Prepare form data with proper type conversion
-      const submitData = {
-        name: formData.name.trim(),
-        category: formData.category.trim(),
-        subcategory: formData.subcategory.trim(),
-        price: Number(formData.price),
-        originalPrice: formData.originalPrice ? Number(formData.originalPrice) : undefined,
-        unit: formData.unit,
-        stock: Number(formData.stock),
-        description: formData.description.trim(),
-        gst: Number(formData.gst),
-        status: formData.status,
-        brand: formData.brand.trim(),
-        tags: formData.tags ? formData.tags.split(',').map(t => t.trim()).filter(t => t) : [],
-        features: formData.features ? formData.features.split(',').map(f => f.trim()).filter(f => f) : []
-      };
-
-      console.log('🔍 DEBUG: Submit data:', submitData);
-      console.log('🔍 DEBUG: Image files:', imageFiles.length);
-      console.log('🔍 DEBUG: Preview images:', previewImages.length);
-
-      if (initialData && initialData._id) {
-        // ✅ Update existing product using enhanced API
-        console.log('✏️ UPDATING existing product with enhanced API...');
-        
-        const existingImageUrls = previewImages
-          .filter(img => img.isExisting && !img.file)
-          .map(img => img.url);
-
-        const newImageFiles = previewImages
-          .filter(img => !img.isExisting && img.file)
-          .map(img => img.file);
-
-        console.log('🖼️ Existing images:', existingImageUrls.length);
-        console.log('🆕 New images:', newImageFiles.length);
-
-        const result = await productsApi.updateProduct(
-          initialData._id,
-          {
-            ...submitData,
-            images: existingImageUrls
-          },
-          newImageFiles,
-          false
-        );
-
-        console.log('✅ Product updated successfully:', result);
-        toast.success('Product updated successfully!');
-
-        if (onSubmit) {
-          await onSubmit(result.product || result);
-        }
-
-      } else {
-        // ✅ Create new product using enhanced API
-        console.log('🆕 CREATING new product using enhanced API...');
-        
-        const result = await productsApi.createProductWithImages(submitData, imageFiles);
-
-        console.log('✅ Product created successfully:', result);
-        toast.success(`Product created successfully with ${result.uploadedImages || imageFiles.length} images!`);
-
-        // Clean up blob URLs
-        previewImages.forEach(img => {
-          if (img.url && img.url.startsWith('blob:')) {
-            URL.revokeObjectURL(img.url);
-          }
-        });
-
-        resetForm();
-
-        if (onSubmit) {
-          await onSubmit(result.product || result);
-        }
-      }
-
-    } catch (error) {
-      console.error('❌ Form submission error:', error);
-      
-      // ✅ Enhanced error handling
-      let errorMessage = 'Failed to save product';
-      
-      if (error.message) {
-        errorMessage = error.message;
-      } else if (error.response?.data?.error) {
-        errorMessage = error.response.data.error;
-      } else if (error.response?.status === 401) {
-        errorMessage = 'Authentication failed. Please login as admin.';
-      } else if (error.response?.status === 403) {
-        errorMessage = 'Access denied. You need admin privileges.';
-      }
-      
-      toast.error(errorMessage);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
+// ✅ Add this debug function to your component for testing
+const debugHSNField = () => {
+  console.log('🧪 === HSN FIELD DEBUG ===');
+  console.log('- formData.hsn value:', formData.hsn);
+  console.log('- formData.hsn type:', typeof formData.hsn);
+  console.log('- formData.hsn length:', formData.hsn?.length);
+  console.log('- formData.hsn after trim:', formData.hsn?.trim?.());
+  console.log('- formData.hsn is truthy:', !!formData.hsn);
+  console.log('- formData.hsn trim is truthy:', !!(formData.hsn && formData.hsn.trim()));
+  console.log('- All formData keys:', Object.keys(formData));
+  console.log('- HSN exists in formData?', formData.hasOwnProperty('hsn'));
+  
+  // Test submit data preparation
+  const testSubmitData = {};
+  if (formData.hsn && formData.hsn.trim()) {
+    testSubmitData.hsn = formData.hsn.trim().toUpperCase();
+  }
+  console.log('- Test submitData:', testSubmitData);
+  console.log('- HSN would be included?', testSubmitData.hasOwnProperty('hsn'));
+  console.log('🧪 === END HSN DEBUG ===');
+};
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       {/* ✅ Storage Info Display */}
@@ -664,8 +734,8 @@ const ProductForm = ({ initialData, onSubmit, categories = [], categoriesLoading
         <p className="text-xs text-gray-500 mt-1">Example: gluten-free, non-GMO, locally sourced</p>
       </div>
 
-      {/* Pricing and GST */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      {/* Pricing, GST and HSN */}
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Price (₹) *
@@ -724,6 +794,25 @@ const ProductForm = ({ initialData, onSubmit, categories = [], categoriesLoading
           />
           {errors.gst && <p className="text-red-500 text-sm mt-1">{errors.gst}</p>}
           <p className="text-xs text-gray-500 mt-1">Common rates: 0%, 5%, 12%, 18%, 28%</p>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            HSN Code
+          </label>
+          <input
+            type="text"
+            name="hsn"
+            value={formData.hsn}
+            onChange={handleInputChange}
+            maxLength="8"
+            className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent ${
+              errors.hsn ? 'border-red-500' : 'border-gray-300'
+            }`}
+            placeholder="e.g., 1001, 2208"
+          />
+          {errors.hsn && <p className="text-red-500 text-sm mt-1">{errors.hsn}</p>}
+          <p className="text-xs text-gray-500 mt-1">4-8 digit HSN classification code</p>
         </div>
 
         <div>

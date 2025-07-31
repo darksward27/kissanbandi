@@ -93,9 +93,31 @@ exports.getProduct = async (req, res) => {
 };
 
 // ✅ Updated: Create new product with multiple images support (Cloudinary/Local)
+// ✅ FIXED: Create new product with proper HSN handling
+// ✅ ENHANCED BACKEND CONTROLLER with comprehensive HSN debugging
 exports.createProduct = async (req, res) => {
   try {
+    console.log('📨 Received request body:', req.body);
+    console.log('🏷️ HSN field received:', req.body.hsn);
+    console.log('🏷️ HSN type:', typeof req.body.hsn);
+    
+    // ✅ CRITICAL: Start with a copy of req.body to preserve all fields
     const productData = { ...req.body };
+
+    // ✅ FIXED: Handle HSN field explicitly and preserve it
+    if (req.body.hsn !== undefined && req.body.hsn !== null) {
+      const hsnValue = req.body.hsn.toString().trim();
+      if (hsnValue !== '') {
+        productData.hsn = hsnValue.toUpperCase();
+        console.log('✅ HSN processed and PRESERVED:', productData.hsn);
+      } else {
+        console.log('⚠️ HSN is empty string, removing from productData');
+        delete productData.hsn;
+      }
+    } else {
+      console.log('⚠️ HSN is undefined/null');
+      delete productData.hsn;
+    }
 
     // Convert numeric fields
     if (productData.price !== undefined) productData.price = Number(productData.price);
@@ -103,52 +125,20 @@ exports.createProduct = async (req, res) => {
     if (productData.gst !== undefined) productData.gst = Number(productData.gst);
     if (productData.stock !== undefined) productData.stock = Number(productData.stock);
 
-    // Handle uploaded files using the updated upload middleware
+    // Handle uploaded files
     if (req.files && req.files.length > 0) {
       console.log('📁 Processing uploaded files:', req.files.length);
       const uploadedImages = processUploadedFiles(req.files);
       productData.images = uploadedImages.map(img => img.url || img.secure_url);
-      productData.image = productData.images[0]; // Set first image as main image
-      
-      console.log('✅ Images processed successfully:', {
-        count: uploadedImages.length,
-        storageType: useCloudinary ? 'Cloudinary' : 'Local',
-        urls: productData.images
-      });
+      productData.image = productData.images[0];
     } else if (req.file) {
-      // Single image upload
       console.log('📁 Processing single uploaded file');
       const uploadedImage = processUploadedFiles(req.file);
       productData.images = [uploadedImage[0].url || uploadedImage[0].secure_url];
       productData.image = uploadedImage[0].url || uploadedImage[0].secure_url;
-      
-      console.log('✅ Single image processed successfully:', {
-        storageType: useCloudinary ? 'Cloudinary' : 'Local',
-        url: productData.image
-      });
-    } else {
-      // Fallback to old logic for backward compatibility
-      const baseUrl = `${req.protocol}://${req.get('host')}`;
-
-      if (req.body.images) {
-        if (typeof req.body.images === 'string') {
-          productData.images = [`${baseUrl}${req.body.images}`];
-        } else if (Array.isArray(req.body.images)) {
-          productData.images = req.body.images.map(img =>
-            img.startsWith('http') ? img : `${baseUrl}${img}`
-          );
-        }
-        if (productData.images.length > 0) {
-          productData.image = productData.images[0];
-        }
-      } else if (req.body.image) {
-        const imageUrl = req.body.image.startsWith('http') ? req.body.image : `${baseUrl}${req.body.image}`;
-        productData.images = [imageUrl];
-        productData.image = imageUrl;
-      }
     }
 
-    // Features
+    // Handle features array
     if (req.body.features) {
       if (typeof req.body.features === 'string') {
         productData.features = req.body.features.split(',').map(f => f.trim()).filter(f => f);
@@ -157,7 +147,7 @@ exports.createProduct = async (req, res) => {
       }
     }
 
-    // Tags
+    // Handle tags array
     if (req.body.tags) {
       if (typeof req.body.tags === 'string') {
         productData.tags = req.body.tags.split(',').map(t => t.trim()).filter(t => t);
@@ -171,37 +161,175 @@ exports.createProduct = async (req, res) => {
       productData.discount = Math.round((1 - productData.price / productData.originalPrice) * 100);
     }
 
+    // ✅ CRITICAL DEBUG: Log productData BEFORE creating the product
+    console.log('💾 Final productData before saving:', {
+      name: productData.name,
+      hsn: productData.hsn, // This should show the HSN value
+      gst: productData.gst,
+      price: productData.price,
+      allKeys: Object.keys(productData), // This should include 'hsn'
+      hsnExists: productData.hasOwnProperty('hsn')
+    });
+
+    // ✅ Create and save product
     const product = new Product(productData);
+    
+    // ✅ Debug product object before saving
+    console.log('🔍 Product object before save - HSN:', product.hsn);
+    console.log('🔍 Product object keys:', Object.keys(product.toObject()));
+    
     await product.save();
+
+    // ✅ Verify saved product immediately
+    const savedProduct = await Product.findById(product._id);
+    console.log('🔍 VERIFICATION - Saved product HSN:', savedProduct.hsn);
+    console.log('🔍 VERIFICATION - All saved fields:', Object.keys(savedProduct.toObject()));
+
+    // ✅ Extra verification with raw MongoDB query
+    const rawProduct = await Product.findById(product._id).lean();
+    console.log('🔍 RAW MONGODB - HSN field:', rawProduct.hsn);
+    console.log('🔍 RAW MONGODB - All fields:', Object.keys(rawProduct));
 
     res.status(201).json({
       success: true,
       message: 'Product created successfully',
-      product,
+      product: savedProduct, // Return the verified saved product
       uploadedImages: productData.images?.length || 0,
-      storageType: useCloudinary ? 'Cloudinary' : 'Local'
+      storageType: useCloudinary ? 'Cloudinary' : 'Local',
+      debug: {
+        hsnReceived: req.body.hsn,
+        hsnProcessed: productData.hsn,
+        hsnInProduct: product.hsn,
+        hsnSaved: savedProduct.hsn,
+        hsnInRaw: rawProduct.hsn
+      }
     });
 
   } catch (error) {
-    console.error('Product creation error:', error);
+    console.error('❌ Product creation error:', error);
     
-    // If product creation fails but images were uploaded, clean them up
-    if (req.files && req.files.length > 0) {
-      try {
-        const uploadedImages = processUploadedFiles(req.files);
-        const imageUrls = uploadedImages.map(img => img.url || img.secure_url);
-        await deleteImages(imageUrls);
-        console.log('🧹 Cleaned up uploaded images after error');
-      } catch (cleanupError) {
-        console.error('Error cleaning up images:', cleanupError);
+    // Enhanced error logging for HSN issues
+    if (error.name === 'ValidationError') {
+      console.error('❌ Validation errors:', error.errors);
+      if (error.errors.hsn) {
+        console.error('❌ HSN validation failed:', error.errors.hsn.message);
       }
     }
     
     res.status(400).json({
       success: false,
-      error: error.message
+      error: error.message,
+      details: error.name === 'ValidationError' ? error.errors : undefined
     });
   }
+};
+
+// ✅ FRONTEND: Enhanced form submission with better HSN handling
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  
+  if (!validateForm()) {
+    toast.error('Please fix the errors below');
+    return;
+  }
+
+  setIsSubmitting(true);
+
+  try {
+    // ✅ Log form state before processing
+    console.log('🔍 FRONTEND DEBUG: formData before processing:', formData);
+    console.log('🔍 FRONTEND DEBUG: HSN field value:', formData.hsn);
+    console.log('🔍 FRONTEND DEBUG: HSN field type:', typeof formData.hsn);
+
+    const submitData = {
+      name: formData.name.trim(),
+      category: formData.category.trim(),
+      subcategory: formData.subcategory.trim(),
+      price: Number(formData.price),
+      originalPrice: formData.originalPrice ? Number(formData.originalPrice) : undefined,
+      unit: formData.unit,
+      stock: Number(formData.stock),
+      description: formData.description.trim(),
+      gst: Number(formData.gst || 0),
+      status: formData.status,
+      brand: formData.brand.trim(),
+      tags: formData.tags ? formData.tags.split(',').map(t => t.trim()).filter(t => t) : [],
+      features: formData.features ? formData.features.split(',').map(f => f.trim()).filter(f => f) : []
+    };
+
+    // ✅ CRITICAL: Handle HSN field explicitly
+    console.log('🔍 HSN Processing:');
+    console.log('- Original HSN:', formData.hsn);
+    console.log('- HSN after trim:', formData.hsn?.trim?.());
+    console.log('- HSN is empty?', !formData.hsn || !formData.hsn.trim());
+
+    if (formData.hsn && formData.hsn.trim && formData.hsn.trim()) {
+      submitData.hsn = formData.hsn.trim().toUpperCase();
+      console.log('✅ HSN will be sent:', submitData.hsn);
+    } else {
+      console.log('⚠️ HSN is empty, not including in request');
+      // Don't include hsn field at all if empty
+    }
+
+    // Remove undefined values
+    Object.keys(submitData).forEach(key => {
+      if (submitData[key] === undefined) {
+        console.log(`🧹 Removing undefined field: ${key}`);
+        delete submitData[key];
+      }
+    });
+
+    console.log('🔍 FRONTEND DEBUG: Final submitData:', submitData);
+    console.log('🔍 FRONTEND DEBUG: Keys being sent:', Object.keys(submitData));
+    console.log('🔍 FRONTEND DEBUG: HSN in final data?', submitData.hasOwnProperty('hsn'));
+
+    if (initialData && initialData._id) {
+      // Update existing product
+      const result = await productsApi.updateProduct(
+        initialData._id,
+        submitData,
+        imageFiles,
+        false
+      );
+      toast.success('Product updated successfully!');
+      if (onSubmit) await onSubmit(result.product || result);
+    } else {
+      // Create new product
+      const result = await productsApi.createProductWithImages(submitData, imageFiles);
+      console.log('✅ FRONTEND DEBUG: API Response:', result);
+      
+      toast.success(`Product created successfully!`);
+      resetForm();
+      if (onSubmit) await onSubmit(result.product || result);
+    }
+
+  } catch (error) {
+    console.error('❌ FRONTEND ERROR:', error);
+    console.error('❌ Error response:', error.response?.data);
+    
+    let errorMessage = 'Failed to save product';
+    if (error.response?.data?.error) {
+      errorMessage = error.response.data.error;
+    } else if (error.message) {
+      errorMessage = error.message;
+    }
+    
+    toast.error(errorMessage);
+  } finally {
+    setIsSubmitting(false);
+  }
+};
+
+// ✅ DEBUGGING HELPER: Add this to your form component
+const debugFormState = () => {
+  console.log('=== FORM STATE DEBUG ===');
+  console.log('formData:', formData);
+  console.log('HSN field specifically:', formData.hsn);
+  console.log('HSN type:', typeof formData.hsn);
+  console.log('HSN length:', formData.hsn?.length);
+  console.log('HSN trimmed:', formData.hsn?.trim?.());
+  console.log('All form keys:', Object.keys(formData));
+  console.log('========================');
 };
 
 // ✅ Updated: Update product with multiple images support (Cloudinary/Local)
@@ -209,6 +337,7 @@ exports.updateProduct = async (req, res) => {
   try {
     const updateData = { ...req.body };
     const productId = req.params.id;
+    
     
     // Get existing product to handle image deletion
     const existingProduct = await Product.findById(productId);

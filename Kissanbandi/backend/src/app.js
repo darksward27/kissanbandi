@@ -37,6 +37,7 @@ connectDB().catch(err => {
 
 // Middleware
 const allowedOrigins = [
+  'https://sribogat.com',
   'http://localhost:5173',
   'http://127.0.0.1:5173',
   'http://192.168.158.105:5173',

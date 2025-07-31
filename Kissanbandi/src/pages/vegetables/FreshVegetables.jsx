@@ -22,84 +22,110 @@ const BogatProducts = () => {
   const navigate = useNavigate();
   const { dispatch } = useCart();
 
-  // Helper function to get the first image from the images array
-// Replace your getProductImage function with this fixed version:
-
-const getProductImage = (product) => {
-  if (!product) {
-    return 'https://via.placeholder.com/300x200/f3f4f6/9ca3af?text=No+Product';
-  }
-
-  let imageUrl = null;
-
-  // First try the images array
-  if (product.images && Array.isArray(product.images) && product.images.length > 0) {
-    imageUrl = product.images[0];
-  } 
-  // Fallback to the single image field
-  else if (product.image) {
-    imageUrl = product.image;
-  }
-
-  // If no image found, return placeholder
-  if (!imageUrl) {
-    return 'https://via.placeholder.com/300x200/f3f4f6/9ca3af?text=No+Image';
-  }
-
-  // Your backend serves from: app.use('/uploads', express.static(path.join(__dirname, 'src/uploads')));
-  // Your database has: "/uploads/product/filename.jpg"
-  // So the URL should be: "https://bogat.onrender.com/uploads/product/filename.jpg"
-  
-  if (imageUrl.startsWith('/uploads')) {
-    return `https://bogat.onrender.com${imageUrl}`;
-  }
-
-  // If it's already a full URL, use as is
-  if (imageUrl.startsWith('http')) {
-    return imageUrl;
-  }
-
-  // Default fallback
-  return `https://bogat.onrender.com/uploads/product/${imageUrl}`;
-};
-
-// Enhanced debugging with file system check
-const debugProducts = () => {
-  console.log('=== PRODUCTS & IMAGES DEBUG ===');
-  products.slice(0, 3).forEach((product, index) => {
-    const processedUrl = getProductImage(product);
-    console.log(`Product ${index + 1}:`, {
-      name: product.name,
-      'images array': product.images,
-      'images length': product.images?.length,
-      'first image from array': product.images?.[0],
-      'single image field': product.image,
-      'final processed URL': processedUrl
-    });
-    
-    // Test if the URL actually works
-    console.log(`Testing URL for ${product.name}:`, processedUrl);
-    testImageUrl(processedUrl);
-  });
-  console.log('=== END DEBUG ===');
-};
-
-// Test function to check if images load
-const memoizedGetProductImage = React.useMemo(() => {
-  const cache = new Map();
-  return (product) => {
-    const productId = product?._id || product?.id;
-    if (!productId) return getProductImage(product);
-    
-    if (cache.has(productId)) {
-      return cache.get(productId);
+  // Function to get price data from database (no calculation needed)
+  const getPriceData = (product) => {
+    // Check if the product has pre-calculated total price from database
+    if (product.totalPrice !== undefined && product.totalPrice !== null) {
+      return {
+        basePrice: product.price || 0,
+        gstRate: product.gst || 18,
+        gstAmount: product.gstAmount || 0,
+        totalPrice: product.totalPrice
+      };
     }
     
-    const result = getProductImage(product);
-    cache.set(productId, result);
-    return result;
+    // Fallback: If database doesn't have totalPrice, calculate it
+    const basePrice = parseFloat(product.price) || 0;
+    const gstRate = product.gst || 18;
+    const gstAmount = (basePrice * gstRate) / 100;
+    const totalPrice = basePrice + gstAmount;
+    
+    return {
+      basePrice,
+      gstRate,
+      gstAmount,
+      totalPrice
+    };
   };
-}, []);
+
+  // Helper function to get the first image from the images array
+  const getProductImage = (product) => {
+    if (!product) {
+      return 'https://via.placeholder.com/300x200/f3f4f6/9ca3af?text=No+Product';
+    }
+
+    let imageUrl = null;
+
+    // First try the images array
+    if (product.images && Array.isArray(product.images) && product.images.length > 0) {
+      imageUrl = product.images[0];
+    } 
+    // Fallback to the single image field
+    else if (product.image) {
+      imageUrl = product.image;
+    }
+
+    // If no image found, return placeholder
+    if (!imageUrl) {
+      return 'https://via.placeholder.com/300x200/f3f4f6/9ca3af?text=No+Image';
+    }
+
+    // Your backend serves from: app.use('/uploads', express.static(path.join(__dirname, 'src/uploads')));
+    // Your database has: "/uploads/product/filename.jpg"
+    // So the URL should be: "https://bogat.onrender.com/uploads/product/filename.jpg"
+    
+    if (imageUrl.startsWith('/uploads')) {
+      return `https://bogat.onrender.com${imageUrl}`;
+    }
+
+    // If it's already a full URL, use as is
+    if (imageUrl.startsWith('http')) {
+      return imageUrl;
+    }
+
+    // Default fallback
+    return `https://bogat.onrender.com/uploads/product/${imageUrl}`;
+  };
+
+  // Enhanced debugging with file system check
+  const debugProducts = () => {
+    console.log('=== PRODUCTS & PRICING DEBUG ===');
+    products.slice(0, 3).forEach((product, index) => {
+      const processedUrl = getProductImage(product);
+      const priceData = getPriceData(product);
+      console.log(`Product ${index + 1}:`, {
+        name: product.name,
+        'database price': product.price,
+        'database gstRate': product.gstRate,
+        'database gstAmount': product.gstAmount,
+        'database totalPrice': product.totalPrice,
+        'processed price data': priceData,
+        'images array': product.images,
+        'images length': product.images?.length,
+        'first image from array': product.images?.[0],
+        'single image field': product.image,
+        'final processed URL': processedUrl
+      });
+    });
+    console.log('=== END DEBUG ===');
+  };
+
+  // Memoized function to cache product images
+  const memoizedGetProductImage = React.useMemo(() => {
+    const cache = new Map();
+    return (product) => {
+      const productId = product?._id || product?.id;
+      if (!productId) return getProductImage(product);
+      
+      if (cache.has(productId)) {
+        return cache.get(productId);
+      }
+      
+      const result = getProductImage(product);
+      cache.set(productId, result);
+      return result;
+    };
+  }, []);
 
   useEffect(() => {
     document.documentElement.style.scrollBehavior = 'smooth';
@@ -122,9 +148,9 @@ const memoizedGetProductImage = React.useMemo(() => {
       setLoading(true);
       setError(null);
       
-      console.log('Fetching products from /api/products...');
+      console.log('Fetching products with pricing from /api/products...');
       
-      // Fetch products from database via API
+      // Fetch products from database via API (should include price, gstRate, gstAmount, totalPrice)
       const data = await productsApi.getAllProducts();
       console.log('Raw API response:', data);
       
@@ -154,7 +180,7 @@ const memoizedGetProductImage = React.useMemo(() => {
       console.log('Extracted products array:', allProducts);
       console.log('Number of products found:', allProducts.length);
 
-      // Filter for active products only
+      // Filter for active products only and validate pricing data
       const activeProducts = allProducts.filter(product => {
         // Ensure product has required fields
         const hasRequiredFields = product && 
@@ -164,26 +190,43 @@ const memoizedGetProductImage = React.useMemo(() => {
         // Check if product is active (default to active if no status field)
         const isActive = !product.status || product.status === 'active';
         
-        if (hasRequiredFields && isActive) {
+        // Validate pricing data
+        const hasValidPricing = product.price !== undefined && product.price !== null;
+        
+        if (hasRequiredFields && isActive && hasValidPricing) {
           console.log('Valid product found:', {
             id: product._id || product.id,
             name: product.name,
-            price: product.price,
+            basePrice: product.price,
+            gstRate: product.gstRate,
+            gstAmount: product.gstAmount,
+            totalPrice: product.totalPrice,
             status: product.status,
             stock: product.stock,
             images: product.images?.length || 0,
             image: product.image ? 'present' : 'missing'
           });
+        } else if (!hasValidPricing) {
+          console.warn('Product missing pricing data:', {
+            id: product._id || product.id,
+            name: product.name,
+            price: product.price
+          });
         }
         
-        return hasRequiredFields && isActive;
+        return hasRequiredFields && isActive && hasValidPricing;
       });
 
-      console.log('Filtered active products:', activeProducts.length);
+      console.log('Filtered active products with valid pricing:', activeProducts.length);
       setProducts(activeProducts);
       
       if (activeProducts.length === 0) {
-        console.warn('No active products found. Check your database and API endpoint.');
+        console.warn('No active products with valid pricing found. Check your database and API endpoint.');
+      }
+      
+      // Debug first few products
+      if (activeProducts.length > 0) {
+        debugProducts();
       }
       
     } catch (err) {
@@ -211,7 +254,7 @@ const memoizedGetProductImage = React.useMemo(() => {
     if (product?.status === 'inactive') {
       return { type: 'unavailable', message: 'Product is unavailable' };
     }
-    if (product?.stock === 0) {
+    if ((product?.stock || 0) < 1) {
       return { type: 'out-of-stock', message: 'Out of stock' };
     }
     return { type: 'available', message: 'Available' };
@@ -280,10 +323,9 @@ const memoizedGetProductImage = React.useMemo(() => {
     navigate('/login');
   };
 
-  // Navigate to product detail page (for card click)
+  // Navigate to product detail page (for card click) - Updated with authentication check
   const navigateToProduct = (productId) => {
     console.log('🔄 Card clicked - Navigating to product:', productId);
-    console.log('🔄 URL will be:', `/products/${productId}`);
     
     if (!productId) {
       console.error('❌ Product ID is missing!');
@@ -291,6 +333,15 @@ const memoizedGetProductImage = React.useMemo(() => {
       return;
     }
     
+    // Check if user is authenticated before allowing product navigation
+    if (!isAuthenticated) {
+      console.log('🔒 User not authenticated, redirecting to login');
+      toast.error('Please login to view product details');
+      navigate('/login');
+      return;
+    }
+    
+    console.log('🔄 URL will be:', `/products/${productId}`);
     navigate(`/products/${productId}`);
     console.log('✅ Card navigation triggered');
   };
@@ -306,7 +357,7 @@ const memoizedGetProductImage = React.useMemo(() => {
               <Package className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-amber-700 w-6 h-6 animate-pulse" />
             </div>
           </div>
-          <p className="text-center text-amber-700 mt-4 font-medium">Loading products from database...</p>
+          <p className="text-center text-amber-700 mt-4 font-medium">Loading products with pricing from database...</p>
         </div>
       </div>
     );
@@ -391,6 +442,9 @@ const memoizedGetProductImage = React.useMemo(() => {
             const productStatus = getProductStatus(product);
             const isUnavailable = productStatus.type !== 'available';
             
+            // Get price data from database (no calculation)
+            const priceData = getPriceData(product);
+            
             return (
               <div 
                 key={product._id || product.id} 
@@ -422,7 +476,9 @@ const memoizedGetProductImage = React.useMemo(() => {
                     <div className="bg-white/90 backdrop-blur-sm rounded-full px-4 py-2 transform translate-y-4 group-hover:translate-y-0 transition-transform duration-300">
                       <div className="flex items-center space-x-2 text-amber-700 font-medium">
                         <Eye className="w-4 h-4" />
-                        <span className="text-sm">View Details</span>
+                        <span className="text-sm">
+                          {!isAuthenticated ? 'Login to View' : 'View Details'}
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -484,13 +540,15 @@ const memoizedGetProductImage = React.useMemo(() => {
 
                   <div className="flex justify-between items-end mt-auto">
                     <div className="flex flex-col">
+                      {/* Total Price from Database */}
                       <div className={`text-2xl font-bold bg-gradient-to-r from-amber-700 to-orange-700 bg-clip-text text-transparent ${
                         isUnavailable ? 'opacity-50' : ''
                       }`}>
-                        ₹{product.price || '0'}
+                        ₹{priceData.totalPrice.toFixed(2)}
                       </div>
+                      
                       {product.unit && (
-                        <span className="text-sm text-gray-600 font-normal">
+                        <span className="text-sm text-gray-600 font-normal mt-1">
                           /{product.unit}
                         </span>
                       )}
@@ -519,11 +577,15 @@ const memoizedGetProductImage = React.useMemo(() => {
                       </button>
                     ) : !isAuthenticated ? (
                       <button 
-                        onClick={(e) => handleViewProduct(e, product)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toast.error('Please login to view product details');
+                          navigate('/login');
+                        }}
                         className="bg-gradient-to-r from-blue-500 to-blue-600 text-white px-4 py-2 rounded-xl hover:from-blue-600 hover:to-blue-700 transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl flex items-center group/btn font-medium text-sm whitespace-nowrap"
                       >
-                        <Eye className="w-4 h-4 mr-1" />
-                        View Product
+                        <Lock className="w-4 h-4 mr-1" />
+                        Login to View
                       </button>
                     ) : (
                       <button 
@@ -561,7 +623,7 @@ const memoizedGetProductImage = React.useMemo(() => {
                 No Products Found
               </h3>
               <p className="text-gray-600 mb-4">
-                No products are available in the database at the moment.
+                No products with valid pricing are available in the database at the moment.
               </p>
               <button 
                 onClick={handleRetry}

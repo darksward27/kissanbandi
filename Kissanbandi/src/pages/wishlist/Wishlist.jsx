@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../checkout/AuthProvider';
 import { useCart } from '../checkout/CartContext';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
-import { Heart, ShoppingCart, Loader, Trash2, Sparkles, AlertCircle } from 'lucide-react';
+import { Heart, ShoppingCart, Loader, Trash2, Sparkles, AlertCircle, Eye } from 'lucide-react';
 import api from '../../services/api';
 
 const Wishlist = () => {
   const { user } = useAuth();
   const { dispatch } = useCart();
+  const navigate = useNavigate();
   const [wishlist, setWishlist] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -47,27 +49,24 @@ const Wishlist = () => {
     }
   };
 
-  const handleAddToCart = (product) => {
-    // Check if product is accessible before adding to cart
+  // Updated function to redirect to product page instead of adding to cart
+  const handleViewProduct = (product) => {
+    // Check if product is accessible before navigating
     const productStatus = getProductStatus(product);
-    if (productStatus.type !== 'available') {
+    if (productStatus.type === 'unavailable') {
       toast.error(productStatus.message);
       return;
     }
 
-    dispatch({
-      type: 'ADD_TO_CART',
-      payload: {
-        id: product._id,
-        name: product.name,
-        price: product.price,
-        image: product.image,
-        quantity: 1
-      }
-    });
-    setTimeout(() => {
-      toast.success(`${product.name} added to cart`);
-    }, 0);
+    const productId = product._id || product.id;
+    if (!productId) {
+      toast.error('Product ID is missing');
+      return;
+    }
+
+    console.log('🔄 Navigating to product detail from wishlist:', productId);
+    navigate(`/products/${productId}`);
+    console.log('✅ Navigation triggered to:', `/products/${productId}`);
   };
 
   // Updated helper function to get stock status - matches ProductCatalog logic
@@ -267,19 +266,23 @@ const Wishlist = () => {
                       
                       {productStatus.type === 'unavailable' ? (
                         <div className="text-gray-500 font-semibold text-sm px-4 py-2 bg-gray-50 rounded-xl border border-gray-200">
-                          Product is unavailable
+                          Unavailable
                         </div>
                       ) : productStatus.type === 'out-of-stock' ? (
-                        <div className="text-red-500 font-semibold text-sm px-4 py-2 bg-red-50 rounded-xl border border-red-200">
-                          Sorry, Out of Stock
-                        </div>
+                        <button 
+                          onClick={() => handleViewProduct(product)}
+                          className="text-orange-600 font-semibold text-sm px-4 py-2 bg-orange-50 rounded-xl border border-orange-200 hover:bg-orange-100 transition-colors flex items-center"
+                        >
+                          <Eye className="w-4 h-4 mr-1" />
+                          View Details
+                        </button>
                       ) : (
                         <button 
-                          onClick={() => handleAddToCart(product)}
+                          onClick={() => handleViewProduct(product)}
                           className="px-4 py-2 rounded-xl transition-all duration-300 transform shadow-lg flex items-center group/btn font-medium text-sm whitespace-nowrap bg-gradient-to-r from-amber-600 to-orange-700 text-white hover:from-amber-700 hover:to-orange-800 hover:scale-105 hover:shadow-xl"
                         >
                           <ShoppingCart className="w-4 h-4 mr-1 group-hover/btn:animate-bounce" />
-                          Add to Cart
+                          View & Buy
                         </button>
                       )}
                     </div>

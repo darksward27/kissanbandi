@@ -15,6 +15,7 @@ const AdminSidebar = ({ isOpen, onClose, isMinimized, onToggleMinimize }) => {
   
 
 const navItems = [
+  {name: 'Home', icon: <User className="w-5 h-5" />, path: '/'  },
   { name: 'Dashboard', icon: <LayoutDashboard className="w-5 h-5" />, path: '/admin' },
   { name: 'Products', icon: <Box className="w-5 h-5" />, path: '/admin/products' },
   { name: 'Orders', icon: <ShoppingCart className="w-5 h-5" />, path: '/admin/orders' },
