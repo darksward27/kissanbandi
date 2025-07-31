@@ -25,7 +25,7 @@ const getProductImage = (imagePath) => {
     return `https://bogat.onrender.com/uploads/product/${filename}`;
 };
 
-// ✅ FIXED: Function to get individual product GST breakdown with correct field names
+// ✅ FIXED: Function to get individual product GST breakdown with correct field names + HSN
 const getIndividualProductGST = (item, orderData) => {
     console.log('🧮 Calculating individual product GST for:', {
         productName: item.product?.name,
@@ -35,10 +35,11 @@ const getIndividualProductGST = (item, orderData) => {
         gstRate: item.gstRate,
         gst: item.gst, // ✅ Primary field name used in database
         gstAmount: item.gstAmount, // ✅ Fallback field name
-        totalGstAmount: item.totalGstAmount
+        totalGstAmount: item.totalGstAmount,
+        hsn: item.hsn || item.product?.hsn || item.product?.hsnCode // ✅ HSN code support
     });
 
-    // Method 1: Use stored GST information from order item with correct field names
+    // Method 1: Use stored GST information from order item with correct field names + HSN
     if ((item.basePrice !== undefined || item.gst !== undefined) && (item.gst !== undefined || item.gstAmount !== undefined)) {
         
         // ✅ Get GST amount from either 'gst' field (primary) or 'gstAmount' (fallback)
@@ -54,24 +55,29 @@ const getIndividualProductGST = (item, orderData) => {
         // Get GST rate
         const gstRate = parseFloat(item.gstRate) || 0;
         
+        // ✅ Get HSN code
+        const hsn = item.hsn || item.product?.hsn || item.product?.hsnCode || '1234';
+        
         // Calculate totals
         const totalGstAmount = gstAmountPerUnit * item.quantity;
         const cgstAmount = totalGstAmount / 2;
         const sgstAmount = totalGstAmount / 2;
         
-        console.log('✅ Using stored GST data with correct field names:', {
+        console.log('✅ Using stored GST data with correct field names + HSN:', {
             basePrice,
             gstAmountPerUnit,
             gstRate,
             totalGstAmount,
             cgstAmount,
             sgstAmount,
+            hsn,
             fieldUsed: item.gst !== undefined ? 'gst' : 'gstAmount',
             rawValues: {
                 itemGst: item.gst,
                 itemGstAmount: item.gstAmount,
                 itemPrice: item.price,
-                itemBasePrice: item.basePrice
+                itemBasePrice: item.basePrice,
+                itemHsn: item.hsn
             }
         });
         
@@ -82,13 +88,15 @@ const getIndividualProductGST = (item, orderData) => {
             totalGstAmount: totalGstAmount.toFixed(2),
             cgstAmount: cgstAmount.toFixed(2),
             sgstAmount: sgstAmount.toFixed(2),
-            totalAmount: (item.price * item.quantity).toFixed(2)
+            totalAmount: (item.price * item.quantity).toFixed(2),
+            hsn: hsn // ✅ Include HSN code
         };
     }
 
     // Method 2: Calculate from price (assuming price includes GST) - Fallback
     const totalItemAmount = (item.price || 0) * (item.quantity || 0);
     const productGstRate = item.gstRate || item.product?.gstRate || item.product?.gst || 18;
+    const hsn = item.hsn || item.product?.hsn || item.product?.hsnCode || '1234';
     
     // Calculate base price and GST from total amount (reverse calculation)
     const basePrice = totalItemAmount / (1 + productGstRate / 100);
@@ -97,14 +105,15 @@ const getIndividualProductGST = (item, orderData) => {
     const cgstAmount = totalGstAmount / 2;
     const sgstAmount = totalGstAmount / 2;
     
-    console.log('⚠️ Calculated GST from price (fallback method):', {
+    console.log('⚠️ Calculated GST from price (fallback method) + HSN:', {
         totalItemAmount,
         productGstRate,
         basePrice,
         gstAmountPerUnit,
         totalGstAmount,
         cgstAmount,
-        sgstAmount
+        sgstAmount,
+        hsn
     });
     
     return {
@@ -114,7 +123,8 @@ const getIndividualProductGST = (item, orderData) => {
         totalGstAmount: totalGstAmount.toFixed(2),
         cgstAmount: cgstAmount.toFixed(2),
         sgstAmount: sgstAmount.toFixed(2),
-        totalAmount: totalItemAmount.toFixed(2)
+        totalAmount: totalItemAmount.toFixed(2),
+        hsn: hsn // ✅ Include HSN code
     };
 };
 
@@ -153,7 +163,7 @@ const calculateGSTBreakdown = (orderData, subtotalAfterDiscount) => {
             totalGST += itemGST;
         });
         
-        console.log('✅ Calculated from individual items with correct field names:', { 
+        console.log('✅ Calculated from individual items with correct field names + HSN:', { 
             totalCGST, 
             totalSGST, 
             totalGST, 
@@ -310,7 +320,7 @@ const Orders = () => {
             const response = await api.get(`/orders/${orderId}`);
             
             const orderData = response.data.order;
-            console.log('Order Data for Invoice with GST breakdown:', orderData);
+            console.log('Order Data for Invoice with GST breakdown + HSN:', orderData);
             if (!orderData) {
                 throw new Error('Order data not found');
             }
@@ -324,18 +334,19 @@ const Orders = () => {
             const gstBreakdown = calculateGSTBreakdown(orderData, subtotalAfterDiscount);
             const shipping = orderData.shippingCharge || (subtotalAfterDiscount >= 500 ? 0 : 50);
             
-            console.log('🧾 Invoice GST Details with individual product GST:', {
+            console.log('🧾 Invoice GST Details with individual product GST + HSN:', {
                 originalGSTAmount: gstAmount,
                 calculatedBreakdown: gstBreakdown,
                 subtotalAfterDiscount,
                 individualItemsGST: orderData.items?.map(item => ({
                     name: item.product?.name,
                     gst: item.gst,
+                    hsn: item.hsn || item.product?.hsn || item.product?.hsnCode,
                     gstData: getIndividualProductGST(item, orderData)
                 }))
             });
 
-            // ✅ Enhanced invoice with individual product GST from database
+            // ✅ Enhanced invoice with individual product GST from database + HSN codes
             const invoiceContent = `
                 <html>
                 <head>
@@ -402,12 +413,11 @@ const Orders = () => {
                         }
                         
                        .company-logo-img {
-  width: 60px;
-  height: 60px;
-  object-fit: cover;
-  border-radius: 8px;
-}
-
+                          width: 60px;
+                          height: 60px;
+                          object-fit: cover;
+                          border-radius: 8px;
+                        }
 
                         .company-info h1 {
                             color: #f59e0b;
@@ -539,7 +549,7 @@ const Orders = () => {
                             color: #047857;
                         }
                         
-                        /* ✅ Enhanced Items Table with proper individual GST display */
+                        /* ✅ Enhanced Items Table with proper individual GST display + HSN */
                         .items-table {
                             width: 100%;
                             border-collapse: collapse;
@@ -547,7 +557,6 @@ const Orders = () => {
                             font-size: 10px;
                             table-layout: fixed;
                         }
-                        
                         
                         .items-table th {
                             background: #f59e0b;
@@ -561,8 +570,8 @@ const Orders = () => {
                             white-space: nowrap;
                         }
                         
-                        .items-table th:nth-child(1) { width: 30%; } /* Item */
-                        .items-table th:nth-child(2) { width: 8%; }  /* HSN */
+                        .items-table th:nth-child(1) { width: 25%; } /* Item */
+                        .items-table th:nth-child(2) { width: 10%; } /* HSN */
                         .items-table th:nth-child(3) { width: 8%; }  /* Qty */
                         .items-table th:nth-child(4) { width: 12%; } /* Base Rate */
                         .items-table th:nth-child(5) { width: 8%; }  /* GST% */
@@ -609,6 +618,15 @@ const Orders = () => {
                             color: #666;
                             margin-top: 2px;
                             line-height: 1.1;
+                        }
+                        
+                        .hsn-code {
+                            font-weight: bold;
+                            color: #f59e0b;
+                            background: #fef3c7;
+                            padding: 2px 4px;
+                            border-radius: 4px;
+                            font-size: 8px;
                         }
                         
                         .totals-section {
@@ -753,8 +771,8 @@ const Orders = () => {
                         <div class="invoice-header">
                             <div class="company-section">
                                 <div class="company-logo">
-  <img src="/favicon.png" alt="Logo" class="company-logo-img" />
-</div>
+                                    <img src="/favicon.png" alt="Logo" class="company-logo-img" />
+                                </div>
                                 <div class="company-info">
                                     <h1>SRI BOGAT</h1>
                                     <p>Premium Quality Products</p>
@@ -827,15 +845,15 @@ const Orders = () => {
                         </div>
                         ` : ''}
 
-                        <!-- ✅ FIXED: Items Table with Individual GST Display -->
+                        <!-- ✅ FIXED: Items Table with Individual GST Display + HSN Codes -->
                         <table class="items-table">
                             <thead>
                                 <tr>
                                     <th>Item Description</th>
-                                    <th>HSN</th>
+                                    <th>HSN Code</th>
                                     <th>Qty</th>
                                     <th>Base Rate</th>
-                                   
+                                    
                                     <th>GST Amt</th>
                                     <th>CGST</th>
                                     <th>SGST</th>
@@ -849,12 +867,12 @@ const Orders = () => {
                                     <tr>
                                         <td>
                                             <div class="product-name">${item.product?.name || 'Product Name'}</div>
-                                            ${item.product?.description ? `<div class="product-desc">${item.product.description.substring(0, 80)}${item.product.description.length > 80 ? '...' : ''}</div>` : ''}
+                                            ${item.product?.description ? `<div class="product-desc">${item.product.description.substring(0, 60)}${item.product.description.length > 60 ? '...' : ''}</div>` : ''}
                                         </td>
-                                        <td>1234</td>
+                                        <td><span class="hsn-code">${gstData.hsn}</span></td>
                                         <td><strong>${item.quantity || 0}</strong></td>
                                         <td class="amount">₹${gstData.basePrice}</td>
-                                        
+                                       
                                         <td class="amount">₹${gstData.totalGstAmount}</td>
                                         <td class="amount">₹${gstData.cgstAmount}</td>
                                         <td class="amount">₹${gstData.sgstAmount}</td>
@@ -936,6 +954,7 @@ const Orders = () => {
                         <div class="footer">
                             <p>This is a computer-generated invoice. No signature required.</p>
                             <p>For any queries, please contact us at support@bogat.com</p>
+                            <p><strong>HSN Codes:</strong> As per Central Board of Indirect Taxes and Customs (CBIC)</p>
                         </div>
                     </div>
                 </body>
@@ -958,7 +977,7 @@ const Orders = () => {
                 throw new Error('Unable to open print window. Please allow popups.');
             }
             
-            toast.success('Invoice generated successfully!', { id: 'pdf-loading' });
+            toast.success('Invoice generated successfully with HSN codes!', { id: 'pdf-loading' });
             
         } catch (error) {
             console.error('Error generating invoice:', error);
@@ -1072,7 +1091,7 @@ const Orders = () => {
                                 <h1 className="text-4xl font-bold bg-gradient-to-r from-amber-700 to-orange-700 bg-clip-text text-transparent mb-2">
                                     My Orders
                                 </h1>
-                                <p className="text-gray-600 text-lg">View and track your orders</p>
+                                <p className="text-gray-600 text-lg">View and track your orders with HSN details</p>
                                 <div className="w-24 h-1 bg-gradient-to-r from-amber-600 to-orange-700 rounded-full mt-2 mx-auto lg:mx-0"></div>
                             </div>
                             
@@ -1159,12 +1178,7 @@ const Orders = () => {
                                                         <CheckCircle className="w-4 h-4 inline mr-2" />
                                                         {order.status || 'Processing'}
                                                     </span>
-                                                    {/* GST Badge */}
-                                                    {order.gstAmount > 0 && (
-                                                        <div className="bg-gradient-to-r from-green-100 to-emerald-100 text-green-700 px-3 py-2 rounded-lg border border-green-200">
-                                                            <span className="text-xs font-medium">GST ₹{order.gstAmount.toFixed(2)}</span>
-                                                        </div>
-                                                    )}
+                                                   
                                                     {/* Coupon Badge */}
                                                     {order.couponCode && (
                                                         <div className="bg-gradient-to-r from-green-100 to-emerald-100 text-green-700 px-3 py-2 rounded-lg border border-green-200 flex items-center">
@@ -1172,6 +1186,8 @@ const Orders = () => {
                                                             <span className="text-xs font-medium">{order.couponCode} (-₹{order.discount?.toFixed(2) || '0.00'})</span>
                                                         </div>
                                                     )}
+                                                   
+                                                    
                                                 </div>
                                             </div>
                                             
@@ -1212,6 +1228,7 @@ const Orders = () => {
                                                     <div className="space-y-4">
                                                         {(order.items || []).map((item, itemIndex) => {
                                                             const gstData = getIndividualProductGST(item, order);
+                                                            const hsn = item.hsn || item.product?.hsn || item.product?.hsnCode || '1234';
                                                             return (
                                                                 <div key={`${order._id}-item-${itemIndex}`} className="group flex items-center space-x-4 bg-white/60 p-4 rounded-xl hover:bg-white transition-all duration-300 hover:shadow-md">
                                                                     <div className="relative w-16 h-16 bg-gradient-to-br from-amber-100 to-orange-100 rounded-xl overflow-hidden">
@@ -1235,8 +1252,9 @@ const Orders = () => {
                                                                                     GST: ₹{gstData.totalGstAmount}
                                                                                 </span>
                                                                             </div>
-                                                                            <div className="text-xs text-gray-500">
-                                                                                GST Rate: {gstData.gstRate}% | CGST: ₹{gstData.cgstAmount} | SGST: ₹{gstData.sgstAmount}
+                                                                            <div className="flex items-center justify-between text-xs text-gray-500">
+                                                                                <span>GST Rate: {gstData.gstRate}% | CGST: ₹{gstData.cgstAmount} | SGST: ₹{gstData.sgstAmount}</span>
+                                                                                
                                                                             </div>
                                                                         </div>
                                                                     </div>
@@ -1291,6 +1309,8 @@ const Orders = () => {
                                                         </div>
                                                     )}
 
+                                                   
+
                                                     {/* Price Breakdown */}
                                                     <div className="bg-gradient-to-r from-amber-50 to-orange-50 p-4 rounded-xl border border-amber-200">
                                                         <h5 className="font-bold text-gray-800 mb-3 flex items-center">
@@ -1321,6 +1341,14 @@ const Orders = () => {
                                                                         <div className="flex justify-between text-gray-600">
                                                                             <span>GST ({gstBreakdown.totalRate.toFixed(1)}%):</span>
                                                                             <span>₹{gstBreakdown.totalGST.toFixed(2)}</span>
+                                                                        </div>
+                                                                        <div className="flex justify-between text-blue-600 text-xs">
+                                                                            <span>• CGST ({gstBreakdown.cgstRate.toFixed(1)}%):</span>
+                                                                            <span>₹{gstBreakdown.cgst.toFixed(2)}</span>
+                                                                        </div>
+                                                                        <div className="flex justify-between text-blue-600 text-xs">
+                                                                            <span>• SGST ({gstBreakdown.sgstRate.toFixed(1)}%):</span>
+                                                                            <span>₹{gstBreakdown.sgst.toFixed(2)}</span>
                                                                         </div>
                                                                         <div className="flex justify-between text-gray-600">
                                                                             <span>Shipping:</span>

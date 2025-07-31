@@ -841,14 +841,7 @@ const CheckoutPage = () => {
                           
                           {!pricingLoading && priceData.gstAmount > 0 && (
                             <div className="text-xs text-gray-600 mt-1 space-y-1">
-                              <div className="flex items-center justify-between bg-gray-50 px-2 py-1 rounded">
-                                <span>Base Price:</span>
-                                <span>₹{priceData.basePrice.toFixed(2)}</span>
-                              </div>
-                              <div className="flex items-center justify-between bg-green-50 px-2 py-1 rounded">
-                                <span>GST ({priceData.gstRate}%):</span>
-                                <span>₹{priceData.gstAmount.toFixed(2)}</span>
-                              </div>
+
                               <div className="font-medium text-green-600">
                                 Total: ₹{itemSubtotal.toFixed(2)} (incl. all taxes)
                               </div>
