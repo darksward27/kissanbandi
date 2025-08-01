@@ -30,40 +30,69 @@ const Profile = () => {
     }
   });
 
+  // ✅ Allow only letters and spaces
+  const validateNameInput = (value) => {
+    return value.replace(/[^a-zA-Z\s]/g, '');
+  };
+
+  const validatePhoneInput = (value) => {
+    const numbers = value.replace(/\D/g, '');
+    return numbers.slice(0, 10);
+  };
+
+  const validatePincodeInput = (value) => {
+    const numbers = value.replace(/\D/g, '');
+    return numbers.slice(0, 6);
+  };
+
   const handleChange = (e) => {
     const { name, value } = e.target;
+    let processedValue = value;
+
+    if (name === 'name') {
+      processedValue = validateNameInput(value);
+    } else if (name === 'phone' || name === 'alternatePhone') {
+      processedValue = validatePhoneInput(value);
+    } else if (name === 'address.pincode') {
+      processedValue = validatePincodeInput(value);
+    }
+
     if (name.includes('.')) {
       const [parent, child] = name.split('.');
       setFormData(prev => ({
         ...prev,
         [parent]: {
           ...prev[parent],
-          [child]: value
+          [child]: processedValue
         }
       }));
     } else {
       setFormData(prev => ({
         ...prev,
-        [name]: value
+        [name]: processedValue
       }));
     }
   };
 
   const validateForm = () => {
-    const phoneRegex = /^(\+91[\-\s]?)?[0]?(91)?[6789]\d{9}$/;
-    if (!phoneRegex.test(formData.phone)) {
-      toast.error('Please provide a valid Indian phone number');
+    // ✅ Check if name contains only letters and spaces
+    if (!/^[a-zA-Z\s]+$/.test(formData.name)) {
+      toast.error('Name can only contain letters');
       return false;
     }
 
-    if (formData.alternatePhone && !phoneRegex.test(formData.alternatePhone)) {
-      toast.error('Please provide a valid Indian alternate phone number');
+    if (formData.phone.length !== 10) {
+      toast.error('Phone number must be exactly 10 digits');
       return false;
     }
 
-    const pincodeRegex = /^\d{6}$/;
-    if (formData.address.pincode && !pincodeRegex.test(formData.address.pincode)) {
-      toast.error('Please provide a valid 6-digit pincode');
+    if (formData.alternatePhone && formData.alternatePhone.length !== 10) {
+      toast.error('Alternate phone number must be exactly 10 digits');
+      return false;
+    }
+
+    if (formData.address.pincode.length !== 6) {
+      toast.error('Pincode must be exactly 6 digits');
       return false;
     }
 
@@ -101,7 +130,6 @@ const Profile = () => {
     <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50">
       <div className="container mx-auto px-4 py-8 mt-32">
         <div className="max-w-3xl mx-auto">
-          {/* Header Animation */}
           <div className="text-center mb-8">
             <div className="inline-block p-3 bg-gradient-to-r from-amber-500 to-orange-600 rounded-full shadow-lg mb-4 animate-bounce duration-2000">
               <User className="w-8 h-8 text-white" />
@@ -114,7 +142,7 @@ const Profile = () => {
 
           <div className="bg-white rounded-2xl shadow-xl border border-amber-200 p-8 hover:shadow-2xl transition-all duration-500">
             <form onSubmit={handleSubmit} className="space-y-8">
-              {/* Basic Information */}
+              {/* Basic Info */}
               <div className="space-y-6">
                 <div className="flex items-center space-x-3 p-4 bg-gradient-to-r from-amber-100 to-orange-100 rounded-xl">
                   <div className="w-10 h-10 bg-gradient-to-r from-amber-600 to-orange-600 rounded-full flex items-center justify-center">
@@ -122,11 +150,11 @@ const Profile = () => {
                   </div>
                   <h3 className="text-lg font-semibold text-amber-800">Basic Information</h3>
                 </div>
-                
+
                 <div className="grid grid-cols-1 gap-6">
                   <div className="group">
                     <label htmlFor="name" className="block text-sm font-medium text-amber-700 mb-2">
-                      Full Name
+                      Name (Letters Only)
                     </label>
                     <input
                       id="name"
@@ -136,9 +164,11 @@ const Profile = () => {
                       value={formData.name}
                       onChange={handleChange}
                       className="w-full px-4 py-3 border-2 border-amber-200 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-all duration-300 group-hover:border-amber-300 bg-white"
+                      placeholder="John Doe"
                     />
+                    <p className="text-xs text-amber-600 mt-1">Only letters are allowed, no numbers or symbols</p>
                   </div>
-                  
+
                   <div className="group">
                     <label htmlFor="email" className="block text-sm font-medium text-amber-700 mb-2">
                       Email Address
@@ -160,7 +190,7 @@ const Profile = () => {
                 </div>
               </div>
 
-              {/* Contact Information */}
+              {/* Contact Info */}
               <div className="space-y-6">
                 <div className="flex items-center space-x-3 p-4 bg-gradient-to-r from-orange-100 to-yellow-100 rounded-xl">
                   <div className="w-10 h-10 bg-gradient-to-r from-orange-600 to-yellow-600 rounded-full flex items-center justify-center">
@@ -168,141 +198,154 @@ const Profile = () => {
                   </div>
                   <h3 className="text-lg font-semibold text-orange-800">Contact Information</h3>
                 </div>
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="group">
                     <label htmlFor="phone" className="block text-sm font-medium text-amber-700 mb-2">
-                      Phone Number
+                      Phone Number (10 digits)
                     </label>
                     <input
                       id="phone"
                       name="phone"
-                      type="tel"
+                      type="text"
                       required
                       value={formData.phone}
                       onChange={handleChange}
-                      className="w-full px-4 py-3 border-2 border-amber-200 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-all duration-300 group-hover:border-amber-300 bg-white"
-                      placeholder="+91 9876543210"
+                      className="w-full px-4 py-3 border-2 border-amber-200 rounded-xl shadow-sm"
+                      maxLength="10"
                     />
+                    <p className="text-xs text-amber-600 mt-1">Exactly 10 digits required</p>
                   </div>
-                  
+
                   <div className="group">
                     <label htmlFor="alternatePhone" className="block text-sm font-medium text-amber-700 mb-2">
-                      Alternate Phone (Optional)
+                      Alternate Phone (Optional, 10 digits)
                     </label>
                     <input
                       id="alternatePhone"
                       name="alternatePhone"
-                      type="tel"
+                      type="text"
                       value={formData.alternatePhone}
                       onChange={handleChange}
-                      className="w-full px-4 py-3 border-2 border-amber-200 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-all duration-300 group-hover:border-amber-300 bg-white"
-                      placeholder="+91 9876543210"
+                      className="w-full px-4 py-3 border-2 border-amber-200 rounded-xl shadow-sm"
+                      maxLength="10"
                     />
+                    <p className="text-xs text-amber-600 mt-1">Exactly 10 digits if provided</p>
                   </div>
                 </div>
               </div>
 
-              {/* Address Information */}
-              <div className="space-y-6">
-                <div className="flex items-center space-x-3 p-4 bg-gradient-to-r from-yellow-100 to-amber-100 rounded-xl">
-                  <div className="w-10 h-10 bg-gradient-to-r from-yellow-600 to-amber-600 rounded-full flex items-center justify-center">
-                    <MapPin className="w-5 h-5 text-white" />
-                  </div>
-                  <h3 className="text-lg font-semibold text-yellow-800">Address Information</h3>
-                </div>
-                
-                <div className="grid grid-cols-1 gap-6">
-                  <div className="group">
-                    <label htmlFor="address.street" className="block text-sm font-medium text-amber-700 mb-2">
-                      Street Address
-                    </label>
-                    <input
-                      id="address.street"
-                      name="address.street"
-                      type="text"
-                      required
-                      value={formData.address.street}
-                      onChange={handleChange}
-                      className="w-full px-4 py-3 border-2 border-amber-200 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-all duration-300 group-hover:border-amber-300 bg-white"
-                    />
-                  </div>
-                  
-                  <div className="group">
-                    <label htmlFor="address.locality" className="block text-sm font-medium text-amber-700 mb-2">
-                      Locality/Area
-                    </label>
-                    <input
-                      id="address.locality"
-                      name="address.locality"
-                      type="text"
-                      required
-                      value={formData.address.locality}
-                      onChange={handleChange}
-                      className="w-full px-4 py-3 border-2 border-amber-200 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-all duration-300 group-hover:border-amber-300 bg-white"
-                    />
-                  </div>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div className="group">
-                      <label htmlFor="address.city" className="block text-sm font-medium text-amber-700 mb-2">
-                        City
-                      </label>
-                      <input
-                        id="address.city"
-                        name="address.city"
-                        type="text"
-                        required
-                        value={formData.address.city}
-                        onChange={handleChange}
-                        className="w-full px-4 py-3 border-2 border-amber-200 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-all duration-300 group-hover:border-amber-300 bg-white"
-                      />
-                    </div>
-                    
-                    <div className="group">
-                      <label htmlFor="address.state" className="block text-sm font-medium text-amber-700 mb-2">
-                        State
-                      </label>
-                      <select
-                        id="address.state"
-                        name="address.state"
-                        required
-                        value={formData.address.state}
-                        onChange={handleChange}
-                        className="w-full px-4 py-3 border-2 border-amber-200 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-all duration-300 group-hover:border-amber-300 bg-white"
-                      >
-                        <option value="">Select State</option>
-                        {INDIAN_STATES.map(state => (
-                          <option key={state} value={state}>{state}</option>
-                        ))}
-                      </select>
-                    </div>
-                    
-                    <div className="group">
-                      <label htmlFor="address.pincode" className="block text-sm font-medium text-amber-700 mb-2">
-                        Pincode
-                      </label>
-                      <input
-                        id="address.pincode"
-                        name="address.pincode"
-                        type="text"
-                        required
-                        value={formData.address.pincode}
-                        onChange={handleChange}
-                        className="w-full px-4 py-3 border-2 border-amber-200 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-all duration-300 group-hover:border-amber-300 bg-white"
-                        placeholder="6-digit pincode"
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
+             {/* Address Info */}
+<div className="space-y-6">
+  <div className="flex items-center space-x-3 p-4 bg-gradient-to-r from-yellow-100 to-amber-100 rounded-xl">
+    <div className="w-10 h-10 bg-gradient-to-r from-yellow-600 to-amber-600 rounded-full flex items-center justify-center">
+      <MapPin className="w-5 h-5 text-white" />
+    </div>
+    <h3 className="text-lg font-semibold text-yellow-800">Address Information</h3>
+  </div>
 
-              {/* Submit Button */}
+  <div className="grid grid-cols-1 gap-6">
+    {/* Street Address */}
+    <div className="group">
+      <label htmlFor="address.street" className="block text-sm font-medium text-amber-700 mb-2">
+        Street Address
+      </label>
+      <input
+        id="address.street"
+        name="address.street"
+        type="text"
+        required
+        value={formData.address.street}
+        onChange={handleChange}
+        className="w-full px-4 py-3 border-2 border-amber-200 rounded-xl shadow-sm bg-white"
+        placeholder="123 Main St"
+      />
+    </div>
+
+    {/* Locality/Area */}
+    <div className="group">
+      <label htmlFor="address.locality" className="block text-sm font-medium text-amber-700 mb-2">
+        Locality/Area
+      </label>
+      <input
+        id="address.locality"
+        name="address.locality"
+        type="text"
+        required
+        value={formData.address.locality}
+        onChange={handleChange}
+        className="w-full px-4 py-3 border-2 border-amber-200 rounded-xl shadow-sm bg-white"
+        placeholder="Neighborhood"
+      />
+    </div>
+
+    {/* City, State, Pincode */}
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      {/* City */}
+      <div className="group">
+        <label htmlFor="address.city" className="block text-sm font-medium text-amber-700 mb-2">
+          City
+        </label>
+        <input
+          id="address.city"
+          name="address.city"
+          type="text"
+          required
+          value={formData.address.city}
+          onChange={handleChange}
+          className="w-full px-4 py-3 border-2 border-amber-200 rounded-xl shadow-sm bg-white"
+          placeholder="City name"
+        />
+      </div>
+
+      {/* State */}
+      <div className="group">
+        <label htmlFor="address.state" className="block text-sm font-medium text-amber-700 mb-2">
+          State
+        </label>
+        <select
+          id="address.state"
+          name="address.state"
+          required
+          value={formData.address.state}
+          onChange={handleChange}
+          className="w-full px-4 py-3 border-2 border-amber-200 rounded-xl shadow-sm bg-white"
+        >
+          <option value="">Select State</option>
+          {INDIAN_STATES.map(state => (
+            <option key={state} value={state}>{state}</option>
+          ))}
+        </select>
+      </div>
+
+      {/* Pincode */}
+      <div className="group">
+        <label htmlFor="address.pincode" className="block text-sm font-medium text-amber-700 mb-2">
+          Pincode (6 digits)
+        </label>
+        <input
+          id="address.pincode"
+          name="address.pincode"
+          type="text"
+          required
+          value={formData.address.pincode}
+          onChange={handleChange}
+          maxLength="6"
+          className="w-full px-4 py-3 border-2 border-amber-200 rounded-xl shadow-sm bg-white"
+          placeholder="123456"
+        />
+        <p className="text-xs text-amber-600 mt-1">Exactly 6 digits required</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+
               <div className="flex justify-end pt-6">
                 <button
                   type="submit"
                   disabled={loading}
-                  className="inline-flex items-center px-8 py-4 border border-transparent rounded-xl shadow-lg text-base font-medium text-white bg-gradient-to-r from-amber-600 to-orange-700 hover:from-amber-700 hover:to-orange-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-105 hover:shadow-xl transition-all duration-300"
+                  className="inline-flex items-center px-8 py-4 border border-transparent rounded-xl text-base font-medium text-white bg-gradient-to-r from-amber-600 to-orange-700 hover:from-amber-700 hover:to-orange-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 disabled:opacity-50"
                 >
                   {loading ? (
                     <>

@@ -2,13 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../pages/checkout/AuthProvider';
 import { toast } from 'react-hot-toast';
-import { Lock } from 'lucide-react';
+import { Lock, Eye, EyeOff } from 'lucide-react';
 
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const { adminLogin, isAuthenticated, user } = useAuth();
@@ -56,6 +57,10 @@ const Login = () => {
     }
   };
 
+  const togglePasswordVisibility = () => {
+    setShowPassword(!showPassword);
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 py-6 sm:py-12 px-3 sm:px-4 lg:px-8">
       <div className="max-w-md w-full space-y-6 sm:space-y-8">
@@ -94,16 +99,29 @@ const Login = () => {
                 <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
                   Password
                 </label>
-                <input
-                  id="password"
-                  name="password"
-                  type="password"
-                  required
-                  className="appearance-none relative block w-full px-3 py-2 sm:py-3 border border-amber-200 placeholder-amber-400 text-gray-900 rounded-md focus:outline-none focus:ring-amber-500 focus:border-amber-500 text-sm sm:text-base hover:border-amber-300 transition-colors duration-200"
-                  placeholder="Enter your password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                />
+                <div className="relative">
+                  <input
+                    id="password"
+                    name="password"
+                    type={showPassword ? "text" : "password"}
+                    required
+                    className="appearance-none relative block w-full px-3 py-2 sm:py-3 pr-10 border border-amber-200 placeholder-amber-400 text-gray-900 rounded-md focus:outline-none focus:ring-amber-500 focus:border-amber-500 text-sm sm:text-base hover:border-amber-300 transition-colors duration-200"
+                    placeholder="Enter your password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                  />
+                  <button
+                    type="button"
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                    onClick={togglePasswordVisibility}
+                  >
+                    {showPassword ? (
+                      <Eye className="h-4 w-4 sm:h-5 sm:w-5 text-amber-600 hover:text-amber-700 transition-colors duration-200" />
+                    ) : (
+                      <EyeOff className="h-4 w-4 sm:h-5 sm:w-5 text-amber-600 hover:text-amber-700 transition-colors duration-200" />
+                    )}
+                  </button>
+                </div>
               </div>
             </div>
 
