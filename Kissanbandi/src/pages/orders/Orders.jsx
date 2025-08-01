@@ -26,6 +26,60 @@ const getProductImage = (imagePath) => {
 };
 
 
+const getInvoiceOrderNumber = (orderData) => {
+  console.log('🔍 Getting invoice order number for:', {
+    invoiceNumber: orderData.invoiceNumber,
+    invoiceOrderNumber: orderData.invoiceOrderNumber,
+    orderNumber: orderData.orderNumber,
+    formattedOrderNumber: orderData.formattedOrderNumber,
+    createdAt: orderData.createdAt,
+    _id: orderData._id
+  });
+
+  // Method 1: Use existing 10-digit invoice number (YYYY000001 format)
+  if (orderData.invoiceNumber && orderData.invoiceNumber.length === 10) {
+    console.log('✅ Using existing 10-digit invoice number:', orderData.invoiceNumber);
+    return orderData.invoiceNumber;
+  }
+
+  // Method 2: Try the virtual field (fixed typo: was invoiceOrder, should be invoiceOrderNumber)
+  if (orderData.invoiceOrderNumber) {
+    console.log('✅ Using virtual invoiceOrderNumber:', orderData.invoiceOrderNumber);
+    return orderData.invoiceOrderNumber;
+  }
+  
+  // Method 3: Generate from orderNumber and createdAt (10-digit format)
+  if (orderData.orderNumber && orderData.createdAt) {
+    const year = new Date(orderData.createdAt).getFullYear();
+    const paddedOrderNum = String(orderData.orderNumber).padStart(6, '0');
+    const invoiceNumber = `${year}${paddedOrderNum}`;
+    console.log('📝 Generated from orderNumber and createdAt:', invoiceNumber);
+    return invoiceNumber;
+  }
+  
+  // Method 4: Generate from formattedOrderNumber and createdAt
+  if (orderData.formattedOrderNumber && orderData.createdAt) {
+    const year = new Date(orderData.createdAt).getFullYear();
+    const invoiceNumber = `${year}${orderData.formattedOrderNumber}`;
+    console.log('📝 Generated from formattedOrderNumber:', invoiceNumber);
+    return invoiceNumber;
+  }
+  
+  // Method 5: Generate from createdAt and _id (fallback)
+  if (orderData.createdAt && orderData._id) {
+    const year = new Date(orderData.createdAt).getFullYear();
+    const idSuffix = orderData._id.toString().slice(-6);
+    const invoiceNumber = `${year}${idSuffix}`;
+    console.log('📝 Generated from createdAt and _id:', invoiceNumber);
+    return invoiceNumber;
+  }
+  
+  // Method 6: Absolute fallback
+  const year = new Date().getFullYear();
+  const fallback = `${year}000001`;
+  console.log('⚠️ Using fallback invoice number:', fallback);
+  return fallback;
+};
 
 
 // ✅ FIXED: Function to get individual product GST breakdown with correct field names + HSN
@@ -247,6 +301,9 @@ const calculateGSTBreakdown = (orderData, subtotalAfterDiscount) => {
     };
 };
 
+
+
+
 const Orders = () => {
     const { user } = useAuth();
     const [orders, setOrders] = useState([]);
@@ -344,12 +401,23 @@ const Orders = () => {
             toast.loading('Generating invoice...', { id: 'pdf-loading' });
             
             const response = await api.get(`/orders/${orderId}`);
-            
             const orderData = response.data.order;
-            console.log('Order Data for Invoice with GST breakdown + HSN:', orderData);
-            if (!orderData) {
-                throw new Error('Order data not found');
-            }
+
+            let nextFormattedOrderNumber = '';
+try {
+  const numberResp = await api.get('orders/next-order-number');
+  const formatted = numberResp.data.nextFormattedOrderNumber || '';
+  
+  const currentYear = new Date().getFullYear();
+  nextFormattedOrderNumber = `${currentYear}${formatted}`; // → e.g., "2025000124"
+  
+} catch (err) {
+  console.error('Error fetching formatted order number:', err);
+  nextFormattedOrderNumber = '';
+}
+
+
+            
 
             const itemsSubtotal = (orderData.items || []).reduce((sum, item) => sum + (item.price * item.quantity), 0);
             const couponDiscount = orderData.discount || 0;
@@ -809,7 +877,7 @@ const Orders = () => {
                             </div>
                             <div class="invoice-details">
                                 <h2>TAX INVOICE</h2>
-                                <p><strong>Invoice #:</strong>${orderData.invoiceOrderNumber}</p>
+                                <p><strong>Invoice #:</strong>${nextFormattedOrderNumber}</p>
                                 <p><strong>Date:</strong> ${new Date(orderData.createdAt).toLocaleDateString('en-IN')}</p>
                                 <p><strong>Order ID:</strong> ${orderData._id}</p>
                             </div>
@@ -1117,7 +1185,7 @@ const Orders = () => {
                                 <h1 className="text-4xl font-bold bg-gradient-to-r from-amber-700 to-orange-700 bg-clip-text text-transparent mb-2">
                                     My Orders
                                 </h1>
-                                <p className="text-gray-600 text-lg">View and track your orders with HSN details</p>
+                                <p className="text-gray-600 text-lg">View and track your orders</p>
                                 <div className="w-24 h-1 bg-gradient-to-r from-amber-600 to-orange-700 rounded-full mt-2 mx-auto lg:mx-0"></div>
                             </div>
                             

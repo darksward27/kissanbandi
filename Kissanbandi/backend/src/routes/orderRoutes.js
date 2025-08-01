@@ -18,7 +18,6 @@ router.get('/admin/export', [auth, admin], orderController.exportOrders);
 router.get('/admin/date-range', [auth, admin], orderController.getOrdersByDateRange);
 
 // Get next available order number (admin only)
-router.get('/admin/next-number', [auth, admin], orderController.getNextOrderNumber);
 
 // Get order number statistics (admin only) 
 router.get('/admin/number-stats', [auth, admin], orderController.getOrderNumberStats);
@@ -44,6 +43,10 @@ router.get('/:orderId/download-invoice', auth, orderController.downloadInvoice);
 
 // Find order by any number format (user/admin)
 router.get('/number/:orderNumber', auth, orderController.findOrderByNumber);
+
+//get next order number
+router.get('/next-order-number', auth, orderController.getNextOrderNumber);
+
 
 // ========================================
 // ADMIN NOTE ROUTES (FOR ALL ORDERS)
