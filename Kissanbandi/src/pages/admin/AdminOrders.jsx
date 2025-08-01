@@ -74,6 +74,141 @@ const AdminOrders = () => {
   // ✅ Invoice download state
   const [downloadingInvoice, setDownloadingInvoice] = useState(null);
 
+const getIndividualProductGST = (item, orderData) => {
+    console.log('🧮 Calculating individual product GST for:', {
+        productName: item.product?.name,
+        quantity: item.quantity,
+        price: item.price,
+        basePrice: item.basePrice,
+        gstRate: item.gst|| 18, // Default to 18% if not available
+        gst: item.gst, // ✅ Primary field name used in database
+        gstAmount: item.gstAmount, // ✅ Fallback field name
+        totalGstAmount: item.totalGstAmount,
+        hsn: item.hsn || item.product?.hsn || item.product?.hsnCode // ✅ HSN code support
+    });
+
+    // Method 1: Use stored GST information from order item with correct field names + HSN
+    if ((item.basePrice !== undefined || item.gst !== undefined) && (item.gst !== undefined || item.gstAmount !== undefined)) {
+        
+        // ✅ Get GST amount from either 'gst' field (primary) or 'gstAmount' (fallback)
+        const gstAmountPerUnit = parseFloat(item.gst || item.gstAmount) || 0;
+        
+        // Calculate base price if not stored directly
+        let basePrice = parseFloat(item.basePrice) || 0;
+        if (basePrice === 0 && item.price && gstAmountPerUnit > 0) {
+            // Reverse calculate base price from total price and GST amount
+            basePrice = item.price - gstAmountPerUnit;
+        }
+        
+        // ✅ Calculate GST rate using the formula: (gstAmt/basePrice)*100
+        let gstRate = 0;
+        if (basePrice > 0 && gstAmountPerUnit > 0) {
+            gstRate = (gstAmountPerUnit / basePrice) * 100;
+        } else {
+            // Fallback to stored rate if calculation not possible
+            gstRate = parseFloat(item.gstRate) || 18;
+        }
+        
+        // ✅ Get HSN code
+        const hsn = item.hsn || item.product?.hsn || item.product?.hsnCode || '1234';
+        
+        // Calculate totals
+        const totalGstAmount = gstAmountPerUnit * item.quantity;
+        const cgstAmount = totalGstAmount / 2;
+        const sgstAmount = totalGstAmount / 2;
+        
+        console.log('✅ Using stored GST data with calculated GST% + HSN:', {
+            basePrice,
+            gstAmountPerUnit,
+            calculatedGstRate: gstRate,
+            totalGstAmount,
+            cgstAmount,
+            sgstAmount,
+            hsn,
+            fieldUsed: item.gst !== undefined ? 'gst' : 'gstAmount',
+            calculation: `(${gstAmountPerUnit}/${basePrice})*100 = ${gstRate.toFixed(2)}%`,
+            rawValues: {
+                itemGst: item.gst,
+                itemGstAmount: item.gstAmount,
+                itemPrice: item.price,
+                itemBasePrice: item.basePrice,
+                itemHsn: item.hsn
+            }
+        });
+        
+        return {
+            basePrice: basePrice.toFixed(2),
+            gstRate: gstRate.toFixed(1), // ✅ Use calculated GST rate using (gstAmt/basePrice)*100
+            gstAmountPerUnit: gstAmountPerUnit.toFixed(2),
+            totalGstAmount: totalGstAmount.toFixed(2),
+            cgstAmount: cgstAmount.toFixed(2),
+            sgstAmount: sgstAmount.toFixed(2),
+            totalAmount: (item.price * item.quantity).toFixed(2),
+            hsn: hsn // ✅ Include HSN code
+        };
+    }
+
+    // Method 2: Calculate from price (assuming price includes GST) - Fallback
+    const totalItemAmount = (item.price || 0) * (item.quantity || 0);
+    const productGstRate = item.gst || item.product?.gstRate || item.product?.gst || 18;
+    const hsn = item.hsn || item.product?.hsn || item.product?.hsnCode || '1234';
+    
+    // Calculate base price and GST from total amount (reverse calculation)
+    const basePrice = totalItemAmount / (1 + productGstRate / 100);
+    const totalGstAmount = totalItemAmount - basePrice;
+    const gstAmountPerUnit = totalGstAmount / (item.quantity || 1);
+    const cgstAmount = totalGstAmount / 2;
+    const sgstAmount = totalGstAmount / 2;
+    
+    // ✅ Calculate GST rate using the formula (gstAmt/basePrice)*100 for fallback method too
+    const basePricePerUnit = basePrice / (item.quantity || 1);
+    let calculatedGstRate = productGstRate; // Default fallback
+    if (basePricePerUnit > 0 && gstAmountPerUnit > 0) {
+        calculatedGstRate = (gstAmountPerUnit / basePricePerUnit) * 100;
+    }
+    
+    console.log('⚠️ Calculated GST from price (fallback method) with formula-based GST% + HSN:', {
+        totalItemAmount,
+        productGstRate,
+        basePrice,
+        basePricePerUnit,
+        gstAmountPerUnit,
+        totalGstAmount,
+        cgstAmount,
+        sgstAmount,
+        calculatedGstRate,
+        calculation: `(${gstAmountPerUnit}/${basePricePerUnit.toFixed(2)})*100 = ${calculatedGstRate.toFixed(2)}%`,
+        hsn
+    });
+    
+    return {
+        basePrice: basePrice.toFixed(2),
+        gstRate: calculatedGstRate.toFixed(1), // ✅ Use calculated GST rate using (gstAmt/basePrice)*100
+        gstAmountPerUnit: gstAmountPerUnit.toFixed(2),
+        totalGstAmount: totalGstAmount.toFixed(2),
+        cgstAmount: cgstAmount.toFixed(2),
+        sgstAmount: sgstAmount.toFixed(2),
+        totalAmount: totalItemAmount.toFixed(2),
+        hsn: hsn // ✅ Include HSN code
+    };
+};
+
+
+  const convertToWords = (amount) => {
+        const ones = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine'];
+        const teens = ['Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
+        const tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+        
+        if (amount === 0) return 'Zero';
+        if (amount < 10) return ones[amount];
+        if (amount < 20) return teens[amount - 10];
+        if (amount < 100) return tens[Math.floor(amount / 10)] + (amount % 10 !== 0 ? ' ' + ones[amount % 10] : '');
+        if (amount < 1000) return ones[Math.floor(amount / 100)] + ' Hundred' + (amount % 100 !== 0 ? ' ' + convertToWords(amount % 100) : '');
+        if (amount < 100000) return convertToWords(Math.floor(amount / 1000)) + ' Thousand' + (amount % 1000 !== 0 ? ' ' + convertToWords(amount % 1000) : '');
+        
+        return 'Amount too large';
+    };
+
   // ✅ Enhanced GST calculation based on actual order data
   const calculateGSTBreakdown = (orderData, subtotalAfterDiscount) => {
     console.log('🧮 Admin: Calculating GST breakdown:', { 
@@ -183,548 +318,619 @@ const AdminOrders = () => {
       const shipping = orderData.shippingCharge || (orderData.shippingAddress ? (subtotalAfterDiscount >= 500 ? 0 : 50) : 0);
 
       // ✅ Enhanced single-page invoice with company logo and coupon details
-      const invoiceContent = `
-        <html>
-        <head>
-          <meta charset="utf-8">
-          <title>Invoice - ${orderData._id}</title>
-          <style>
-            * {
-              margin: 0;
-              padding: 0;
-              box-sizing: border-box;
-            }
-            
-            body {
-              font-family: 'Arial', sans-serif;
-              line-height: 1.4;
-              color: #333;
-              background: white;
-              font-size: 12px;
-            }
-            
-            .invoice-container {
-              max-width: 210mm;
-              min-height: 297mm;
-              margin: 0 auto;
-              padding: 15mm;
-              background: white;
-              display: flex;
-              flex-direction: column;
-            }
-            
-            .invoice-header {
-              display: flex;
-              justify-content: space-between;
-              align-items: flex-start;
-              margin-bottom: 20px;
-              padding-bottom: 15px;
-              border-bottom: 2px solid #f59e0b;
-            }
-            
-            .company-section {
-              display: flex;
-              align-items: center;
-              flex: 1;
-            }
-            
-            .company-logo {
-              width: 60px;
-              height: 60px;
-              background: linear-gradient(135deg, #f59e0b, #f97316);
-              border-radius: 12px;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              margin-right: 15px;
-              flex-shrink: 0;
-            }
-            
-            .company-logo-text {
-              color: white;
-              font-size: 20px;
-              font-weight: bold;
-              text-align: center;
-              line-height: 1;
-            }
-            
-            .company-info h1 {
-              color: #f59e0b;
-              font-size: 24px;
-              font-weight: bold;
-              margin-bottom: 3px;
-            }
-            
-            .company-info p {
-              color: #666;
-              font-size: 11px;
-              margin: 1px 0;
-            }
-            
-            .company-info .gst-number {
-              color: #333;
-              font-size: 10px;
-              font-weight: bold;
-              margin-top: 5px;
-            }
-            
-            .invoice-details {
-              text-align: right;
-              min-width: 200px;
-            }
-            
-            .invoice-details h2 {
-              color: #f59e0b;
-              font-size: 20px;
-              margin-bottom: 8px;
-            }
-            
-            .invoice-details p {
-              margin: 3px 0;
-              font-size: 11px;
-            }
-            
-            .invoice-info {
-              display: grid;
-              grid-template-columns: 1fr 1fr;
-              gap: 20px;
-              margin-bottom: 20px;
-            }
-            
-            .section-title {
-              color: #f59e0b;
-              font-size: 13px;
-              font-weight: bold;
-              margin-bottom: 8px;
-              text-transform: uppercase;
-              letter-spacing: 0.5px;
-            }
-            
-            .info-block {
-              background: #fef3c7;
-              padding: 12px;
-              border-radius: 6px;
-              border-left: 3px solid #f59e0b;
-              font-size: 11px;
-            }
-            
-            .info-block p {
-              margin: 3px 0;
-            }
-            
-            .status-section {
-              margin-bottom: 15px;
-              display: flex;
-              align-items: center;
-              gap: 15px;
-            }
-            
-            .status-badge {
-              display: inline-block;
-              padding: 4px 10px;
-              border-radius: 15px;
-              font-size: 10px;
-              font-weight: bold;
-              text-transform: uppercase;
-              letter-spacing: 0.5px;
-            }
-            
-            .status-pending { background: #fef3c7; color: #f59e0b; }
-            .status-processing { background: #dbeafe; color: #3b82f6; }
-            .status-shipped { background: #e0e7ff; color: #7c3aed; }
-            .status-delivered { background: #d1fae5; color: #10b981; }
-            .status-cancelled { background: #fee2e2; color: #ef4444; }
-            
-            /* ✅ Coupon Section Styles */
-            .coupon-section {
-              background: linear-gradient(135deg, #ecfdf5, #d1fae5);
-              border: 2px dashed #10b981;
-              border-radius: 8px;
-              padding: 12px;
-              margin-bottom: 15px;
-              position: relative;
-            }
-            
-            .coupon-header {
-              display: flex;
-              align-items: center;
-              gap: 8px;
-              margin-bottom: 6px;
-            }
-            
-            .coupon-icon {
-              width: 16px;
-              height: 16px;
-              background: #10b981;
-              border-radius: 50%;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              color: white;
-              font-size: 10px;
-              font-weight: bold;
-            }
-            
-            .coupon-title {
-              color: #065f46;
-              font-weight: bold;
-              font-size: 12px;
-            }
-            
-            .coupon-details {
-              display: grid;
-              grid-template-columns: 1fr 1fr;
-              gap: 8px;
-              font-size: 10px;
-              color: #047857;
-            }
-            
-            .items-table {
-              width: 100%;
-              border-collapse: collapse;
-              margin-bottom: 15px;
-              font-size: 11px;
-            }
-            
-            .items-table th {
-              background: #f59e0b;
-              color: white;
-              padding: 8px 6px;
-              text-align: left;
-              font-weight: bold;
-              font-size: 10px;
-              text-transform: uppercase;
-            }
-            
-            .items-table td {
-              padding: 8px 6px;
-              border-bottom: 1px solid #e5e7eb;
-              font-size: 10px;
-            }
-            
-            .items-table tbody tr:nth-child(even) {
-              background: #fef3c7;
-            }
-            
-            .totals-section {
-              margin-top: auto;
-              padding-top: 15px;
-            }
-            
-            .totals-grid {
-              display: grid;
-              grid-template-columns: 2fr 1fr;
-              gap: 15px;
-              align-items: start;
-            }
-            
-            .gst-breakdown {
-              background: #fef3c7;
-              padding: 12px;
-              border-radius: 6px;
-              border: 1px solid #f59e0b;
-            }
-            
-            .gst-title {
-              color: #f59e0b;
-              font-size: 12px;
-              font-weight: bold;
-              margin-bottom: 8px;
-              text-align: center;
-            }
-            
-            .gst-row {
-              display: flex;
-              justify-content: space-between;
-              margin: 4px 0;
-              font-size: 10px;
-            }
-            
-            .gst-total {
-              font-weight: bold;
-              color: #f59e0b;
-              border-top: 1px solid #f59e0b;
-              padding-top: 6px;
-              margin-top: 6px;
-            }
-            
-            .total-calculation {
-              background: #f8f9fa;
-              padding: 12px;
-              border-radius: 6px;
-              border: 2px solid #f59e0b;
-            }
-            
-            .total-row {
-              display: flex;
-              justify-content: space-between;
-              margin: 4px 0;
-              font-size: 11px;
-            }
-            
-            .total-row.discount {
-              color: #10b981;
-              font-weight: bold;
-            }
-            
-            .total-row.grand-total {
-              font-size: 14px;
-              font-weight: bold;
-              color: #f59e0b;
-              padding-top: 8px;
-              border-top: 2px solid #f59e0b;
-              margin-top: 8px;
-            }
-            
-            .payment-info {
-              background: #f0f9ff;
-              padding: 10px;
-              border-radius: 6px;
-              border-left: 3px solid #3b82f6;
-              margin: 10px 0;
-              font-size: 10px;
-            }
-            
-            .payment-info h3 {
-              color: #3b82f6;
-              margin-bottom: 6px;
-              font-size: 11px;
-            }
-            
-            .footer {
-              text-align: center;
-              margin-top: 15px;
-              padding-top: 10px;
-              border-top: 1px solid #e5e7eb;
-              color: #666;
-              font-size: 9px;
-            }
-            
-            .gst-declaration {
-              background: #fef3c7;
-              padding: 8px;
-              border-radius: 6px;
-              margin: 10px 0;
-              border: 1px solid #f59e0b;
-              font-size: 9px;
-              color: #92400e;
-              text-align: center;
-            }
-            
-            .thank-you {
-              background: linear-gradient(135deg, #f59e0b, #f97316);
-              color: white;
-              padding: 12px;
-              border-radius: 6px;
-              text-align: center;
-              margin: 10px 0;
-            }
-            
-            .thank-you h3 {
-              font-size: 13px;
-              margin-bottom: 4px;
-            }
-            
-            .thank-you p {
-              font-size: 10px;
-            }
-            
-            @media print {
-              body { margin: 0; padding: 0; }
-              .invoice-container { 
-                margin: 0; 
-                padding: 15mm;
-                min-height: 297mm;
-              }
-            }
-            
-            @page {
-              size: A4;
-              margin: 0;
-            }
-          </style>
-        </head>
-        <body>
-          <div class="invoice-container">
-            <!-- Header -->
-            <div class="invoice-header">
-              <div class="company-section">
-                <div class="company-logo">
-                  <div class="company-logo-text">SB</div>
-                </div>
-                <div class="company-info">
-                  <h1>SRI BOGAT</h1>
-                  <p>Premium Quality Products</p>
-                  <p>Email: support@bogat.com</p>
-                  <p>Website: www.bogat.com</p>
-                  <p class="gst-number">GSTIN: 27AABCU9603R1ZM</p>
-                </div>
-              </div>
-              <div class="invoice-details">
-                <h2>TAX INVOICE</h2>
-                <p><strong>Invoice #:</strong> INV-${orderData._id.slice(-8).toUpperCase()}</p>
-                <p><strong>Date:</strong> ${new Date(orderData.createdAt).toLocaleDateString('en-IN')}</p>
-                <p><strong>Order ID:</strong> ${orderData._id}</p>
-              </div>
-            </div>
+     const invoiceContent = `
+                <html>
+                <head>
+                    <meta charset="utf-8">
+                    <title>Invoice - ${orderData._id}</title>
+                    <style>
+                        * {
+                            margin: 0;
+                            padding: 0;
+                            box-sizing: border-box;
+                        }
+                        
+                        body {
+                            font-family: 'Arial', sans-serif;
+                            line-height: 1.4;
+                            color: #333;
+                            background: white;
+                            font-size: 12px;
+                        }
+                        
+                        .invoice-container {
+                            max-width: 210mm;
+                            min-height: 297mm;
+                            margin: 0 auto;
+                            padding: 15mm;
+                            background: white;
+                            display: flex;
+                            flex-direction: column;
+                        }
+                        
+                        .invoice-header {
+                            display: flex;
+                            justify-content: space-between;
+                            align-items: flex-start;
+                            margin-bottom: 20px;
+                            padding-bottom: 15px;
+                            border-bottom: 2px solid #f59e0b;
+                        }
+                        
+                        .company-section {
+                            display: flex;
+                            align-items: center;
+                            flex: 1;
+                        }
+                        
+                        .company-logo {
+                            width: 60px;
+                            height: 60px;
+                            background: linear-gradient(135deg, #f59e0b, #f97316);
+                            border-radius: 12px;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            margin-right: 15px;
+                            flex-shrink: 0;
+                        }
+                        
+                        .company-logo-text {
+                            color: white;
+                            font-size: 20px;
+                            font-weight: bold;
+                            text-align: center;
+                            line-height: 1;
+                        }
+                        
+                       .company-logo-img {
+                          width: 60px;
+                          height: 60px;
+                          object-fit: cover;
+                          border-radius: 8px;
+                        }
 
-            <!-- Invoice Information -->
-            <div class="invoice-info">
-              <div>
-                <h3 class="section-title">Bill To</h3>
-                <div class="info-block">
-                  <p><strong>${orderData.user?.name || 'Customer Name'}</strong></p>
-                  <p>Email: ${orderData.user?.email || 'N/A'}</p>
-                  <p>Phone: ${orderData.user?.phone || 'N/A'}</p>
-                </div>
-              </div>
-              <div>
-                <h3 class="section-title">Ship To</h3>
-                <div class="info-block">
-                  <p>${orderData.shippingAddress?.address || 'N/A'}</p>
-                  <p>${orderData.shippingAddress?.city || ''}, ${orderData.shippingAddress?.state || ''}</p>
-                  <p>PIN: ${orderData.shippingAddress?.pincode || 'N/A'}</p>
-                  <p>Phone: ${orderData.shippingAddress?.phone || 'N/A'}</p>
-                </div>
-              </div>
-            </div>
+                        .company-info h1 {
+                            color: #f59e0b;
+                            font-size: 24px;
+                            font-weight: bold;
+                            margin-bottom: 3px;
+                        }
+                        
+                        .company-info p {
+                            color: #666;
+                            font-size: 11px;
+                            margin: 1px 0;
+                        }
+                        
+                        .company-info .gst-number {
+                            color: #333;
+                            font-size: 10px;
+                            font-weight: bold;
+                            margin-top: 5px;
+                        }
+                        
+                        .invoice-details {
+                            text-align: right;
+                            min-width: 200px;
+                        }
+                        
+                        .invoice-details h2 {
+                            color: #f59e0b;
+                            font-size: 20px;
+                            margin-bottom: 8px;
+                        }
+                        
+                        .invoice-details p {
+                            margin: 3px 0;
+                            font-size: 11px;
+                        }
+                        
+                        .invoice-info {
+                            display: grid;
+                            grid-template-columns: 1fr 1fr;
+                            gap: 20px;
+                            margin-bottom: 20px;
+                        }
+                        
+                        .section-title {
+                            color: #f59e0b;
+                            font-size: 13px;
+                            font-weight: bold;
+                            margin-bottom: 8px;
+                            text-transform: uppercase;
+                            letter-spacing: 0.5px;
+                        }
+                        
+                        .info-block {
+                            background: #fef3c7;
+                            padding: 12px;
+                            border-radius: 6px;
+                            border-left: 3px solid #f59e0b;
+                            font-size: 11px;
+                        }
+                        
+                        .info-block p {
+                            margin: 3px 0;
+                        }
+                        
+                        .status-section {
+                            margin-bottom: 15px;
+                            display: flex;
+                            align-items: center;
+                            gap: 15px;
+                        }
+                        
+                        .status-badge {
+                            display: inline-block;
+                            padding: 4px 10px;
+                            border-radius: 15px;
+                            font-size: 10px;
+                            font-weight: bold;
+                            text-transform: uppercase;
+                            letter-spacing: 0.5px;
+                        }
+                        
+                        .status-pending { background: #fef3c7; color: #f59e0b; }
+                        .status-processing { background: #dbeafe; color: #3b82f6; }
+                        .status-shipped { background: #e0e7ff; color: #7c3aed; }
+                        .status-delivered { background: #d1fae5; color: #10b981; }
+                        .status-cancelled { background: #fee2e2; color: #ef4444; }
+                        
+                        .coupon-section {
+                            background: linear-gradient(135deg, #ecfdf5, #d1fae5);
+                            border: 2px dashed #10b981;
+                            border-radius: 8px;
+                            padding: 12px;
+                            margin-bottom: 15px;
+                            position: relative;
+                        }
+                        
+                        .coupon-header {
+                            display: flex;
+                            align-items: center;
+                            gap: 8px;
+                            margin-bottom: 6px;
+                        }
+                        
+                        .coupon-icon {
+                            width: 16px;
+                            height: 16px;
+                            background: #10b981;
+                            border-radius: 50%;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            color: white;
+                            font-size: 10px;
+                            font-weight: bold;
+                        }
+                        
+                        .coupon-title {
+                            color: #065f46;
+                            font-weight: bold;
+                            font-size: 12px;
+                        }
+                        
+                        .coupon-details {
+                            display: grid;
+                            grid-template-columns: 1fr 1fr;
+                            gap: 8px;
+                            font-size: 10px;
+                            color: #047857;
+                        }
+                        
+                        /* ✅ Enhanced Items Table with proper individual GST display + HSN */
+                        .items-table {
+                            width: 100%;
+                            border-collapse: collapse;
+                            margin-bottom: 15px;
+                            font-size: 10px;
+                            table-layout: fixed;
+                        }
+                        
+                        .items-table th {
+                            background: #f59e0b;
+                            color: white;
+                            padding: 10px 8px;
+                            text-align: center;
+                            font-weight: bold;
+                            font-size: 9px;
+                            text-transform: uppercase;
+                            border: 1px solid #f59e0b;
+                            white-space: nowrap;
+                        }
+                        
+                        .items-table th:nth-child(1) { width: 25%; } /* Item */
+                        .items-table th:nth-child(2) { width: 10%; } /* HSN */
+                        .items-table th:nth-child(3) { width: 8%; }  /* Qty */
+                        .items-table th:nth-child(4) { width: 12%; } /* Base Rate */
+                        .items-table th:nth-child(5) { width: 8%; }  /* GST% */
+                        .items-table th:nth-child(6) { width: 12%; } /* GST Amt */
+                        .items-table th:nth-child(7) { width: 12%; } /* CGST */
+                        .items-table th:nth-child(8) { width: 12%; } /* SGST */
+                        .items-table th:nth-child(9) { width: 12%; } /* Total */
+                        
+                        .items-table td {
+                            padding: 8px 6px;
+                            border: 1px solid #e5e7eb;
+                            font-size: 9px;
+                            text-align: center;
+                            vertical-align: middle;
+                        }
+                        
+                        .items-table td:first-child {
+                            text-align: left;
+                            padding-left: 8px;
+                        }
+                        
+                        .items-table td.amount {
+                            text-align: right;
+                            font-weight: bold;
+                            color: #f59e0b;
+                        }
+                        
+                        .items-table tbody tr:nth-child(even) {
+                            background: #fef3c7;
+                        }
+                        
+                        .items-table tbody tr:hover {
+                            background: #fde68a;
+                        }
+                        
+                        .product-name {
+                            font-weight: bold;
+                            color: #333;
+                            line-height: 1.2;
+                        }
+                        
+                        .product-desc {
+                            font-size: 8px;
+                            color: #666;
+                            margin-top: 2px;
+                            line-height: 1.1;
+                        }
+                        
+                        .hsn-code {
+                            font-weight: bold;
+                            color: #f59e0b;
+                            background: #fef3c7;
+                            padding: 2px 4px;
+                            border-radius: 4px;
+                            font-size: 8px;
+                        }
+                        
+                        .totals-section {
+                            margin-top: auto;
+                            padding-top: 15px;
+                        }
+                        
+                        .totals-grid {
+                            display: grid;
+                            grid-template-columns: 2fr 1fr;
+                            gap: 15px;
+                            align-items: start;
+                        }
+                        
+                        .gst-breakdown {
+                            background: #fef3c7;
+                            padding: 12px;
+                            border-radius: 6px;
+                            border: 1px solid #f59e0b;
+                        }
+                        
+                        .gst-title {
+                            color: #f59e0b;
+                            font-size: 12px;
+                            font-weight: bold;
+                            margin-bottom: 8px;
+                            text-align: center;
+                        }
+                        
+                        .gst-row {
+                            display: flex;
+                            justify-content: space-between;
+                            margin: 4px 0;
+                            font-size: 10px;
+                        }
+                        
+                        .gst-total {
+                            font-weight: bold;
+                            color: #f59e0b;
+                            border-top: 1px solid #f59e0b;
+                            padding-top: 6px;
+                            margin-top: 6px;
+                        }
+                        
+                        .total-calculation {
+                            background: #f8f9fa;
+                            padding: 12px;
+                            border-radius: 6px;
+                            border: 2px solid #f59e0b;
+                        }
+                        
+                        .total-row {
+                            display: flex;
+                            justify-content: space-between;
+                            margin: 4px 0;
+                            font-size: 11px;
+                        }
+                        
+                        .total-row.discount {
+                            color: #10b981;
+                            font-weight: bold;
+                        }
+                        
+                        .total-row.grand-total {
+                            font-size: 14px;
+                            font-weight: bold;
+                            color: #f59e0b;
+                            padding-top: 8px;
+                            border-top: 2px solid #f59e0b;
+                            margin-top: 8px;
+                        }
+                        
+                        .amount-words {
+                            background: #f8f9fa;
+                            padding: 10px;
+                            border-radius: 6px;
+                            margin: 10px 0;
+                            font-size: 10px;
+                            font-weight: bold;
+                        }
+                        
+                        .payment-info {
+                            background: #f0f9ff;
+                            padding: 10px;
+                            border-radius: 6px;
+                            border-left: 3px solid #3b82f6;
+                            margin: 10px 0;
+                            font-size: 10px;
+                        }
+                        
+                        .payment-info h3 {
+                            color: #3b82f6;
+                            margin-bottom: 6px;
+                            font-size: 11px;
+                        }
+                        
+                        .footer {
+                            text-align: center;
+                            margin-top: 15px;
+                            padding-top: 10px;
+                            border-top: 1px solid #e5e7eb;
+                            color: #666;
+                            font-size: 9px;
+                        }
+                        
+                        .thank-you {
+                            background: linear-gradient(135deg, #f59e0b, #f97316);
+                            color: white;
+                            padding: 12px;
+                            border-radius: 6px;
+                            text-align: center;
+                            margin: 10px 0;
+                        }
+                        
+                        .thank-you h3 {
+                            font-size: 13px;
+                            margin-bottom: 4px;
+                        }
+                        
+                        .thank-you p {
+                            font-size: 10px;
+                        }
+                        
+                        @media print {
+                            body { margin: 0; padding: 0; }
+                            .invoice-container { 
+                                margin: 0; 
+                                padding: 15mm;
+                                min-height: 297mm;
+                            }
+                        }
+                        
+                        @page {
+                            size: A4;
+                            margin: 0;
+                        }
+                    </style>
+                </head>
+                <body>
+                    <div class="invoice-container">
+                        <!-- Header -->
+                        <div class="invoice-header">
+                            <div class="company-section">
+                                <div class="company-logo">
+                                    <img src="/favicon.png" alt="Logo" class="company-logo-img" />
+                                </div>
+                                <div class="company-info">
+                                    <h1>SRI BOGAT</h1>
+                                    <p>Premium Quality Products</p>
+                                    <p>Email: support@bogat.com</p>
+                                    <p>Website: www.bogat.com</p>
+                                    <p class="gst-number">GSTIN: 29LWVPS2833P1Z0</p>
+                                </div>
+                            </div>
+                            <div class="invoice-details">
+                                <h2>TAX INVOICE</h2>
+                                <p><strong>Invoice #:</strong>${orderData.invoiceOrderNumber}</p>
+                                <p><strong>Date:</strong> ${new Date(orderData.createdAt).toLocaleDateString('en-IN')}</p>
+                                <p><strong>Order ID:</strong> ${orderData._id}</p>
+                            </div>
+                        </div>
 
-            <!-- Order Status -->
-            <div class="status-section">
-              <span class="status-badge status-${orderData.status || 'pending'}">${orderData.status || 'Pending'}</span>
-              <span style="color: #666; font-size: 10px;">Payment: ${orderData.paymentStatus || 'Pending'}</span>
-              <span style="color: #666; font-size: 10px;">Method: ${orderData.paymentMethod || 'Online'}</span>
-            </div>
+                        <!-- Invoice Information -->
+                        <div class="invoice-info">
+                            <div>
+                                <h3 class="section-title">Bill To</h3>
+                                <div class="info-block">
+                                    <p><strong>${orderData.user?.name || 'Customer Name'}</strong></p>
+                                    <p>Email: ${orderData.user?.email || 'N/A'}</p>
+                                    <p>Phone: ${orderData.user?.phone || 'N/A'}</p>
+                                </div>
+                            </div>
+                            <div>
+                                <h3 class="section-title">Ship To</h3>
+                                <div class="info-block">
+                                    <p>${orderData.shippingAddress?.address || 'N/A'}</p>
+                                    <p>${orderData.shippingAddress?.city || ''}, ${orderData.shippingAddress?.state || ''}</p>
+                                    <p>PIN: ${orderData.shippingAddress?.pincode || 'N/A'}</p>
+                                    <p>Phone: ${orderData.shippingAddress?.phone || 'N/A'}</p>
+                                </div>
+                            </div>
+                        </div>
 
-            ${couponCode ? `
-            <!-- ✅ Coupon Section -->
-            <div class="coupon-section">
-              <div class="coupon-header">
-                <div class="coupon-icon">🎁</div>
-                <div class="coupon-title">Coupon Applied Successfully!</div>
-              </div>
-              <div class="coupon-details">
-                <div>
-                  <strong>Coupon Code:</strong> ${couponCode}
-                </div>
-                <div>
-                  <strong>Discount Amount:</strong> ₹${couponDiscount.toFixed(2)}
-                </div>
-                <div style="grid-column: 1 / -1;">
-                  <strong>Savings:</strong> You saved ₹${couponDiscount.toFixed(2)}!
-                </div>
-              </div>
-            </div>
-            ` : ''}
+                        <!-- Order Status -->
+                        <div class="status-section">
+                            <span class="status-badge status-${orderData.status || 'pending'}">${orderData.status || 'Pending'}</span>
+                            <span style="color: #666; font-size: 10px;">Payment: ${orderData.paymentStatus || 'Pending'}</span>
+                            <span style="color: #666; font-size: 10px;">Method: ${orderData.paymentMethod || 'Online'}</span>
+                        </div>
 
-            <!-- Items Table -->
-            <table class="items-table">
-              <thead>
-                <tr>
-                  <th>Item</th>
-                  <th>HSN</th>
-                  <th>Qty</th>
-                  <th>Rate</th>
-                  <th>Amount</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${orderData.items?.map(item => `
-                  <tr>
-                    <td>
-                      <strong>${item.product?.name || item.name || 'Product Name'}</strong>
-                      ${item.product?.description ? `<br><small style="color: #666;">${item.product.description}</small>` : ''}
-                    </td>
-                    <td>1234</td>
-                    <td style="text-align: center;">${item.quantity || 0}</td>
-                    <td style="text-align: right;">₹${(item.price || 0).toFixed(2)}</td>
-                    <td style="text-align: right;">₹${((item.price || 0) * (item.quantity || 0)).toFixed(2)}</td>
-                  </tr>
-                `).join('') || '<tr><td colspan="5">No items found</td></tr>'}
-              </tbody>
-            </table>
+                        ${couponCode ? `
+                        <!-- Coupon Section -->
+                        <div class="coupon-section">
+                            <div class="coupon-header">
+                                <div class="coupon-icon">🎁</div>
+                                <div class="coupon-title">Coupon Applied Successfully!</div>
+                            </div>
+                            <div class="coupon-details">
+                                <div>
+                                    <strong>Coupon Code:</strong> ${couponCode}
+                                </div>
+                                <div>
+                                    <strong>Discount Amount:</strong> ₹${couponDiscount.toFixed(2)}
+                                </div>
+                                ${couponDetails?.title ? `
+                                <div style="grid-column: 1 / -1;">
+                                    <strong>Offer:</strong> ${couponDetails.title}
+                                </div>
+                                ` : ''}
+                                ${couponDetails?.description ? `
+                                <div style="grid-column: 1 / -1;">
+                                    <strong>Description:</strong> ${couponDetails.description}
+                                </div>
+                                ` : ''}
+                            </div>
+                        </div>
+                        ` : ''}
 
-            <!-- Totals Section -->
-            <div class="totals-section">
-              <div class="totals-grid">
-                <!-- GST Breakdown -->
-                <div class="gst-breakdown">
-                  <div class="gst-title">GST Breakdown</div>
-                  <div class="gst-row">
-                    <span>Taxable Amount:</span>
-                    <span>₹${subtotalAfterDiscount.toFixed(2)}</span>
-                  </div>
-                  <div class="gst-row">
-                    <span>CGST @ ${gstBreakdown.cgstRate.toFixed(1)}%:</span>
-                    <span>₹${gstBreakdown.cgst.toFixed(2)}</span>
-                  </div>
-                  <div class="gst-row">
-                    <span>SGST @ ${gstBreakdown.sgstRate.toFixed(1)}%:</span>
-                    <span>₹${gstBreakdown.sgst.toFixed(2)}</span>
-                  </div>
-                  <div class="gst-row gst-total">
-                    <span>Total GST:</span>
-                    <span>₹${gstBreakdown.totalGST.toFixed(2)}</span>
-                  </div>
-                </div>
-                
-                <!-- Total Calculation -->
-                <div class="total-calculation">
-                  <div class="total-row">
-                    <span>Subtotal:</span>
-                    <span>₹${itemsSubtotal.toFixed(2)}</span>
-                  </div>
-                  ${couponDiscount > 0 ? `
-                  <div class="total-row discount">
-                    <span>Coupon Discount (${couponCode}):</span>
-                    <span>-₹${couponDiscount.toFixed(2)}</span>
-                  </div>
-                  ` : ''}
-                  <div class="total-row">
-                    <span>GST:</span>
-                    <span>₹${gstBreakdown.totalGST.toFixed(2)}</span>
-                  </div>
-                  <div class="total-row">
-                    <span>Shipping:</span>
-                    <span>${shipping === 0 ? 'Free' : `₹${shipping.toFixed(2)}`}</span>
-                  </div>
-                  <div class="total-row grand-total">
-                    <span>GRAND TOTAL:</span>
-                    <span>₹${(orderData.totalAmount || 0).toFixed(2)}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
+                        <!-- ✅ FIXED: Items Table with Individual GST Display + HSN Codes -->
+                        <table class="items-table">
+                            <thead>
+                                <tr>
+                                    <th>Item Description</th>
+                                    <th>HSN Code</th>
+                                    <th>Qty</th>
+                                    <th>Base Rate</th>
+                                     <th>GST%</th>
+                                    <th>GST Amt</th>
+                                    <th>CGST</th>
+                                    <th>SGST</th>
+                                    <th>Total Amount</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${orderData.items?.map(item => {
+                                    const gstData = getIndividualProductGST(item, orderData);
+                                    return `
+                                    <tr>
+                                        <td>
+                                            <div class="product-name">${item.product?.name || 'Product Name'}</div>
+                                            ${item.product?.description ? `<div class="product-desc">${item.product.description.substring(0, 60)}${item.product.description.length > 60 ? '...' : ''}</div>` : ''}
+                                        </td>
+                                        <td><span class="hsn-code">${gstData.hsn}</span></td>
+                                        <td><strong>${item.quantity || 0}</strong></td>
+                                        <td class="amount">₹${gstData.basePrice}</td>
+                                        <td><strong>${gstData.gstRate}%</strong></td>
+                                        <td class="amount">₹${gstData.totalGstAmount}</td>
+                                        <td class="amount">₹${gstData.cgstAmount}</td>
+                                        <td class="amount">₹${gstData.sgstAmount}</td>
+                                        <td class="amount"><strong>₹${gstData.totalAmount}</strong></td>
+                                    </tr>
+                                `;}).join('') || '<tr><td colspan="9" style="text-align: center; color: #666;">No items found</td></tr>'}
+                            </tbody>
+                        </table>
 
-            <!-- Payment Information -->
-            <div class="payment-info">
-              <h3>Payment Information</h3>
-              <p><strong>Payment Method:</strong> ${orderData.paymentMethod || 'Online Payment'}</p>
-              <p><strong>Payment Status:</strong> ${orderData.paymentStatus || 'Completed'}</p>
-              ${orderData.razorpayDetails?.paymentId ? `<p><strong>Transaction ID:</strong> ${orderData.razorpayDetails.paymentId}</p>` : ''}
-            </div>
+                        <!-- Totals Section -->
+                        <div class="totals-section">
+                            <div class="totals-grid">
+                                <!-- GST Breakdown -->
+                                <div class="gst-breakdown">
+                                    <div class="gst-title">GST Summary</div>
+                                    <div class="gst-row">
+                                        <span>Taxable Amount:</span>
+                                        <span>₹${subtotalAfterDiscount.toFixed(2)}</span>
+                                    </div>
+                                    <div class="gst-row">
+                                        <span>CGST:</span>
+                                        <span>₹${gstBreakdown.cgst.toFixed(2)}</span>
+                                    </div>
+                                    <div class="gst-row">
+                                        <span>SGST:</span>
+                                        <span>₹${gstBreakdown.sgst.toFixed(2)}</span>
+                                    </div>
+                                    <div class="gst-row gst-total">
+                                        <span>Total GST:</span>
+                                        <span>₹${gstBreakdown.totalGST.toFixed(2)}</span>
+                                    </div>
+                                </div>
+                                
+                                <!-- Total Calculation -->
+                                <div class="total-calculation">
+                                    <div class="total-row">
+                                        <span>Subtotal (Including GST):</span>
+                                        <span>₹${itemsSubtotal.toFixed(2)}</span>
+                                    </div>
+                                    ${couponDiscount > 0 ? `
+                                    <div class="total-row discount">
+                                        <span>Coupon Discount (${couponCode}):</span>
+                                        <span>-₹${couponDiscount.toFixed(2)}</span>
+                                    </div>
+                                    ` : ''}
+                                    
+                                    <div class="total-row">
+                                        <span>Shipping:</span>
+                                        <span>${shipping === 0 ? 'Free' : `₹${shipping.toFixed(2)}`}</span>
+                                    </div>
+                                    <div class="total-row grand-total">
+                                        <span>GRAND TOTAL:</span>
+                                        <span>₹${(orderData.totalAmount || 0).toFixed(2)}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
 
-            <!-- GST Declaration -->
-            <div class="gst-declaration">
-              <strong>GST Registration Number:</strong> 27AABCU9603R1ZM<br>
-              This is a computer-generated invoice and does not require physical signature.
-            </div>
+                        <!-- Amount in Words -->
+                        <div class="amount-words">
+                            <strong>Amount in Words:</strong> ${convertToWords(orderData.totalAmount || 0)} Rupees Only
+                        </div>
 
-            <!-- Thank You -->
-            <div class="thank-you">
-              <h3>Thank You for Your Order!</h3>
-              <p>We appreciate your business and hope you enjoy your purchase.</p>
-            </div>
+                        <!-- Payment Information -->
+                        <div class="payment-info">
+                            <h3>Payment Information</h3>
+                            <p><strong>Payment Method:</strong> ${orderData.paymentMethod || 'Online Payment'}</p>
+                            <p><strong>Payment Status:</strong> ${orderData.paymentStatus || 'Completed'}</p>
+                            ${orderData.razorpayDetails?.paymentId ? `<p><strong>Transaction ID:</strong> ${orderData.razorpayDetails.paymentId}</p>` : ''}
+                        </div>
+                        
+                        <!-- Thank You -->
+                        <div class="thank-you">
+                            <h3>Thank You for Your Order!</h3>
+                            <p>We appreciate your business and hope you enjoy your purchase.</p>
+                        </div>
 
-            <!-- Footer -->
-            <div class="footer">
-              <p>This is a computer-generated invoice. No signature required.</p>
-              <p>For any queries, please contact us at support@bogat.com</p>
-            </div>
-          </div>
-        </body>
-        </html>
-      `;
+                        <!-- Footer -->
+                        <div class="footer">
+                            <p>This is a computer-generated invoice. No signature required.</p>
+                            <p>For any queries, please contact us at support@bogat.com</p>
+                            <p><strong>HSN Codes:</strong> As per Central Board of Indirect Taxes and Customs (CBIC)</p>
+                        </div>
+                    </div>
+                </body>
+                </html>
+            `;
 
       // Create and download PDF
       const printWindow = window.open('', '_blank');

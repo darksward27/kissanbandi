@@ -25,6 +25,63 @@ const getProductImage = (imagePath) => {
     return `https://bogat.onrender.com/uploads/product/${filename}`;
 };
 
+
+const getInvoiceOrderNumber = (orderData) => {
+  console.log('🔍 Getting invoice order number for:', {
+    invoiceNumber: orderData.invoiceNumber,
+    invoiceOrderNumber: orderData.invoiceOrderNumber,
+    orderNumber: orderData.orderNumber,
+    formattedOrderNumber: orderData.formattedOrderNumber,
+    createdAt: orderData.createdAt,
+    _id: orderData._id
+  });
+
+  // Method 1: Use existing 10-digit invoice number (YYYY000001 format)
+  if (orderData.invoiceNumber && orderData.invoiceNumber.length === 10) {
+    console.log('✅ Using existing 10-digit invoice number:', orderData.invoiceNumber);
+    return orderData.invoiceNumber;
+  }
+
+  // Method 2: Try the virtual field (fixed typo: was invoiceOrder, should be invoiceOrderNumber)
+  if (orderData.invoiceOrderNumber) {
+    console.log('✅ Using virtual invoiceOrderNumber:', orderData.invoiceOrderNumber);
+    return orderData.invoiceOrderNumber;
+  }
+  
+  // Method 3: Generate from orderNumber and createdAt (10-digit format)
+  if (orderData.orderNumber && orderData.createdAt) {
+    const year = new Date(orderData.createdAt).getFullYear();
+    const paddedOrderNum = String(orderData.orderNumber).padStart(6, '0');
+    const invoiceNumber = `${year}${paddedOrderNum}`;
+    console.log('📝 Generated from orderNumber and createdAt:', invoiceNumber);
+    return invoiceNumber;
+  }
+  
+  // Method 4: Generate from formattedOrderNumber and createdAt
+  if (orderData.formattedOrderNumber && orderData.createdAt) {
+    const year = new Date(orderData.createdAt).getFullYear();
+    const invoiceNumber = `${year}${orderData.formattedOrderNumber}`;
+    console.log('📝 Generated from formattedOrderNumber:', invoiceNumber);
+    return invoiceNumber;
+  }
+  
+  // Method 5: Generate from createdAt and _id (fallback)
+  if (orderData.createdAt && orderData._id) {
+    const year = new Date(orderData.createdAt).getFullYear();
+    const idSuffix = orderData._id.toString().slice(-6);
+    const invoiceNumber = `${year}${idSuffix}`;
+    console.log('📝 Generated from createdAt and _id:', invoiceNumber);
+    return invoiceNumber;
+  }
+  
+  // Method 6: Absolute fallback
+  const year = new Date().getFullYear();
+  const fallback = `${year}000001`;
+  console.log('⚠️ Using fallback invoice number:', fallback);
+  return fallback;
+};
+
+
 // ✅ FIXED: Function to get individual product GST breakdown with correct field names + HSN
 const getIndividualProductGST = (item, orderData) => {
     console.log('🧮 Calculating individual product GST for:', {
@@ -32,7 +89,7 @@ const getIndividualProductGST = (item, orderData) => {
         quantity: item.quantity,
         price: item.price,
         basePrice: item.basePrice,
-        gstRate: item.gstRate,
+        gstRate: item.gst|| 18, // Default to 18% if not available
         gst: item.gst, // ✅ Primary field name used in database
         gstAmount: item.gstAmount, // ✅ Fallback field name
         totalGstAmount: item.totalGstAmount,
@@ -52,8 +109,14 @@ const getIndividualProductGST = (item, orderData) => {
             basePrice = item.price - gstAmountPerUnit;
         }
         
-        // Get GST rate
-        const gstRate = parseFloat(item.gstRate) || 0;
+        // ✅ Calculate GST rate using the formula: (gstAmt/basePrice)*100
+        let gstRate = 0;
+        if (basePrice > 0 && gstAmountPerUnit > 0) {
+            gstRate = (gstAmountPerUnit / basePrice) * 100;
+        } else {
+            // Fallback to stored rate if calculation not possible
+            gstRate = parseFloat(item.gstRate) || 18;
+        }
         
         // ✅ Get HSN code
         const hsn = item.hsn || item.product?.hsn || item.product?.hsnCode || '1234';
@@ -63,15 +126,16 @@ const getIndividualProductGST = (item, orderData) => {
         const cgstAmount = totalGstAmount / 2;
         const sgstAmount = totalGstAmount / 2;
         
-        console.log('✅ Using stored GST data with correct field names + HSN:', {
+        console.log('✅ Using stored GST data with calculated GST% + HSN:', {
             basePrice,
             gstAmountPerUnit,
-            gstRate,
+            calculatedGstRate: gstRate,
             totalGstAmount,
             cgstAmount,
             sgstAmount,
             hsn,
             fieldUsed: item.gst !== undefined ? 'gst' : 'gstAmount',
+            calculation: `(${gstAmountPerUnit}/${basePrice})*100 = ${gstRate.toFixed(2)}%`,
             rawValues: {
                 itemGst: item.gst,
                 itemGstAmount: item.gstAmount,
@@ -83,7 +147,7 @@ const getIndividualProductGST = (item, orderData) => {
         
         return {
             basePrice: basePrice.toFixed(2),
-            gstRate: gstRate > 0 ? gstRate.toFixed(1) : '18.0', // Default to 18% if not available
+            gstRate: gstRate.toFixed(1), // ✅ Use calculated GST rate using (gstAmt/basePrice)*100
             gstAmountPerUnit: gstAmountPerUnit.toFixed(2),
             totalGstAmount: totalGstAmount.toFixed(2),
             cgstAmount: cgstAmount.toFixed(2),
@@ -95,7 +159,7 @@ const getIndividualProductGST = (item, orderData) => {
 
     // Method 2: Calculate from price (assuming price includes GST) - Fallback
     const totalItemAmount = (item.price || 0) * (item.quantity || 0);
-    const productGstRate = item.gstRate || item.product?.gstRate || item.product?.gst || 18;
+    const productGstRate = item.gst || item.product?.gstRate || item.product?.gst || 18;
     const hsn = item.hsn || item.product?.hsn || item.product?.hsnCode || '1234';
     
     // Calculate base price and GST from total amount (reverse calculation)
@@ -105,20 +169,30 @@ const getIndividualProductGST = (item, orderData) => {
     const cgstAmount = totalGstAmount / 2;
     const sgstAmount = totalGstAmount / 2;
     
-    console.log('⚠️ Calculated GST from price (fallback method) + HSN:', {
+    // ✅ Calculate GST rate using the formula (gstAmt/basePrice)*100 for fallback method too
+    const basePricePerUnit = basePrice / (item.quantity || 1);
+    let calculatedGstRate = productGstRate; // Default fallback
+    if (basePricePerUnit > 0 && gstAmountPerUnit > 0) {
+        calculatedGstRate = (gstAmountPerUnit / basePricePerUnit) * 100;
+    }
+    
+    console.log('⚠️ Calculated GST from price (fallback method) with formula-based GST% + HSN:', {
         totalItemAmount,
         productGstRate,
         basePrice,
+        basePricePerUnit,
         gstAmountPerUnit,
         totalGstAmount,
         cgstAmount,
         sgstAmount,
+        calculatedGstRate,
+        calculation: `(${gstAmountPerUnit}/${basePricePerUnit.toFixed(2)})*100 = ${calculatedGstRate.toFixed(2)}%`,
         hsn
     });
     
     return {
         basePrice: basePrice.toFixed(2),
-        gstRate: productGstRate.toFixed(1),
+        gstRate: calculatedGstRate.toFixed(1), // ✅ Use calculated GST rate using (gstAmt/basePrice)*100
         gstAmountPerUnit: gstAmountPerUnit.toFixed(2),
         totalGstAmount: totalGstAmount.toFixed(2),
         cgstAmount: cgstAmount.toFixed(2),
@@ -128,9 +202,9 @@ const getIndividualProductGST = (item, orderData) => {
     };
 };
 
-// Helper function to get actual GST breakdown from order data
+// Helper function to calculate GST breakdown from order data with corrected individual GST rates
 const calculateGSTBreakdown = (orderData, subtotalAfterDiscount) => {
-    console.log('🧮 Calculating GST breakdown:', { 
+    console.log('🧮 Calculating GST breakdown with formula-based GST%:', { 
         orderData: {
             gstAmount: orderData?.gstAmount,
             discountedSubtotal: orderData?.discountedSubtotal,
@@ -140,43 +214,49 @@ const calculateGSTBreakdown = (orderData, subtotalAfterDiscount) => {
         subtotalAfterDiscount 
     });
     
-    // First, try to calculate from individual items using the fixed function
+    // First, try to calculate from individual items using the corrected function
     if (orderData?.items && Array.isArray(orderData.items)) {
         let totalCGST = 0;
         let totalSGST = 0;
         let totalGST = 0;
-        let commonGSTRate = null;
+        let weightedGSTRate = 0;
+        let totalBaseAmount = 0;
         
         orderData.items.forEach(item => {
             const itemGstData = getIndividualProductGST(item, orderData);
             const itemCGST = parseFloat(itemGstData.cgstAmount) || 0;
             const itemSGST = parseFloat(itemGstData.sgstAmount) || 0;
             const itemGST = parseFloat(itemGstData.totalGstAmount) || 0;
+            const itemBasePrice = parseFloat(itemGstData.basePrice) || 0;
             const gstRate = parseFloat(itemGstData.gstRate) || 0;
-            
-            if (commonGSTRate === null) {
-                commonGSTRate = gstRate;
-            }
             
             totalCGST += itemCGST;
             totalSGST += itemSGST;
             totalGST += itemGST;
+            totalBaseAmount += itemBasePrice * (item.quantity || 1);
+            
+            // Calculate weighted average GST rate
+            weightedGSTRate += gstRate * (itemBasePrice * (item.quantity || 1));
         });
         
-        console.log('✅ Calculated from individual items with correct field names + HSN:', { 
+        // Calculate final weighted GST rate
+        const finalGSTRate = totalBaseAmount > 0 ? weightedGSTRate / totalBaseAmount : 0;
+        
+        console.log('✅ Calculated from individual items with formula-based GST% + HSN:', { 
             totalCGST, 
             totalSGST, 
             totalGST, 
-            commonGSTRate 
+            finalGSTRate: finalGSTRate.toFixed(2) + '%',
+            totalBaseAmount
         });
         
         return {
             cgst: Math.round(totalCGST * 100) / 100,
             sgst: Math.round(totalSGST * 100) / 100,
             totalGST: Math.round(totalGST * 100) / 100,
-            cgstRate: (commonGSTRate || 0) / 2,
-            sgstRate: (commonGSTRate || 0) / 2,
-            totalRate: commonGSTRate || 0
+            cgstRate: finalGSTRate / 2,
+            sgstRate: finalGSTRate / 2,
+            totalRate: finalGSTRate
         };
     }
     
@@ -220,6 +300,9 @@ const calculateGSTBreakdown = (orderData, subtotalAfterDiscount) => {
         totalRate: 0
     };
 };
+
+
+
 
 const Orders = () => {
     const { user } = useAuth();
@@ -318,12 +401,23 @@ const Orders = () => {
             toast.loading('Generating invoice...', { id: 'pdf-loading' });
             
             const response = await api.get(`/orders/${orderId}`);
-            
             const orderData = response.data.order;
-            console.log('Order Data for Invoice with GST breakdown + HSN:', orderData);
-            if (!orderData) {
-                throw new Error('Order data not found');
-            }
+
+            let nextFormattedOrderNumber = '';
+try {
+  const numberResp = await api.get('orders/next-order-number');
+  const formatted = numberResp.data.nextFormattedOrderNumber || '';
+  
+  const currentYear = new Date().getFullYear();
+  nextFormattedOrderNumber = `${currentYear}${formatted}`; // → e.g., "2025000124"
+  
+} catch (err) {
+  console.error('Error fetching formatted order number:', err);
+  nextFormattedOrderNumber = '';
+}
+
+
+            
 
             const itemsSubtotal = (orderData.items || []).reduce((sum, item) => sum + (item.price * item.quantity), 0);
             const couponDiscount = orderData.discount || 0;
@@ -778,12 +872,12 @@ const Orders = () => {
                                     <p>Premium Quality Products</p>
                                     <p>Email: support@bogat.com</p>
                                     <p>Website: www.bogat.com</p>
-                                    <p class="gst-number">GSTIN: 27AABCU9603R1ZM</p>
+                                    <p class="gst-number">GSTIN: 29LWVPS2833P1Z0</p>
                                 </div>
                             </div>
                             <div class="invoice-details">
                                 <h2>TAX INVOICE</h2>
-                                <p><strong>Invoice #:</strong> INV-${orderData._id.slice(-8).toUpperCase()}</p>
+                                <p><strong>Invoice #:</strong>${nextFormattedOrderNumber}</p>
                                 <p><strong>Date:</strong> ${new Date(orderData.createdAt).toLocaleDateString('en-IN')}</p>
                                 <p><strong>Order ID:</strong> ${orderData._id}</p>
                             </div>
@@ -853,7 +947,7 @@ const Orders = () => {
                                     <th>HSN Code</th>
                                     <th>Qty</th>
                                     <th>Base Rate</th>
-                                    
+                                     <th>GST%</th>
                                     <th>GST Amt</th>
                                     <th>CGST</th>
                                     <th>SGST</th>
@@ -872,7 +966,7 @@ const Orders = () => {
                                         <td><span class="hsn-code">${gstData.hsn}</span></td>
                                         <td><strong>${item.quantity || 0}</strong></td>
                                         <td class="amount">₹${gstData.basePrice}</td>
-                                       
+                                        <td><strong>${gstData.gstRate}%</strong></td>
                                         <td class="amount">₹${gstData.totalGstAmount}</td>
                                         <td class="amount">₹${gstData.cgstAmount}</td>
                                         <td class="amount">₹${gstData.sgstAmount}</td>
@@ -893,11 +987,11 @@ const Orders = () => {
                                         <span>₹${subtotalAfterDiscount.toFixed(2)}</span>
                                     </div>
                                     <div class="gst-row">
-                                        <span>CGST @ ${gstBreakdown.cgstRate.toFixed(1)}%:</span>
+                                        <span>CGST:</span>
                                         <span>₹${gstBreakdown.cgst.toFixed(2)}</span>
                                     </div>
                                     <div class="gst-row">
-                                        <span>SGST @ ${gstBreakdown.sgstRate.toFixed(1)}%:</span>
+                                        <span>SGST:</span>
                                         <span>₹${gstBreakdown.sgst.toFixed(2)}</span>
                                     </div>
                                     <div class="gst-row gst-total">
@@ -1091,7 +1185,7 @@ const Orders = () => {
                                 <h1 className="text-4xl font-bold bg-gradient-to-r from-amber-700 to-orange-700 bg-clip-text text-transparent mb-2">
                                     My Orders
                                 </h1>
-                                <p className="text-gray-600 text-lg">View and track your orders with HSN details</p>
+                                <p className="text-gray-600 text-lg">View and track your orders</p>
                                 <div className="w-24 h-1 bg-gradient-to-r from-amber-600 to-orange-700 rounded-full mt-2 mx-auto lg:mx-0"></div>
                             </div>
                             
@@ -1246,16 +1340,11 @@ const Orders = () => {
                                                                         <div className="text-sm text-gray-600 mt-1 space-y-1">
                                                                             <div className="flex items-center justify-between">
                                                                                 <span className="bg-amber-100 text-amber-700 px-2 py-1 rounded-full text-xs font-medium">
-                                                                                    {item?.quantity || 0} × ₹{gstData.basePrice} (Base)
+                                                                                    {item?.quantity || 0} × ₹{gstData.basePrice}
                                                                                 </span>
-                                                                                <span className="bg-green-100 text-green-700 px-2 py-1 rounded-full text-xs font-medium">
-                                                                                    GST: ₹{gstData.totalGstAmount}
-                                                                                </span>
+                                                                               
                                                                             </div>
-                                                                            <div className="flex items-center justify-between text-xs text-gray-500">
-                                                                                <span>GST Rate: {gstData.gstRate}% | CGST: ₹{gstData.cgstAmount} | SGST: ₹{gstData.sgstAmount}</span>
-                                                                                
-                                                                            </div>
+                                                                            
                                                                         </div>
                                                                     </div>
                                                                 </div>
@@ -1338,18 +1427,7 @@ const Orders = () => {
                                                                                 <span>-₹{couponDiscount.toFixed(2)}</span>
                                                                             </div>
                                                                         )}
-                                                                        <div className="flex justify-between text-gray-600">
-                                                                            <span>GST ({gstBreakdown.totalRate.toFixed(1)}%):</span>
-                                                                            <span>₹{gstBreakdown.totalGST.toFixed(2)}</span>
-                                                                        </div>
-                                                                        <div className="flex justify-between text-blue-600 text-xs">
-                                                                            <span>• CGST ({gstBreakdown.cgstRate.toFixed(1)}%):</span>
-                                                                            <span>₹{gstBreakdown.cgst.toFixed(2)}</span>
-                                                                        </div>
-                                                                        <div className="flex justify-between text-blue-600 text-xs">
-                                                                            <span>• SGST ({gstBreakdown.sgstRate.toFixed(1)}%):</span>
-                                                                            <span>₹{gstBreakdown.sgst.toFixed(2)}</span>
-                                                                        </div>
+                                                                       
                                                                         <div className="flex justify-between text-gray-600">
                                                                             <span>Shipping:</span>
                                                                             <span className={shipping === 0 ? 'text-green-600 font-medium' : ''}>

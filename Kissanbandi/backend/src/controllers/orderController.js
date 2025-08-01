@@ -7,6 +7,14 @@ const crypto = require('crypto');
 const RazorpayTransaction = require('../models/RazorpayTransaction');
 require('dotenv').config();
 
+console.log('🔍 Order model import check:', {
+  orderExists: !!Order,
+  orderType: typeof Order,
+  isFunction: typeof Order === 'function',
+  modelName: Order?.modelName || 'No modelName',
+  isMongooseModel: Order?.prototype?.constructor === Order
+});
+
 // ✅ FIXED: Proper GST calculation from database
 const getProductPricing = (product) => {
   console.log('🔍 Analyzing product pricing:', {
@@ -1440,12 +1448,24 @@ exports.editOrderAddress = async (req, res) => {
 exports.getOrderById = async (req, res) => {
   try {
     const { orderId } = req.params;
+    
+    console.log('🔍 BACKEND - getOrderById called with:', { orderId, userId: req.user?.userId });
 
     const order = await Order.findById(orderId)
       .populate('user', 'name email phone address')
-      .populate('items.product', 'name price image category description hsn hsnCode gstPercent'); // ✅ Include HSN and GST fields
+      .populate('items.product', 'name price image category description hsn hsnCode gstPercent');
+
+    console.log('🔍 BACKEND - Raw order from DB:', {
+      found: !!order,
+      orderId: order?._id,
+      orderNumber: order?.orderNumber,
+      formattedOrderNumber: order?.formattedOrderNumber,
+      createdAt: order?.createdAt,
+      hasVirtualMethod: typeof order?.invoiceOrderNumber
+    });
 
     if (!order) {
+      console.log('❌ BACKEND - Order not found');
       return res.status(404).json({ error: 'Order not found' });
     }
 
@@ -1453,15 +1473,47 @@ exports.getOrderById = async (req, res) => {
     const requestUserId = req.user.userId.toString();
     
     if (req.user.role !== 'admin' && orderUserId !== requestUserId) {
+      console.log('❌ BACKEND - Authorization failed');
       return res.status(403).json({ error: 'Not authorized to view this order' });
     }
 
+    // ✅ Test the virtual field directly on the document
+    console.log('🔍 BACKEND - Testing virtual field directly:', {
+      virtualInvoiceNumber: order.invoiceOrderNumber,
+      virtualDisplayNumber: order.displayOrderNumber
+    });
+
+    // ✅ Convert to JSON
+    const orderData = order.toJSON();
+    
+    console.log('🔍 BACKEND - After toJSON():', {
+      invoiceOrderNumber: orderData.invoiceOrderNumber,
+      displayOrderNumber: orderData.displayOrderNumber,
+      orderNumber: orderData.orderNumber,
+      formattedOrderNumber: orderData.formattedOrderNumber,
+      createdAt: orderData.createdAt,
+      allKeys: Object.keys(orderData).filter(key => key.includes('order') || key.includes('invoice') || key.includes('number'))
+    });
+
+    // ✅ Manual fallback if virtual still doesn't work
+    if (!orderData.invoiceOrderNumber && orderData.orderNumber && orderData.createdAt) {
+      const year = new Date(orderData.createdAt).getFullYear();
+      const paddedOrderNum = String(orderData.orderNumber).padStart(6, '0');
+      orderData.invoiceOrderNumber = `${year}${paddedOrderNum}`;
+      console.log('📝 BACKEND - Manually added invoiceOrderNumber:', orderData.invoiceOrderNumber);
+    }
+
+    console.log('🔍 BACKEND - Final response data:', {
+      hasInvoiceOrderNumber: !!orderData.invoiceOrderNumber,
+      invoiceOrderNumber: orderData.invoiceOrderNumber
+    });
+
     res.json({
       success: true,
-      order
+      order: orderData
     });
   } catch (error) {
-    console.error('Error fetching order by ID:', error);
+    console.error('❌ BACKEND - Error in getOrderById:', error);
     res.status(500).json({ error: error.message });
   }
 };
@@ -1724,6 +1776,117 @@ exports.getAdminNoteHistory = async (req, res) => {
     res.status(500).json({ 
       success: false,
       error: 'Failed to fetch admin note history' 
+    });
+  }
+};
+
+exports.findOrderByNumber = async (req, res) => {
+  try {
+    const { orderNumber } = req.params;
+    
+    console.log(`🔍 Searching for order by number: ${orderNumber}`);
+    
+    let order = await Order.findByOrderNumber(orderNumber)
+      .populate('user', 'name email phone')
+      .populate('items.product', 'name price image hsn hsnCode');
+
+    if (!order) {
+      // Try finding by formatted order number as fallback
+      order = await Order.findByFormattedOrderNumber(orderNumber)
+        .populate('user', 'name email phone')
+        .populate('items.product', 'name price image hsn hsnCode');
+    }
+
+    if (!order) {
+      return res.status(404).json({ 
+        success: false,
+        error: 'Order not found',
+        searchedFor: orderNumber
+      });
+    }
+
+    // Check authorization
+    if (req.user.role !== 'admin' && order.user._id.toString() !== req.user.userId) {
+      return res.status(403).json({ 
+        success: false,
+        error: 'Not authorized to view this order' 
+      });
+    }
+
+    console.log(`✅ Found order:`, {
+      orderId: order._id,
+      orderNumber: order.orderNumber,
+      formattedOrderNumber: order.formattedOrderNumber,
+      displayOrderNumber: order.displayOrderNumber
+    });
+
+    res.json({
+      success: true,
+      order,
+      orderNumbers: {
+        orderNumber: order.orderNumber,
+        formattedOrderNumber: order.formattedOrderNumber,
+        displayOrderNumber: order.displayOrderNumber
+      }
+    });
+  } catch (error) {
+    console.error('Error finding order by number:', error);
+    res.status(500).json({ 
+      success: false,
+      error: error.message 
+    });
+  }
+};
+
+exports.getNextOrderNumber = async (req, res) => {
+  try {
+
+    const nextNumbers = await Order.getNextOrderNumber();
+    
+    console.log('📊 Retrieved next order numbers:', nextNumbers);
+    
+    res.json({
+      success: true,
+      nextOrderNumber: nextNumbers.orderNumber,
+      nextFormattedOrderNumber: nextNumbers.formattedOrderNumber,
+      nextDisplayOrderNumber: `ORD-${nextNumbers.formattedOrderNumber}`
+    });
+  } catch (error) {
+    console.error('Error getting next order number:', error);
+    res.status(500).json({ 
+      success: false,
+      error: 'Failed to get next order number',
+      details: error.message 
+    });
+  }
+};
+
+exports.getOrderNumberStats = async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ 
+        success: false,
+        error: 'Admin access required' 
+      });
+    }
+
+    const stats = await Order.getOrderNumberStats();
+    
+    console.log('📊 Retrieved order number statistics:', stats);
+    
+    res.json({
+      success: true,
+      stats: {
+        ...stats,
+        nextDisplayOrderNumber: `ORD-${stats.nextFormattedOrderNumber}`
+      }
+    });
+  } catch (error) {
+    console.error('Error getting order number stats:', error);
+    res.status(500).json({ 
+      success: false,
+      error: 'Failed to get order number statistics',
+      details: error.message 
     });
   }
 };

@@ -16,14 +16,7 @@ const Login = () => {
 
   useEffect(() => {
     if (isAuthenticated && user) {
-      // Check if user is admin and block redirect
-      if (user.role === 'admin') {
-        console.warn('Admin user detected, blocking automatic redirect');
-        toast.error('Admin access is restricted. Please use the admin panel.');
-        return; // Don't redirect admin users
-      }
-      
-      // Only redirect non-admin users
+      // Only redirect non-admin users (admin users shouldn't reach here anymore)
       const from = location.state?.from?.pathname || '/';
       navigate(from, { replace: true });
     }
@@ -34,30 +27,9 @@ const Login = () => {
     try {
       setLoading(true);
       
-      // Attempt login first
-      const loginResult = await login(email, password, rememberMe);
+      // The admin blocking is now handled in the AuthProvider login method
+      await login(email, password, rememberMe);
       
-      // Check if the user role is admin and restrict access
-      if (loginResult && loginResult.user && loginResult.user.role === 'admin') {
-        // Force logout the admin user
-        console.warn('Admin login attempt blocked:', loginResult.user.email);
-        
-        // Show error message
-        toast.error('Admin access is restricted. Please use the admin panel.');
-        
-        // Clear the login state
-        // Note: You might need to add a logout method to your auth context
-        // await logout(); // Uncomment this if you have a logout method
-        
-        // Clear form fields and stay on login page
-        setEmail('');
-        setPassword('');
-        setRememberMe(false);
-        
-        return;
-      }
-      
-      // If not admin, proceed with normal login flow
       toast.success('Login successful');
       const from = location.state?.from?.pathname || '/';
       navigate(from, { replace: true });
@@ -65,14 +37,16 @@ const Login = () => {
     } catch (err) {
       console.error('Login error:', err);
       
-      // Check if the error is specifically about admin restriction
       const errorMessage = err.response?.data?.error || err.message || 'Login failed';
       
-      if (errorMessage.toLowerCase().includes('admin') || 
-          errorMessage.toLowerCase().includes('restricted') ||
-          err.response?.data?.role === 'admin') {
+      // Handle specific error types
+      if (err.message === 'EMAIL_NOT_VERIFIED') {
+        // Email verification error is already handled in AuthProvider
+        return;
+      }
+      
+      if (errorMessage.includes('Admin access is restricted')) {
         toast.error('Admin access is restricted. Please use the admin panel.');
-        
         // Clear form fields for admin restriction
         setEmail('');
         setPassword('');

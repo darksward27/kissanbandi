@@ -420,15 +420,28 @@ const AdminCouponManagement = () => {
     return 'Active';
   };
 
-  const filteredCoupons = coupons.filter(coupon => {
-    const matchesSearch = coupon.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         coupon.code.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    if (filterStatus === 'all') return matchesSearch;
-    
-    const status = getStatusText(coupon).toLowerCase();
-    return matchesSearch && status.includes(filterStatus.toLowerCase());
-  });
+ const filteredCoupons = coupons.filter(coupon => {
+  const matchesSearch = coupon.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                       coupon.code.toLowerCase().includes(searchQuery.toLowerCase());
+  
+  if (filterStatus === 'all') return matchesSearch;
+  
+  const status = getStatusText(coupon).toLowerCase();
+  
+  // FIXED: Exact matching instead of includes() to prevent false matches
+  switch (filterStatus.toLowerCase()) {
+    case 'active':
+      return matchesSearch && status === 'active';
+    case 'inactive':
+      return matchesSearch && status === 'inactive';
+    case 'expired':
+      return matchesSearch && status === 'expired';
+    case 'scheduled':
+      return matchesSearch && status === 'scheduled';
+    default:
+      return matchesSearch;
+  }
+});
 
   const calculateUtilizationPercentage = (coupon) => {
     if (!coupon.budget) return 0;
@@ -554,16 +567,16 @@ const AdminCouponManagement = () => {
 
             <div className="flex items-center gap-3">
               <select
-                value={filterStatus}
-                onChange={(e) => setFilterStatus(e.target.value)}
-                className="px-4 py-2 border border-amber-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 bg-white"
-              >
-                <option value="all">All Status</option>
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
-                <option value="expired">Expired</option>
-                <option value="scheduled">Scheduled</option>
-              </select>
+  value={filterStatus}
+  onChange={(e) => setFilterStatus(e.target.value)}
+  className="px-4 py-2 border border-amber-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 bg-white"
+>
+  <option value="all">All Status</option>
+  <option value="active">Active</option>
+  <option value="inactive">Inactive</option>
+  <option value="expired">Expired</option>
+  <option value="scheduled">Scheduled</option>
+</select>
             </div>
           </div>
         </div>

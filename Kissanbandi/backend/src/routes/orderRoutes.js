@@ -9,13 +9,18 @@ const { auth, admin } = require('../middleware/auth');
 
 // User routes (no params)
 router.post('/', auth, orderController.createOrder);
-router.get('/a', auth, orderController.getUserOrders);
+router.get('/my-orders', auth, orderController.getUserOrders);
 
 // Admin routes (no params)
 router.get('/admin/all', [auth, admin], orderController.getAllOrders);
 router.get('/admin/stats', [auth, admin], orderController.getOrderStats);
 router.get('/admin/export', [auth, admin], orderController.exportOrders);
 router.get('/admin/date-range', [auth, admin], orderController.getOrdersByDateRange);
+
+// Get next available order number (admin only)
+
+// Get order number statistics (admin only) 
+router.get('/admin/number-stats', [auth, admin], orderController.getOrderNumberStats);
 
 // Razorpay routes (no params)
 router.post('/razorpay/create', auth, orderController.createRazorpayOrder);
@@ -35,6 +40,13 @@ router.post('/transactions/:orderId/refund', [auth, admin], orderController.proc
 
 // Invoice route (specific pattern)
 router.get('/:orderId/download-invoice', auth, orderController.downloadInvoice);
+
+// Find order by any number format (user/admin)
+router.get('/number/:orderNumber', auth, orderController.findOrderByNumber);
+
+//get next order number
+router.get('/next-order-number', auth, orderController.getNextOrderNumber);
+
 
 // ========================================
 // ADMIN NOTE ROUTES (FOR ALL ORDERS)
