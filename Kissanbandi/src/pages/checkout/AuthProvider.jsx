@@ -85,6 +85,13 @@ export const AuthProvider = ({ children }) => {
       const response = await api.post('/users/login', { email, password });
       const { token, user: userData } = response.data;
 
+      // ✅ BLOCK ADMIN USERS FROM REGULAR LOGIN
+      if (userData.role === 'admin') {
+        console.warn('Admin login attempt blocked in regular login:', userData.email);
+        throw new Error('Admin access is restricted. Please use the admin panel.');
+      }
+
+      // Only proceed for non-admin users
       setUser(userData);
       setIsAuthenticated(true);
 
@@ -96,6 +103,7 @@ export const AuthProvider = ({ children }) => {
       return { token, user: userData };
 
     } catch (error) {
+      // Handle email verification error
       if (error.response?.data?.error === "Please verify your email first") {
         const shouldResend = window.confirm(
           "Your email is not verified. Would you like us to resend the verification email?"
@@ -107,6 +115,8 @@ export const AuthProvider = ({ children }) => {
         }
         throw new Error('EMAIL_NOT_VERIFIED');
       }
+      
+      // Re-throw the error (including admin restriction error)
       throw error;
     }
   };
